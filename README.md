@@ -194,7 +194,8 @@ Primary Todo
 * pull spns and computer description/spn account descriptions to help identify owner/business unit
  
 **Questions**
-* under what conditions are Creation time, "LastAccessTime" and "LastWriteTime" set? CreationTime is the time that the file was created on a disk partition;  Windows doesn't keep track of the last access times for directories since win7?;In general adding, renaming or deleting a file or folder will change both LastAccessTime and LastWriteTime.;last accessed timestamp is static unless the feature is enabled; fsutil behavior set disablelastaccess 0 (HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem\NtfsDisableLastAccessUpdate);Registry - default disabled setting: dword:80000003
+* under what conditions are Creation time, "LastAccessTime" and "LastWriteTime" set? CreationTime is the time that the file was created on a disk partition;  Windows doesn't keep track of the last access times for directories since win7?;In general adding, renaming or deleting a file or folder will change both LastAccessTime and LastWriteTime.;last accessed timestamp is static unless the feature is enabled; fsutil behavior set disablelastaccess 0 (HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem\NtfsDisableLastAccessUpdate);Registry - default disabled setting: dword:80000003;However, if you move a file to a different partition/disk on your computer, the CreationTime will be updated, but because the content hasn't changed, the LastWriteTime won't be. 
+So you end up in a situation where your CreationTime is later than your LastWriteTime. 
 * what does share owner mean when system, vs trustedinstaller vs administrators vs network service - what can we infer that would be meaningful
 * what are some of the most common shares, can we automat profile them and highlight "known" application shars in the data insights?
 * can we predict file path with enough collect data to analyze?
