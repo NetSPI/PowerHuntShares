@@ -194,7 +194,7 @@ Primary Todo
 * pull spns and computer description/spn account descriptions to help identify owner/business unit
  
 **Questions**
-* under what conditions are "LastAccessTime" and "LastWriteTime" set?
+* under what conditions are Creation time, "LastAccessTime" and "LastWriteTime" set? CreationTime is the time that the file was created on a disk partition;  Windows doesn't keep track of the last access times for directories since win7?;last accessed timestamp is static unless the feature is enabled; fsutil behavior set disablelastaccess 0 (HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem\NtfsDisableLastAccessUpdate);Registry - default disabled setting: dword:80000003
 * what does share owner mean when system, vs trustedinstaller vs administrators vs network service - what can we infer that would be meaningful
 * what are some of the most common shares, can we automat profile them and highlight "known" application shars in the data insights?
 * can we predict file path with enough collect data to analyze?
@@ -212,6 +212,7 @@ Primary Todo
  * http://learningpcs.blogspot.com/2011/08/powershell-forensics-analysis-of.html
  * https://datadobi.com/blog/the-impact-of-timestamps/ 
  * https://www.forensixchange.com/posts/19_04_22_win10_ntfs_time_rules/
+ * https://docs.microsoft.com/en-us/dotnet/api/system.io.filesysteminfo.lastwritetime?view=net-6.0
  
 
 
