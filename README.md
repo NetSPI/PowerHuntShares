@@ -12,6 +12,17 @@ It supports functionality to:
 
 Excessive SMB share ACLs are a systemic problem and an attack surface that all organizations struggle with.  The goal of this project is to provide a proof concept that will work towards building a better share collection and data insight engine that can help inform and priorititize remediation efforts.
 
+# Vocabulary
+PowerHuntShares will inventory SMB share ACLs configured with "excessive privileges" and highlight "high risk" ACLs.  Below is how those are defined in this context.
+
+<strong>Excessive Privileges</strong><br>
+In the context of this report, excessive read and write share permissions have been defined as any network share ACL containing an explicit entry for the "Everyone", "Authenticated Users", "BUILTIN\Users", "Domain Users", or "Domain Computers" groups. All provide domain users access to the affected shares due to privilege inheritance.<br>
+
+Please Note: Share permissions can be overruled by NTFS permissions. Also, be aware that testing excluded share names containing the following keywords: "print$", "prnproc$", "printer", "netlogon",and "sysvol".
+
+<strong>High Risk Shares</strong><br>
+In the context of this report, high risk shares have been defined as shares that provide unauthorized remote access to a system or application. By default, that includes wwwroot, inetpub, c$, and admin$ shares. However, additional exposures may exist that are not called out beyond that.
+
 # Example Commands
 Important Note: All commands should be run as an unprivileged domain user.
 <pre>
