@@ -141,8 +141,10 @@ SHARE REPORT SUMMARY
 [*][03/01/2021 09:37]   - 1 test1
 [*][03/01/2021 09:37]   - 1 users
 [*] -----------------------------------------------
-
 </pre>
+
+# HTML Report Examples
+![HtmlReport1](https://raw.githubusercontent.com/NetSPI/PowerHuntShares/main/Sample1.png) 
 
 # Credits
 <strong>Author</strong><Br>
