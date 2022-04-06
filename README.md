@@ -16,7 +16,7 @@ Excessive SMB share ACLs are a systemic problem and an attack surface that all o
 PowerHuntShares will inventory SMB share ACLs configured with "excessive privileges" and highlight "high risk" ACLs.  Below is how those are defined in this context.
 
 <strong>Excessive Privileges</strong><br>
-In the context of this report, excessive read and write share permissions have been defined as any network share ACL containing an explicit entry for the "Everyone", "Authenticated Users", "BUILTIN\Users", "Domain Users", or "Domain Computers" groups. All provide domain users access to the affected shares due to privilege inheritance.<br>
+Excessive read and write share permissions have been defined as any network share ACL containing an explicit ACE (Access Control Entry) for the "Everyone", "Authenticated Users", "BUILTIN\Users", "Domain Users", or "Domain Computers" groups. All provide domain users access to the affected shares due to privilege inheritance issues.  Note there is a parameter that allow operators to add their own target groups.<br>
 
 Please Note: Share permissions can be overruled by NTFS permissions. Also, be aware that testing excluded share names containing the following keywords: "print$", "prnproc$", "printer", "netlogon",and "sysvol".
 
