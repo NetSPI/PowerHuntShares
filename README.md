@@ -208,6 +208,10 @@ Primary Todo
  *  https://social.technet.microsoft.com/wiki/contents/articles/52329.powershell-how-to-get-acl-share-permissions-for-folder.aspx
  * https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.security/get-acl?view=powershell-7.2
  * https://docs.microsoft.com/en-us/dotnet/api/microsoft.powershell.security.activities.getacl?view=powershellsdk-1.1.0
+ * TimeStamps
+ * http://learningpcs.blogspot.com/2011/08/powershell-forensics-analysis-of.html
+ * https://datadobi.com/blog/the-impact-of-timestamps/ 
+ * https://www.forensixchange.com/posts/19_04_22_win10_ntfs_time_rules/
  
 
 
