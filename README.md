@@ -213,6 +213,7 @@ Primary Todo
  * https://datadobi.com/blog/the-impact-of-timestamps/ 
  * https://www.forensixchange.com/posts/19_04_22_win10_ntfs_time_rules/
  * https://docs.microsoft.com/en-us/dotnet/api/system.io.filesysteminfo.lastwritetime?view=net-6.0
+ * https://social.technet.microsoft.com/Forums/en-US/e90d8a90-9102-46a7-b5b0-d0a591719c23/getchilditem-differences-between-lastwritetime-and-lastaccesstime?forum=winserverpowershell
  
  **CSS Things**
 <pre>
