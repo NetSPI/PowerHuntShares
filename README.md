@@ -55,7 +55,7 @@ INVOKE-HUNTSMBSHARES
  o Identify shares that provide reads & write access           
  o Identify shares thare are high risk
  o Identify common share owners, names, & directory listings   
- o Generate last written & last accessed timelines
+ o Generate creation, last written, & last accessed timelines
  o Generate html summary report and detailed csv files         
 
  Note: This can take hours to run in large environments.       
