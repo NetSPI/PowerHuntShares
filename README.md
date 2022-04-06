@@ -194,10 +194,12 @@ Primary Todo
 * pull spns and computer description/spn account descriptions to help identify owner/business unit
  
 **Questions**
- fix date format on scanner summary - home page
 * under what conditions are "LastAccessTime" and "LastWriteTime" set?
 * what does share owner mean when system, vs trustedinstaller vs administrators vs network service - what can we infer that would be meaningful
- * what are some of the most common shares, can we automat profile them and highlight "known" application shars in the data insights?
+* what are some of the most common shares, can we automat profile them and highlight "known" application shars in the data insights?
+* can we predict file path with enough collect data to analyze?
+* are their faster ways pull and thread all this info?
+* what other visualisations and analysis techniques should be built in .. searching, grouping, clusting, etc
  
  **References**
  Get-SmbShareAccess
