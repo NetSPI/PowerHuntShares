@@ -209,9 +209,9 @@ function Invoke-HuntSMBShares
     
     Begin
     {
-        Write-Output " ---------------------------------------------------------------" 
-        Write-Output " INVOKE-HUNTSMBSHARES                                        "
-        Write-Output " ---------------------------------------------------------------"         
+        Write-Output " ===============================================================" 
+        Write-Output " INVOKE-HUNTSMBSHARES                                           "
+        Write-Output " ==============================================================="         
         Write-Output "  This function automates the following tasks:                  "
         Write-Output "                                                                "
         Write-Output "  o Determine current computer's domain                         "
