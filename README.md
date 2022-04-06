@@ -202,10 +202,9 @@ Primary Todo
 * what other visualisations and analysis techniques should be built in .. searching, grouping, clusting, etc
  
  **References**
- Get-SmbShareAccess
- https://docs.microsoft.com/en-us/powershell/module/smbshare/get-smbshareaccess?view=windowsserver2022-ps
- 
- Get-ACL
+ * Get-SmbShareAccess
+ * https://docs.microsoft.com/en-us/powershell/module/smbshare/get-smbshareaccess?view=windowsserver2022-ps
+ * Get-ACL
  *  https://social.technet.microsoft.com/wiki/contents/articles/52329.powershell-how-to-get-acl-share-permissions-for-folder.aspx
  * https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.security/get-acl?view=powershell-7.2
  * https://docs.microsoft.com/en-us/dotnet/api/microsoft.powershell.security.activities.getacl?view=powershellsdk-1.1.0
