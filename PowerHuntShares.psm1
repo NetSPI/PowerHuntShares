@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2022 NetSPI
 # License: 3-clause BSD
-# Version: v1.15
+# Version: v1.16
 # dont use ping filter for 445, add custom user group option, and potentially identify groups that have large 20% of domain user members (make this configrable)
 # References: This script includes code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
@@ -259,7 +259,8 @@ function Invoke-HuntSMBShares
 
                     # Create sub directories
                     mkdir $OutputDirectoryBase | Out-Null
-                    mkdir "$OutputDirectoryBase\Results" | Out-Null
+                    $SubDir = "Results"
+                    mkdir "$OutputDirectoryBase\$SubDir" | Out-Null
                     $OutputDirectory = "$OutputDirectoryBase\Results"
                     Write-Output " [*][$Time] Output Directory: $OutputDirectoryBase"
                 }
@@ -2952,63 +2953,63 @@ Below is a summary of the domain computers that were targeted, connectivity to t
 	  <td><div class="divbarDomain"><div class="divbarDomainInside" style="width: 100%;"></div></div></td>
 	  <td>100.00%</td>
 	  <td>$ComputerCount</td>
-      <td><a href="$DomainComputersFile"><span class="cardsubtitle">CSV</a> | </span><a href="$DomainComputersFileH"><span class="cardsubtitle">HTML</span></a></td>	  
+      <td><a href="$SubDir/$DomainComputersFile"><span class="cardsubtitle">CSV</a> | </span><a href="$SubDir/$DomainComputersFileH"><span class="cardsubtitle">HTML</span></a></td>	  
     </tr>
     <tr>
       <td>PING RESPONSE</td>
 	  <td><div class="divbarDomain"><div class="divbarDomainInside" style="width: $PercentComputerPingP;"></div></div></td>
       <td>$PercentComputerPingP</td>	
 	  <td>$ComputerPingableCount</td>  
-      <td><a href="$ComputersPingableFile"><span class="cardsubtitle">CSV</a> | </span><a href="$ComputersPingableFileH"><span class="cardsubtitle">HTML</span></a></td>		  
+      <td><a href="$SubDir/$ComputersPingableFile"><span class="cardsubtitle">CSV</a> | </span><a href="$SubDir/$ComputersPingableFileH"><span class="cardsubtitle">HTML</span></a></td>		  
     </tr>
     <tr>
       <td>PORT 445 OPEN</td>
       <td><div class="divbarDomain"><div class="divbarDomainInside" style="width: $PercentComputerPortP;"></div></div></td>
 	  <td>$PercentComputerPortP</td>
 	  <td>$Computers445OpenCount</td>
-      <td><a href="$Computers445OpenFile"><span class="cardsubtitle">CSV</a> | </span><a href="$Computers445OpenFileH"><span class="cardsubtitle">HTML</span></a></td>  
+      <td><a href="$SubDir/$Computers445OpenFile"><span class="cardsubtitle">CSV</a> | </span><a href="$SubDir/$Computers445OpenFileH"><span class="cardsubtitle">HTML</span></a></td>  
     </tr>
     <tr>
       <td>HOST SHARE</td>
 	  <td><div class="divbarDomain"><div class="divbarDomainInside" style="width: $PercentComputerWitShareP;"></div></div></td>
       <td>$PercentComputerWitShareP</td>	
 	  <td>$AllComputersWithSharesCount</td>  
-      <td><a href="$ShareACLsFile"><span class="cardsubtitle">CSV</a> | </span><a href="$ShareACLsFileH"><span class="cardsubtitle">HTML</span></a></td> 
+      <td><a href="$SubDir/$ShareACLsFile"><span class="cardsubtitle">CSV</a> | </span><a href="$SubDir/$ShareACLsFileH"><span class="cardsubtitle">HTML</span></a></td> 
     </tr>
     <tr>
       <td>HOST NON-DEFAULT SHARE</td>
 	  <td><div class="divbarDomain"><div class="divbarDomainInside" style="width: $PercentComputerNonDefaultP;"></div></div></td>
       <td>$PercentComputerNonDefaultP</td>	
 	  <td>$ComputerwithNonDefaultCount</td>  
-      <td><a href="$ShareACLsNonDefaultFile"><span class="cardsubtitle">CSV</a> | </span><a href="$ShareACLsNonDefaultFileH"><span class="cardsubtitle">HTML</span></a></td>  
+      <td><a href="$SubDir/$ShareACLsNonDefaultFile"><span class="cardsubtitle">CSV</a> | </span><a href="$SubDir/$ShareACLsNonDefaultFileH"><span class="cardsubtitle">HTML</span></a></td>  
     </tr>	
     <tr>
       <td>HOST POTENITIALLY INSECURE SHARE</td>
 	  <td><div class="divbarDomain"><div class="divbarDomainInside" style="width:$PercentComputerExPrivP;"></div></div></td>
       <td>$PercentComputerExPrivP</td>	
 	  <td>$ComputerWithExcessive</td>  
-      <td><a href="$ShareACLsExFile"><span class="cardsubtitle">CSV</a> | </span><a href="$ShareACLsExFileH"><span class="cardsubtitle">HTML</span></a></td>  
+      <td><a href="$SubDir/$ShareACLsExFile"><span class="cardsubtitle">CSV</a> | </span><a href="$SubDir/$ShareACLsExFileH"><span class="cardsubtitle">HTML</span></a></td>  
     </tr>	
     <tr>
       <td>HOST READABLE SHARE</td>
 	  <td><div class="divbarDomain"><div class="divbarDomainInside" style="width: $PercentComputerReadP;"></div></div></td>
       <td>$PercentComputerReadP</td>	  
 	  <td>$ComputerWithReadCount</td>	  
-      <td><a href="$ShareACLsReadFile"><span class="cardsubtitle">CSV</a> | </span><a href="$ShareACLsReadFileH"><span class="cardsubtitle">HTML</span></a></td>  
+      <td><a href="results/$ShareACLsReadFile"><span class="cardsubtitle">CSV</a> | </span><a href="$SubDir/$ShareACLsReadFileH"><span class="cardsubtitle">HTML</span></a></td>  
     </tr>
 	<tr>
       <td>HOST WRITEABLE SHARE</td>
       <td><div class="divbarDomain"><div class="divbarDomainInside" style="width: $PercentComputerWriteP;"></div></div></td>
 	  <td>$PercentComputerWriteP</td>
 	  <td>$ComputerWithWriteCount</td>	  	  
-	  <td><a href="$ShareACLsWriteFile"><span class="cardsubtitle">CSV</a> | </span><a href="$ShareACLsWriteFileH"><span class="cardsubtitle">HTML</span></a></td> 
+	  <td><a href="$SubDir/$ShareACLsWriteFile"><span class="cardsubtitle">CSV</a> | </span><a href="$SubDir/$ShareACLsWriteFileH"><span class="cardsubtitle">HTML</span></a></td> 
     </tr>
 	<tr>
       <td>HOST HIGH RISK SHARE</td>
 	  <td><div class="divbarDomain"><div class="divbarDomainInside" style="width: $PercentComputerHighRiskP;"></div></div></td>     
 	  <td>$PercentComputerHighRiskP</td>
 	  <td>$ComputerwithHighRisk</td>	  	 
-	  <td><a href="$ShareACLsHRFile"><span class="cardsubtitle">CSV</a> | </span><a href="$ShareACLsHRFileH"><span class="cardsubtitle">HTML</span></a></td> 
+	  <td><a href="$SubDir/$ShareACLsHRFile"><span class="cardsubtitle">CSV</a> | </span><a href="$SubDir/$ShareACLsHRFileH"><span class="cardsubtitle">HTML</span></a></td> 
     </tr>	
   </tbody>
 </table>
@@ -3043,42 +3044,42 @@ Below is a summary of the SMB shares discovered on domain computers that may pro
 	  <td><div class="divbarDomain"><div class="divbarDomainInside" style="width: 100%;"></div></div></td>
 	  <td>100.00%</td>
 	  <td>$AllSMBSharesCount</td>
-      <td><a href="$AllSMBSharesFile"><span class="cardsubtitle">CSV</a> | </span><a href="$AllSMBSharesFileH"><span class="cardsubtitle">HTML</span></a></td>   
+      <td><a href="$SubDir/$AllSMBSharesFile"><span class="cardsubtitle">CSV</a> | </span><a href="$SubDir/$AllSMBSharesFileH"><span class="cardsubtitle">HTML</span></a></td>   
     </tr>
     <tr>
       <td>NON-DEFAULT</td>
 	  <td><div class="divbarDomain"><div class="divbarDomainInside" style="width: $PercentSharesNonDefaultP;"></div></div></td>
       <td>$PercentSharesNonDefaultP</td>	
 	  <td>$SharesNonDefaultCount</td>  
-      <td><a href="$ShareACLsNonDefaultFile"><span class="cardsubtitle">CSV</a> | </span><a href="$ShareACLsNonDefaultFileH"><span class="cardsubtitle">HTML</span></a></td>  	  
+      <td><a href="$SubDir/$ShareACLsNonDefaultFile"><span class="cardsubtitle">CSV</a> | </span><a href="$SubDir/$ShareACLsNonDefaultFileH"><span class="cardsubtitle">HTML</span></a></td>  	  
     </tr>	
     <tr>
       <td>POTENTIALLY EXCESSIVE</td>
 	  <td><div class="divbarDomain"><div class="divbarDomainInside" style="width: $PercentSharesExPrivP;"></div></div></td>
       <td>$PercentSharesExPrivP</td>	
 	  <td>$ExcessiveSharesCount</td>  
-      <td><a href="$ShareACLsExFile"><span class="cardsubtitle">CSV</a> | </span><a href="$ShareACLsExFileH"><span class="cardsubtitle">HTML</span></a></td>    
+      <td><a href="$SubDir/$ShareACLsExFile"><span class="cardsubtitle">CSV</a> | </span><a href="$SubDir/$ShareACLsExFileH"><span class="cardsubtitle">HTML</span></a></td>    
     </tr>
     <tr>
       <td>READ ACCESS</td>
 	  <td><div class="divbarDomain"><div class="divbarDomainInside" style="width: $PercentSharesReadP;"></div></div></td>
       <td>$PercentSharesReadP</td>	  
 	  <td>$SharesWithReadCount</td>	  
-      <td><a href="$ShareACLsReadFile"><span class="cardsubtitle">CSV</a> | </span><a href="$ShareACLsReadFileH"><span class="cardsubtitle">HTML</span></a></td>   
+      <td><a href="$SubDir/$ShareACLsReadFile"><span class="cardsubtitle">CSV</a> | </span><a href="$SubDir/$ShareACLsReadFileH"><span class="cardsubtitle">HTML</span></a></td>   
     </tr>
 	<tr>
       <td>WRITE ACCESS</td>
 	  <td><div class="divbarDomain"><div class="divbarDomainInside" style="width: $PercentSharesWriteP;"></div></div></td>     
 	  <td>$PercentSharesWriteP</td>
 	  <td>$SharesWithWriteCount</td>	  	 
-	  <td><a href="$ShareACLsWriteFile"><span class="cardsubtitle">CSV</a> | </span><a href="$ShareACLsWriteFileH"><span class="cardsubtitle">HTML</span></a></td> 	  
+	  <td><a href="$SubDir/$ShareACLsWriteFile"><span class="cardsubtitle">CSV</a> | </span><a href="$SubDir/$ShareACLsWriteFileH"><span class="cardsubtitle">HTML</span></a></td> 	  
     </tr>
 	<tr>
       <td>HIGH RISK</td>
 	  <td><div class="divbarDomain"><div class="divbarDomainInside" style="width: $PercentSharesHighRiskP;"></div></div></td>     
 	  <td>$PercentSharesHighRiskP</td>
 	  <td>$SharesHighRiskCount</td>	  	 
-	  <td><a href="$ShareACLsHRFile"><span class="cardsubtitle">CSV</a> | </span><a href="$ShareACLsHRFileH"><span class="cardsubtitle">HTML</span></a></td> 
+	  <td><a href="$SubDir/$ShareACLsHRFile"><span class="cardsubtitle">CSV</a> | </span><a href="$SubDir/$ShareACLsHRFileH"><span class="cardsubtitle">HTML</span></a></td> 
     </tr>	
   </tbody>
 </table>
@@ -3116,42 +3117,42 @@ Below is a summary of the SMB share ACL entries discovered on domain computers t
 	  <td><div class="divbarDomain"><div class="divbarDomainInside" style="width: 100%;"></div></div></td>
 	  <td>100.00%</td>
 	  <td>$ShareACLsCount</td>
-      <td><a href="$ShareACLsFile"><span class="cardsubtitle">CSV</a> | </span><a href="$ShareACLsFileH"><span class="cardsubtitle">HTML</span></a></td> 	  
+      <td><a href="$SubDir/$ShareACLsFile"><span class="cardsubtitle">CSV</a> | </span><a href="$SubDir/$ShareACLsFileH"><span class="cardsubtitle">HTML</span></a></td> 	  
     </tr>	
     <tr>
       <td>NON-DEFAULT</td>
 	  <td><div class="divbarDomain"><div class="divbarDomainInside" style="width: $PercentAclNonDefaultP;"></div></div></td>
       <td>$PercentAclNonDefaultP</td>	
 	  <td>$AclNonDefaultCount</td>  
-      <td><a href="$ShareACLsNonDefaultFile"><span class="cardsubtitle">CSV</a> | </span><a href="$ShareACLsNonDefaultFileH"><span class="cardsubtitle">HTML</span></a></td>   
+      <td><a href="$SubDir/$ShareACLsNonDefaultFile"><span class="cardsubtitle">CSV</a> | </span><a href="$SubDir/$ShareACLsNonDefaultFileH"><span class="cardsubtitle">HTML</span></a></td>   
     </tr>		
     <tr>
       <td>POTENTIALLY EXCESSIVE</td>
 	  <td><div class="divbarDomain"><div class="divbarDomainInside" style="width: $PercentAclExPrivP;"></div></div></td>
       <td>$PercentAclExPrivP</td>	
 	  <td>$ExcessiveSharePrivsCount</td>  
-      <td><a href="$ShareACLsExFile"><span class="cardsubtitle">CSV</a> | </span><a href="$ShareACLsExFileH"><span class="cardsubtitle">HTML</span></a></td>  
+      <td><a href="$SubDir/$ShareACLsExFile"><span class="cardsubtitle">CSV</a> | </span><a href="$SubDir/$ShareACLsExFileH"><span class="cardsubtitle">HTML</span></a></td>  
     </tr>
     <tr>
       <td>READ ACCESS</td>
 	  <td><div class="divbarDomain"><div class="divbarDomainInside" style="width: $PercentAclReadP;"></div></div></td>
       <td>$PercentAclReadP</td>	  
 	  <td>$AclWithReadCount</td>	  
-      <td><a href="$ShareACLsReadFile"><span class="cardsubtitle">CSV</a> | </span><a href="$ShareACLsReadFileH"><span class="cardsubtitle">HTML</span></a></td>  	  
+      <td><a href="$SubDir/$ShareACLsReadFile"><span class="cardsubtitle">CSV</a> | </span><a href="$SubDir/$ShareACLsReadFileH"><span class="cardsubtitle">HTML</span></a></td>  	  
     </tr>
 	<tr>
       <td>WRITE ACCESS</td>
       <td><div class="divbarDomain"><div class="divbarDomainInside" style="width: $PercentAclWriteP;"></div></div></td>
 	  <td>$PercentAclWriteP</td>
 	  <td>$AclWithWriteCount</td>	  	  
-	  <td><a href="$ShareACLsWriteFile"><span class="cardsubtitle">CSV</a> | </span><a href="$ShareACLsWriteFileH"><span class="cardsubtitle">HTML</span></a></td> 
+	  <td><a href="$SubDir/$ShareACLsWriteFile"><span class="cardsubtitle">CSV</a> | </span><a href="$SubDir/$ShareACLsWriteFileH"><span class="cardsubtitle">HTML</span></a></td> 
     </tr>
 	<tr>
       <td>HIGH RISK</td>
 	  <td><div class="divbarDomain"><div class="divbarDomainInside" style="width: $PercentAclHighRiskP;"></div></div></td>     
 	  <td>$PercentAclHighRiskP</td>
 	  <td>$AclHighRiskCount</td>	  	 
-	  <td><a href="$ShareACLsHRFile"><span class="cardsubtitle">CSV</a> | </span><a href="$ShareACLsHRFileH"><span class="cardsubtitle">HTML</span></a></td> 
+	  <td><a href="$SubDir/$ShareACLsHRFile"><span class="cardsubtitle">CSV</a> | </span><a href="$SubDir/$ShareACLsHRFileH"><span class="cardsubtitle">HTML</span></a></td> 
     </tr>	
   </tbody>
 </table>
