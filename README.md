@@ -13,6 +13,7 @@ It supports functionality to:
 Excessive SMB share ACLs are a systemic problem and an attack surface that all organizations struggle with.  The goal of this project is to provide a proof concept that will work towards building a better share collection and data insight engine that can help inform and priorititize remediation efforts.
 
 # Example Commands
+Important Note: All commands should be run as an unprivileged domain user.
 <pre>
 .EXAMPLE 1: Run from a domain computer. Performs Active Directory computer discovery by default.
 PS C:\temp\test> Invoke-HuntSMBShares -Threads 100 -OutputDirectory c:\temp\test 
