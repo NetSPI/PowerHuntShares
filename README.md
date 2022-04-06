@@ -214,6 +214,31 @@ Primary Todo
  * https://www.forensixchange.com/posts/19_04_22_win10_ntfs_time_rules/
  * https://docs.microsoft.com/en-us/dotnet/api/system.io.filesysteminfo.lastwritetime?view=net-6.0
  
+ **CSS Things**
+<pre>
+https://css-tricks.com/pure-css-horizontal-scrolling/
+https://uxdesign.cc/creating-horizontal-scrolling-containers-the-right-way-css-grid-c256f64fc585
+https://www.freecodecamp.org/news/create-gantt-chart-using-css-grid/
+http://www.coding-dude.com/wp/html5/bar-chart-html/
+https://thomaswilburn.github.io/viz-book/css-positioning.html
+https://canvasjs.com/asp-net-mvc-charts/scatter-point-chart/
+https://www.educative.io/edpresso/how-to-create-a-scatter-plot-using-d3
+https://developers.google.com/chart/interactive/docs/gallery/scatterchart
+https://codepen.io/sandeepguggu/pen/IoFqJ
+https://www.cssscript.com/css-bar-scatter-plot-graphs/
+https://jessekorzan.github.io/scatter-plot/
+https://www.w3schools.com/ai/ai_scatter_plots.asp
+https://chartscss.org/charts/area/#multiple-datasets
+https://chartscss.org/charts/line/
+https://chartscss.org/charts/mixed/  
+https://www.w3schools.com/ai/tryit.asp?filename=tryai_plotly_scatter
+https://www.web-workers.ch/index.php/2017/05/16/domain-joined-windows-10-network-access-is-denied-on-sysvol-and-netlogon/
+https://github.com/SnaffCon/Snaffler 
+https://shellgeek.com/powershell-how-to-get-file-creation-date/#:~:text=To%20find%20files%20creation%20date,filter%20to%20select%20file%20only.&text=In%20the%20above%20PowerShell%20Get,output%20to%20the%20second%20command
+https://www.groovypost.com/howto/howto/enable-last-access-time-stamp-to-files-folder-windows-7/
+http://woshub.com/manage-ntfs-permissions-powershell/
+</pre>
+ 
 
 
   
