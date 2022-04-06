@@ -134,7 +134,14 @@ Excessive SMB share ACLs are a systemic problem and an attack surface that all o
 
 # Credits
 <strong>Author</strong><Br>
-Scott Sutherland (@_nullbind) <Br>
+Scott Sutherland (@_nullbind)<Br>
+           
+<strong>Open-Source Code Used</strong> <Br>
+These individuals wrote open source code that was used as part of this project. A big thank you goes out them and their work!<br>
+|Name|Site|
+|:--------------------------------|:-----------|
+|Will Schroeder (@harmj0y)|https://github.com/PowerShellMafia/PowerSploit/blob/master/Recon/PowerView.ps1
+|Warren F (@pscookiemonster)|https://github.com/RamblingCookieMonster/Invoke-Parallel
 
 <strong>License</strong><Br>
 BSD 3-Clause
