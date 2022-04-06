@@ -178,6 +178,7 @@ Primary Todo
 * grab system os version
  
 **Features**
+* visual square with coloring mapped to share volume density by subnet or ip?.  ... like asm
 * Complete file type search
 * Add ability to specific additional groups
 * Add DontExcludePrintShares option
