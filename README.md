@@ -17,6 +17,13 @@ PowerHuntShares will inventory SMB share ACLs configured with "excessive privile
 
 <strong>Excessive Privileges</strong><br>
 Excessive read and write share permissions have been defined as any network share ACL containing an explicit ACE (Access Control Entry) for the "Everyone", "Authenticated Users", "BUILTIN\Users", "Domain Users", or "Domain Computers" groups. All provide domain users access to the affected shares due to privilege inheritance issues.  Note there is a parameter that allow operators to add their own target groups.<br>
+Below is some additional background:<br>
+* Everyone is a direct reference that applies to both unauthenticated and authenticated users.  Typically only a null session is required to access those resources.
+* BUILTIN\Users contains Authenticated Users
+* Authenticated Users contains Domain Users on domain joined systems. That's why Domain Users can access a share when the share permissions have been assigned to "BUILTIN\Users".
+* Domain Users is a direct reference
+* Domain Users can also create up to 10 computer accounts by default that get placed in the Domain Computers group
+* Domain Users that have local administrative access to a domain joined computer can also impersonate the computer account. 
 
 Please Note: Share permissions can be overruled by NTFS permissions. Also, be aware that testing excluded share names containing the following keywords: "print$", "prnproc$", "printer", "netlogon",and "sysvol".
 
@@ -163,10 +170,16 @@ BSD 3-Clause
 Primary Todo
 --
 **Fixes**
-* TBD
-  
+* when we run as a DA, are we getting ntfs privs instead of share privs? check share write, and share acl write - they were a 1-1 on the last scan
+* need defintions to provide an overview of when create lastmodified and lastaccess dates get set on shares (they seem too closely correlated to the scan date) 
+ 
 **Features**
-*TBD
+* Complete file type search
+* Add ability to target any domain and any DC in any user context
+* Add collection of computer os + charts 
+* Add file context search
+* Add auto targeting of groups that contain a large % of the user population; over 70% (make configurable) 
+ 
 
 
   
