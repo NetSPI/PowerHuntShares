@@ -169,16 +169,44 @@ BSD 3-Clause
 
 Primary Todo
 --
-**Fixes**
+**Pending Fixes/Bugs**
+* Directory listings on data insight pages
 * when we run as a DA, are we getting ntfs privs instead of share privs? check share write, and share acl write - they were a 1-1 on the last scan
 * need defintions to provide an overview of when create lastmodified and lastaccess dates get set on shares (they seem too closely correlated to the scan date) 
+* update code to avoid defender
+* fix owner sid resolution
+* grab system os version
  
 **Features**
 * Complete file type search
+* Add ability to specific additional groups
+* Add DontExcludePrintShares option
 * Add ability to target any domain and any DC in any user context
 * Add collection of computer os + charts 
-* Add file context search
+* Add file content search; snaffler like
+* Add an options to add more computers from a file, in case they are not domain joined.
 * Add auto targeting of groups that contain a large % of the user population; over 70% (make configurable) 
+* netlogon and sysvol you may get access denied when using windows 10 unless the setting below is configured. Automat a check for this, and attempt to modify if privs are at correct level. gpedit.msc, go to Computer -> Administrative Templates -> Network -> Network Provider -> Hardened UNC Paths, enable the policy and click "Show" button. Enter your server name (* for all servers) into "Value name" and enter the folowing text "RequireMutualAuthentication=0,RequireIntegrity=0,RequirePrivacy=0" wihtout quotes into the "Value" field. 
+* add an interesting shares insight to the csv/html reports - interesting shares - sql, backup, password, etc 
+* add download details links to all data insight pages
+* fix date format on scanner summary - home page
+* grab active sessions to help identify owners/users of share
+* pull spns and computer description/spn account descriptions to help identify owner/business unit
+ 
+**Questions**
+ fix date format on scanner summary - home page
+* under what conditions are "LastAccessTime" and "LastWriteTime" set?
+* what does share owner mean when system, vs trustedinstaller vs administrators vs network service - what can we infer that would be meaningful
+ * what are some of the most common shares, can we automat profile them and highlight "known" application shars in the data insights?
+ 
+ **References**
+ Get-SmbShareAccess
+ https://docs.microsoft.com/en-us/powershell/module/smbshare/get-smbshareaccess?view=windowsserver2022-ps
+ 
+ Get-ACL
+ *  https://social.technet.microsoft.com/wiki/contents/articles/52329.powershell-how-to-get-acl-share-permissions-for-folder.aspx
+ * https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.security/get-acl?view=powershell-7.2
+ * https://docs.microsoft.com/en-us/dotnet/api/microsoft.powershell.security.activities.getacl?view=powershellsdk-1.1.0
  
 
 
