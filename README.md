@@ -11,6 +11,11 @@ It supports functionality to:
 * <strong>Report</strong> summary reports and excessive privilege details in HTML and CSV file formats.
 
 Excessive SMB share ACLs are a systemic problem and an attack surface that all organizations struggle with.  The goal of this project is to provide a proof concept that will work towards building a better share collection and data insight engine that can help inform and priorititize remediation efforts.
+<br>
+Bonus Features:
+<br>
+* Generate directory listing dump for configurable depth
+* Search for file types across discovered shares
 
 # Vocabulary
 PowerHuntShares will inventory SMB share ACLs configured with "excessive privileges" and highlight "high risk" ACLs.  Below is how those are defined in this context.
