@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2022 NetSPI
 # License: 3-clause BSD
-# Version: v1.20
+# Version: v1.21
 # dont use ping filter for 445, add custom user group option, and potentially identify groups that have large 20% of domain user members (make this configrable)
 # References: This script includes code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
@@ -3544,7 +3544,7 @@ This section contains a list of the most common SMB share names. In some cases, 
 <label class="tabLabel" onclick="updateTab(&#39;SubNets#39;,false)" for="SubNets"></label>
 <div id="tabPanel" class="tabPanel">
 <div style="margin-left:10px;margin-top:3px">
-<h2>Data Insights: Affecetd Subnets</h2>
+<h2>Data Insights: Affeceted Subnets</h2>
 This section contains a list of subnets hosting computers with shares that are configured with accessibe privileges. 
 </div>
 
