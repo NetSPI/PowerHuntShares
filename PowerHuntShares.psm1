@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2022 NetSPI
 # License: 3-clause BSD
-# Version: v1.18
+# Version: v1.20
 # dont use ping filter for 445, add custom user group option, and potentially identify groups that have large 20% of domain user members (make this configrable)
 # References: This script includes code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
@@ -1089,7 +1089,66 @@ function Invoke-HuntSMBShares
         $Time =  Get-Date -UFormat "%m/%d/%Y %R"
         Write-Output " [*][$Time] - Identified $SubnetsCount subnets hosting shares configured with excessive privileges."
         $SubnetSummary | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Inventory-Common-Subnets.csv"               
-        $SubnetFile = "$TargetDomain-Shares-Inventory-Common-Subnets.csv"                            
+        $SubnetFile = "$TargetDomain-Shares-Inventory-Common-Subnets.csv"  
+        
+        # Create HTML table for report
+        
+        # Setup HTML begin
+        Write-Verbose "[+] Creating html top." 
+        $HTMLSTART = @"
+        <table class="table table-striped table-hover tabledrop">
+"@
+    
+        # Get list of columns        
+        $MyCsvColumns = ("ComputerCount","ShareCount","HighRiskAclCount","WriteAclCount","ReadAclCount","AclCount","Subnet")
+
+        # Print columns creation  
+        $HTMLTableHeadStart= "<thead><tr>" 
+        $MyCsvColumns |
+        ForEach-Object {
+
+            # Add column
+            $HTMLTableColumn = "<th>$_</th>$HTMLTableColumn"    
+        }
+        $HTMLTableColumn = "$HTMLTableHeadStart$HTMLTableColumn</tr></thead>" 
+
+         # Create table rows
+        Write-Verbose "[+] Creating html table rows."     
+        $HTMLTableRow = $SubnetSummary |
+        ForEach-Object {
+    
+            # Create a value contain row data
+            $CurrentRow = $_
+            $PrintRow = ""
+            $MyCsvColumns | 
+            ForEach-Object{
+
+                try{
+                    $GetValue = $CurrentRow | Select-Object $_ -ExpandProperty $_ -ErrorAction SilentlyContinue
+                    if($PrintRow -eq ""){
+                        $PrintRow = "<td>$GetValue</td>"               
+                    }else{         
+                        $PrintRow = "<td>$GetValue</td>$PrintRow"
+                    }
+                }catch{}            
+            }
+        
+            # Return row
+            $HTMLTableHeadstart = "<tr>" 
+            $HTMLTableHeadend = "</tr>" 
+            "$HTMLTableHeadStart$PrintRow$HTMLTableHeadend"
+        }
+
+        # Setup HTML end
+        Write-Verbose "[+] Creating html bottom." 
+        $HTMLEND = @"
+      </tbody>
+    </table>
+"@
+
+        # Return it
+        $SubnetSummaryHTML = "$HTMLSTART $HTMLTableColumn $HTMLTableRow $HTMLEND" 
+                                  
 
         # ----------------------------------------------------------------------
         # Calculate percentages
@@ -2572,6 +2631,7 @@ $NewHtmlReport = @"
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;">Top Share Names</label>		
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareOwner');radiobtn.checked = true;">Top Share Owners</label>		
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareFolders');radiobtn.checked = true;">Top Folder Groups</label>		
+        <label href="#" class="stuff" style="width:100%;" onclick="radiobtn = document.getElementById('SubNets');radiobtn.checked = true;">Affected Subnets</label>	
 		<label class="tabLabel" style="width:100%;color:white;background-color:#333;padding-top:5px;padding-bottom:5px;margin-top:2px;margin-bottom:2px;"><strong>Recommendations</strong></label>
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Attacks');radiobtn.checked = true;">Exploit Share Access</label>		
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Detections');radiobtn.checked = true;">Detect Share Scans</label>
@@ -3474,6 +3534,22 @@ This section contains a list of the most common SMB share names. In some cases, 
     $CommonShareNamesTopStringT
     </tbody>
 </table>
+</div>
+
+<!--  
+|||||||||| PAGE: Affected Subnets
+-->
+
+<input class="tabInput" name="tabs" type="radio" id="SubNets"> 
+<label class="tabLabel" onclick="updateTab(&#39;SubNets#39;,false)" for="SubNets"></label>
+<div id="tabPanel" class="tabPanel">
+<div style="margin-left:10px;margin-top:3px">
+<h2>Data Insights: Affecetd Subnets</h2>
+This section contains a list of subnets hosting computers with shares that are configured with accessibe privileges. 
+</div>
+
+<div style="border-bottom: 1px solid #DEDFE1 ;  background-color:#f0f3f5; height:5px; margin-bottom:10px;"></div>
+$SubnetSummaryHTML
 </div>
 
 <!--  
@@ -5637,6 +5713,87 @@ function Convert-DataTableToHtmlTable
     if(-not $DontExport){
         "$HTMLSTART $HTMLTableColumn $HTMLTableRow $HTMLEND"  | Out-File $Outfile
     }
+}
+
+# -------------------------------------------
+# Function: Convert-DataTableToHtmlReport
+# -------------------------------------------
+function Convert-DataTableToHtmlReport
+{
+    <#
+            .SYNOPSIS
+            This function can be used to convert a data table or ps object into a generic html table.
+            .PARAMETER $DataTable
+            The datatable to input.
+            .EXAMPLE
+            $object = New-Object psobject
+            $Object | Add-Member Noteproperty Name "my name 1"
+            $Object | Add-Member Noteproperty Description "my description 1"
+            Convert-DataTableToHtmlReport -Verbose -DataTable $object 
+	        .NOTES
+	        Author: Scott Sutherland (@_nullbind)
+    #>
+    param (
+        [Parameter(Mandatory = $true,
+        HelpMessage = 'The datatable to input.')]
+        $DataTable
+    )
+
+    # Setup HTML begin
+    Write-Verbose "[+] Creating html top." 
+    $HTMLSTART = @"
+    <table class="table table-striped table-hover tabledrop">
+"@
+    
+    # Get list of columns
+    $MyCsvColumns = $DataTable | Get-Member | Where-Object MemberType -like "NoteProperty" | Select-Object Name -ExpandProperty Name
+
+    # Print columns creation  
+    $HTMLTableHeadStart= "<thead><tr>" 
+    $MyCsvColumns |
+    ForEach-Object {
+
+        # Add column
+        $HTMLTableColumn = "<th>$_</th>$HTMLTableColumn"    
+    }
+    $HTMLTableColumn = "$HTMLTableHeadStart$HTMLTableColumn</tr></thead>" 
+
+     # Create table rows
+    Write-Verbose "[+] Creating html table rows."     
+    $HTMLTableRow = $DataTable |
+    ForEach-Object {
+    
+        # Create a value contain row data
+        $CurrentRow = $_
+        $PrintRow = ""
+        $MyCsvColumns | 
+        ForEach-Object{
+
+            try{
+                $GetValue = $CurrentRow | Select-Object $_ -ExpandProperty $_ -ErrorAction SilentlyContinue
+                if($PrintRow -eq ""){
+                    $PrintRow = "<td>$GetValue</td>"               
+                }else{         
+                    $PrintRow = "<td>$GetValue</td>$PrintRow"
+                }
+            }catch{}            
+        }
+        
+        # Return row
+        $HTMLTableHeadstart = "<tr>" 
+        $HTMLTableHeadend = "</tr>" 
+        "$HTMLTableHeadStart$PrintRow$HTMLTableHeadend"
+    }
+
+    # Setup HTML end
+    Write-Verbose "[+] Creating html bottom." 
+    $HTMLEND = @"
+  </tbody>
+</table>
+"@
+
+    # Return it
+    "$HTMLSTART $HTMLTableColumn $HTMLTableRow $HTMLEND" 
 }
 
 # -------------------------------------------
