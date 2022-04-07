@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2022 NetSPI
 # License: 3-clause BSD
-# Version: v1.21
+# Version: v1.22
 # dont use ping filter for 445, add custom user group option, and potentially identify groups that have large 20% of domain user members (make this configrable)
 # References: This script includes code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
@@ -1083,7 +1083,7 @@ function Invoke-HuntSMBShares
             # Return object
             $Object 
 
-        } | sort SubnetAclCount
+        } | sort AclCount -Descending
 
         # Status User
         $Time =  Get-Date -UFormat "%m/%d/%Y %R"
