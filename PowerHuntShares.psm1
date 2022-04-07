@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2022 NetSPI
 # License: 3-clause BSD
-# Version: v1.16
+# Version: v1.18
 # dont use ping filter for 445, add custom user group option, and potentially identify groups that have large 20% of domain user members (make this configrable)
 # References: This script includes code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
@@ -1025,6 +1025,73 @@ function Invoke-HuntSMBShares
         Write-Output " [*][$Time] - Identified shares modified in last $LastModDays days."
 
         # ----------------------------------------------------------------------
+        # Identify affected subnets
+        # ----------------------------------------------------------------------        
+
+        # Get list of Subnets
+        $Subnets = $ExcessiveSharePrivs | Select IPAddress -Unique |
+        Foreach{  
+    
+            $LastOctStart = (($_.IPAddress | Select-String '\.'  -AllMatches).Matches | select -last 1 | select index -ExpandProperty index)
+            $Subnet = $_.IPAddress.substring(0,$LastOctStart)
+            $Subnet    
+        } | select -Unique
+
+        $SubnetsCount = $Subnets | measure | select count -ExpandProperty count
+
+        # Get information for each subnet
+        $SubnetSummary = $Subnets | 
+        foreach {
+
+            $subnet = $_
+            $subnetdisplay = $subnet + ".0"
+    
+            # Acls - acl list exists
+            $subnetacls = $ExcessiveSharePrivs | where ipaddress -like "$subnet*"
+            $subnetaclsCount = $subnetacls | measure | select count -ExpandProperty count
+
+            # ACLs: Read - aclread exists
+            $subnetaclr = $SharesWithread | where ipaddress -like "$subnet*"
+            $subnetaclrCount = $subnetaclr | measure | select count -ExpandProperty count
+
+            # ACLs: Write - acl write exists
+            $subnetaclw = $SharesWithWrite | where ipaddress -like "$subnet*"
+            $subnetaclwCount = $subnetaclw | measure | select count -ExpandProperty count
+
+            # ACLs: Highrisk - acl highrisk exists
+            $subnetaclx = $SharesHighRisk | where ipaddress -like "$subnet*"
+            $subnetaclxCount = $subnetaclx | measure | select count -ExpandProperty count
+    
+            # Shares
+            $subnetshares = $subnetacls | select sharepath -Unique
+            $subnetsharesCount = $subnetshares | measure | select count -ExpandProperty count
+
+            # Computers
+            $subnetcomputers = $subnetacls | select computername -Unique
+            $subnetcomputersCount = $subnetcomputers | measure | select count -ExpandProperty count
+
+            # Create object
+            $Object = new-object PSObject
+            $Object |  Add-Member Subnet            $subnetdisplay
+            $Object |  Add-Member AclCount          $subnetaclsCount
+            $Object |  Add-Member ReadAclCount      $subnetaclrCount
+            $Object |  Add-Member WriteAclCount     $subnetaclwCount
+            $Object |  Add-Member HighRiskAclCount  $subnetaclxCount
+            $Object |  Add-Member ShareCount        $subnetsharesCount
+            $Object |  Add-Member ComputerCount     $subnetcomputersCount
+
+            # Return object
+            $Object 
+
+        } | sort SubnetAclCount
+
+        # Status User
+        $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+        Write-Output " [*][$Time] - Identified $SubnetsCount subnets hosting shares configured with excessive privileges."
+        $SubnetSummary | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Inventory-Common-Subnets.csv"               
+        $SubnetFile = "$TargetDomain-Shares-Inventory-Common-Subnets.csv"                            
+
+        # ----------------------------------------------------------------------
         # Calculate percentages
         # ----------------------------------------------------------------------
 
@@ -1299,7 +1366,7 @@ function Invoke-HuntSMBShares
             Write-Output " [*][$Time] Creation timeline reports have been disabled."            
             $CardLastModifiedTimeLine = "Share creation Timeline reports have been disabled."            
         }else{
-            $CardCreationTimeLine = Get-CardCreationTime -MyDataTable $ExcessiveSharePrivs -OutFilePath "$OutputDirectory\$TargetDomain-Shares-Creation-Monthly-Summary.csv"            
+            $CardCreationTimeLine = Get-CardCreationTime -MyDataTable $ExcessiveSharePrivs -OutFilePath "$OutputDirectory\$TargetDomain-Shares-Timeline-Creation-Summary.csv"            
         }     
         
         # Generate last modified card 
@@ -1308,7 +1375,7 @@ function Invoke-HuntSMBShares
             Write-Output " [*][$Time] Last modified timeline reports have been disabled."            
             $CardLastModifiedTimeLine = "Last modified timeline reports have been disabled."            
         }else{
-            $CardLastModifiedTimeLine = Get-CardLastModified -MyDataTable $ExcessiveSharePrivs -OutFilePath "$OutputDirectory\$TargetDomain-Shares-Last-Modified-Monthly-Summary.csv"            
+            $CardLastModifiedTimeLine = Get-CardLastModified -MyDataTable $ExcessiveSharePrivs -OutFilePath "$OutputDirectory\$TargetDomain-Shares-Timeline-Last-Modified-Summary.csv"            
         }        
 
         # Generate last access card
@@ -1317,7 +1384,7 @@ function Invoke-HuntSMBShares
             Write-Output " [*][$Time] Last access timeline reports have been disabled."
             $CardLastAccessTimeLine = "Last access timeline reports have been disabled."            
         }else{
-            $CardLastAccessTimeLine = Get-CardLastAccess -MyDataTable $ExcessiveSharePrivs -OutFilePath "$OutputDirectory\$TargetDomain-Shares-Last-Accessed-Monthly-Summary.csv"            
+            $CardLastAccessTimeLine = Get-CardLastAccess -MyDataTable $ExcessiveSharePrivs -OutFilePath "$OutputDirectory\$TargetDomain-Shares-Timeline-Last-Accessed-Summary.csv"            
         }  
 
         Write-Output " [*][$Time] Analysis Complete"
