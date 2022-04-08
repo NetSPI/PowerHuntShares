@@ -4,9 +4,8 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2022 NetSPI
 # License: 3-clause BSD
-# Version: v1.23
-# dont use ping filter for 445, add custom user group option, and potentially identify groups that have large 20% of domain user members (make this configrable)
-# References: This script includes code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
+# Version: v1.24
+# References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
 	<#
@@ -355,6 +354,13 @@ function Invoke-HuntSMBShares
             $null = Convert-DataTableToHtmlTable -DataTable $DomainComputers -Outfile "$OutputDirectory\$TargetDomain-Domain-Computers.html" -Title "Domain Computers" -Description "This page shows the domain computers discovered for the $TargetDomain Active Directory domain."
             $DomainComputersFile = "$TargetDomain-Domain-Computers.csv"
             $DomainComputersFileH = "$TargetDomain-Domain-Computers.html"
+
+            # Get subnet info
+            $DomainSubnets = Get-DomainSubnet -DomainController $DomainController -Credential $Credential
+            $DomainSubnetsCount = $DomainSubnets | measure | select count -ExpandProperty count
+            $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+            Write-Output " [*][$Time] - $DomainSubnetsCount subnets found"
+            $DomainSubnets | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Domain-Subnets.csv"
 
         }
 
@@ -1043,8 +1049,8 @@ function Invoke-HuntSMBShares
         $SubnetSummary = $Subnets | 
         foreach {
 
-            $subnet = $_
-            $subnetdisplay = $subnet + ".0"
+            $Subnet = $_
+            $Subnetdisplay = $subnet + ".0"
     
             # Acls - acl list exists
             $subnetacls = $ExcessiveSharePrivs | where ipaddress -like "$subnet*"
@@ -1070,20 +1076,49 @@ function Invoke-HuntSMBShares
             $subnetcomputers = $subnetacls | select computername -Unique
             $subnetcomputersCount = $subnetcomputers | measure | select count -ExpandProperty count
 
+            # Check for known subnet information
+            if(-not $HostList){
+                if($DomainSubnets -ne 0){
+                    
+                    $DomainSubnets |
+                    foreach{
+                                                
+                        $SubnetFull = $_.Subnet                        
+
+                        if((checkSubnet $SubnetFull $Subnet).condition){
+                            $SubnetDesc = $_.Description
+                            $SubnetCreated = $_.whencreated
+                            $SubnetSite = $_.Site
+                        }
+                    }
+                }else{
+                    $SubnetDesc    = "Unknown"
+                    $SubnetCreated = "Unknown"
+                    $SubnetSite    = "Unknown"
+                }
+            }else{
+                $SubnetDesc    = "Unknown"
+                $SubnetCreated = "Unknown"
+                $SubnetSite    = "Unknown"
+            }
+
             # Create object
             $Object = new-object PSObject
-            $Object |  Add-Member Subnet            $subnetdisplay
-            $Object |  Add-Member AclCount          $subnetaclsCount
-            $Object |  Add-Member ReadAclCount      $subnetaclrCount
-            $Object |  Add-Member WriteAclCount     $subnetaclwCount
-            $Object |  Add-Member HighRiskAclCount  $subnetaclxCount
-            $Object |  Add-Member ShareCount        $subnetsharesCount
-            $Object |  Add-Member ComputerCount     $subnetcomputersCount
+            $Object |  Add-Member Subnet        $Subnetdisplay
+            $Object |  Add-Member Desc          $SubnetDesc
+            $Object |  Add-Member Created       $SubnetCreated
+            $Object |  Add-Member Site          $SubnetSite
+            $Object |  Add-Member Acls          $subnetaclsCount
+            $Object |  Add-Member ReadAcls      $subnetaclrCount
+            $Object |  Add-Member WriteAcls     $subnetaclwCount
+            $Object |  Add-Member HighRiskAcls  $subnetaclxCount
+            $Object |  Add-Member Shares        $subnetsharesCount
+            $Object |  Add-Member Computers     $subnetcomputersCount
 
             # Return object
             $Object 
 
-        } | sort AclCount -Descending
+        } | sort Acls -Descending
 
         # Status User
         $Time =  Get-Date -UFormat "%m/%d/%Y %R"
@@ -1100,7 +1135,7 @@ function Invoke-HuntSMBShares
 "@
     
         # Get list of columns        
-        $MyCsvColumns = ("ComputerCount","ShareCount","HighRiskAclCount","WriteAclCount","ReadAclCount","AclCount","Subnet")
+        $MyCsvColumns = ("Computers","Shares","HighRiskAcls","WriteAcls","ReadAcls","Acls","Site","Created","Desc","Subnet")
 
         # Print columns creation  
         $HTMLTableHeadStart= "<thead><tr>" 
@@ -5993,6 +6028,142 @@ function Get-LdapQuery
     {
     }
 }
+
+
+# -------------------------------------------
+# Function: Get-DomainSubnet
+# -------------------------------------------
+function Get-DomainSubnet
+{
+    [CmdletBinding()]
+    Param(
+        [Parameter(Mandatory=$false,
+        HelpMessage="Domain user to authenticate with domain\user.")]
+        [string]$username,
+
+        [Parameter(Mandatory=$false,
+        HelpMessage="Domain password to authenticate with domain\user.")]
+        [string]$password,
+
+        [Parameter(Mandatory=$false,
+        HelpMessage="Credentials to use when connecting to a Domain Controller.")]
+        [System.Management.Automation.PSCredential]
+        [System.Management.Automation.Credential()]$Credential = [System.Management.Automation.PSCredential]::Empty,
+        
+        [Parameter(Mandatory=$false,
+        HelpMessage="Domain controller for Domain and Site that you want to query against.")]
+        [string]$DomainController,
+
+        [Parameter(Mandatory=$false,
+        HelpMessage="LDAP Filter.")]
+        [string]$LdapFilter = "",
+
+        [Parameter(Mandatory=$false,
+        HelpMessage="LDAP path.")]
+        [string]$LdapPath,
+
+        [Parameter(Mandatory=$false,
+        HelpMessage="Maximum number of Objects to pull from AD, limit is 1,000 .")]
+        [int]$Limit = 1000,
+
+        [Parameter(Mandatory=$false,
+        HelpMessage="scope of a search as either a base, one-level, or subtree search, default is subtree.")]
+        [ValidateSet("Subtree","OneLevel","Base")]
+        [string]$SearchScope = "Subtree"
+    )
+    Begin
+    {
+        Write-Verbose "Getting subnets..."
+
+        # Create PS Credential object
+        if($Password){
+            $secpass = ConvertTo-SecureString $Password -AsPlainText -Force
+            $Credential = New-Object System.Management.Automation.PSCredential ($Username, $secpass)                
+        }        
+
+        # Create Create the connection to LDAP       
+        if ($DomainController -and $Credential.GetNetworkCredential().Password)
+        {
+            $objDomain = (New-Object System.DirectoryServices.DirectoryEntry "LDAP://$DomainController", $Credential.UserName,$Credential.GetNetworkCredential().Password).distinguishedname           
+
+            # add ldap path
+            if($LdapPath)
+            {
+                $LdapPath = "/"+$LdapPath+","+$objDomain
+                $objDomainPath = New-Object System.DirectoryServices.DirectoryEntry "LDAP://$DomainController$LdapPath", $Credential.UserName,$Credential.GetNetworkCredential().Password
+            }else{
+                $objDomainPath= New-Object System.DirectoryServices.DirectoryEntry "LDAP://$DomainController", $Credential.UserName,$Credential.GetNetworkCredential().Password
+            }
+            
+            $objSearcher = New-Object System.DirectoryServices.DirectorySearcher $objDomainPath
+        }else{
+            $objDomain = ([ADSI]"").distinguishedName
+            
+            # add ldap path
+            if($LdapPath)
+            {
+                $LdapPath = $LdapPath+","+$objDomain
+                $LdapPath
+                $objDomainPath  = [ADSI]"LDAP://$LdapPath"
+            }else{
+                $objDomainPath  = [ADSI]""
+            }
+              
+            $objSearcher = New-Object System.DirectoryServices.DirectorySearcher $objDomainPath
+        }
+
+        # Create table for object information
+        $TableDomainSubnets = New-Object System.Data.DataTable
+        $TableDomainSubnets.Columns.Add("Site") | Out-Null
+        $TableDomainSubnets.Columns.Add("Subnet") | Out-Null        
+        $TableDomainSubnets.Columns.Add("Description") | Out-Null                
+        $TableDomainSubnets.Columns.Add("whencreated") | Out-Null  
+        $TableDomainSubnets.Columns.Add("whenchanged") | Out-Null 
+        $TableDomainSubnets.Columns.Add("distinguishedname") | Out-Null      
+        $TableDomainSubnets.Clear()
+    }
+
+    Process
+    {        
+        try
+        {
+            # Get results
+            Get-LdapQuery -DomainController $DomainController -username $username -password $password -Credential $Credential -Verbose -LdapFilter "(objectCategory=subnet)" -LdapPath "CN=Subnets,CN=Sites,CN=Configuration" | 
+            ForEach-Object {
+            
+                # Add results to table
+                $TableDomainSubnets.Rows.Add(                     
+                    [string]$_.properties.siteobject.split(",")[0].split("=")[1],   
+                    [string]$_.properties.name,    
+                    [string]$_.properties.description,  
+                    [string]$_.properties.whencreated,
+                    [string]$_.properties.whenchanged,
+                    [string]$_.properties.distinguishedname
+                ) | Out-Null
+            }
+        }
+        catch
+        {
+          #"Error was $_"
+          #$line = $_.InvocationInfo.ScriptLineNumber
+          #"Error was in Line $line"
+        }                    
+    }
+
+    End
+    {
+        # Check for subnets
+        if($TableDomainSubnets.Rows.Count -gt 0)
+        {
+        $TableDomainSubnetsCount = $TableDomainSubnets.Rows.Count
+            Write-Verbose "$TableDomainSubnetsCount subnets found."
+            Return $TableDomainSubnets
+        }else{
+            Write-Verbose "0 subnets were found."
+        } 
+    }
+}
+
 
 # -------------------------------------------
 # Function: Invoke-Parallel
@@ -15124,4 +15295,110 @@ Function Invoke-Ping
             }
         }
     }
+}
+
+
+# ---------------------------------------------------
+# Function: checksubnet
+# Author: Luben Kirov
+# Reference: http://www.gi-architects.co.uk/2016/02/powershell-check-if-ip-or-subnet-matchesfits/
+# ---------------------------------------------------
+# The function will check ip to ip, ip to subnet, subnet to ip or subnet to subnet belong to each other and return true or false and the direction of the check
+#////////////////////////////////////////////////////////////////////////
+function checkSubnet ([string]$addr1, [string]$addr2)
+{
+    # Separate the network address and lenght
+    $network1, [int]$subnetlen1 = $addr1.Split('/')
+    $network2, [int]$subnetlen2 = $addr2.Split('/')
+ 
+ 
+    #Convert network address to binary
+    [uint32] $unetwork1 = NetworkToBinary $network1
+ 
+    [uint32] $unetwork2 = NetworkToBinary $network2
+ 
+ 
+    #Check if subnet length exists and is less then 32(/32 is host, single ip so no calculation needed) if so convert to binary
+    if($subnetlen1 -lt 32){
+        [uint32] $mask1 = SubToBinary $subnetlen1
+    }
+ 
+    if($subnetlen2 -lt 32){
+        [uint32] $mask2 = SubToBinary $subnetlen2
+    }
+ 
+    #Compare the results
+    if($mask1 -and $mask2){
+        # If both inputs are subnets check which is smaller and check if it belongs in the larger one
+        if($mask1 -lt $mask2){
+            return CheckSubnetToNetwork $unetwork1 $mask1 $unetwork2
+        }else{
+            return CheckNetworkToSubnet $unetwork2 $mask2 $unetwork1
+        }
+    }ElseIf($mask1){
+        # If second input is address and first input is subnet check if it belongs
+        return CheckSubnetToNetwork $unetwork1 $mask1 $unetwork2
+    }ElseIf($mask2){
+        # If first input is address and second input is subnet check if it belongs
+        return CheckNetworkToSubnet $unetwork2 $mask2 $unetwork1
+    }Else{
+        # If both inputs are ip check if they match
+        CheckNetworkToNetwork $unetwork1 $unetwork2
+    }
+}
+ 
+function CheckNetworkToSubnet ([uint32]$un2, [uint32]$ma2, [uint32]$un1)
+{
+    $ReturnArray = "" | Select-Object -Property Condition,Direction
+ 
+    if($un2 -eq ($ma2 -band $un1)){
+        $ReturnArray.Condition = $True
+        $ReturnArray.Direction = "Addr1ToAddr2"
+        return $ReturnArray
+    }else{
+        $ReturnArray.Condition = $False
+        $ReturnArray.Direction = "Addr1ToAddr2"
+        return $ReturnArray
+    }
+}
+ 
+function CheckSubnetToNetwork ([uint32]$un1, [uint32]$ma1, [uint32]$un2)
+{
+    $ReturnArray = "" | Select-Object -Property Condition,Direction
+ 
+    if($un1 -eq ($ma1 -band $un2)){
+        $ReturnArray.Condition = $True
+        $ReturnArray.Direction = "Addr2ToAddr1"
+        return $ReturnArray
+    }else{
+        $ReturnArray.Condition = $False
+        $ReturnArray.Direction = "Addr2ToAddr1"
+        return $ReturnArray
+    }
+}
+ 
+function CheckNetworkToNetwork ([uint32]$un1, [uint32]$un2)
+{
+    $ReturnArray = "" | Select-Object -Property Condition,Direction
+ 
+    if($un1 -eq $un2){
+        $ReturnArray.Condition = $True
+        $ReturnArray.Direction = "Addr1ToAddr2"
+        return $ReturnArray
+    }else{
+        $ReturnArray.Condition = $False
+        $ReturnArray.Direction = "Addr1ToAddr2"
+        return $ReturnArray
+    }
+}
+ 
+function SubToBinary ([int]$sub)
+{
+    return ((-bnot [uint32]0) -shl (32 - $sub))
+}
+ 
+function NetworkToBinary ($network)
+{
+    $a = [uint32[]]$network.split('.')
+    return ($a[0] -shl 24) + ($a[1] -shl 16) + ($a[2] -shl 8) + $a[3]
 }
