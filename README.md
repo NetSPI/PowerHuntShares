@@ -168,6 +168,7 @@ These individuals wrote open source code that was used as part of this project. 
 |:--------------------------------|:-----------|
 |Will Schroeder (@harmj0y)|https://github.com/PowerShellMafia/PowerSploit/blob/master/Recon/PowerView.ps1
 |Warren F (@pscookiemonster)|https://github.com/RamblingCookieMonster/Invoke-Parallel
+|Luben Kirov|http://www.gi-architects.co.uk/2016/02/powershell-check-if-ip-or-subnet-matchesfits/|
 
 <strong>License</strong><Br>
 BSD 3-Clause
