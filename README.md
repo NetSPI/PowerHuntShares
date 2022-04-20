@@ -53,7 +53,7 @@ PS C:\temp\test> Import-Module Invoke-HuntSMBShares.ps1
 PS C:\temp\test> Invoke-HuntSMBShares -Threads 100 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\ -DomainController 10.1.1.1 -Credential domain\user 
 
 ===============================================================
-INVOKE-HUNTSMBSHARES 
+PowerHuntShares
 ===============================================================
  This function automates the following tasks:     
 
