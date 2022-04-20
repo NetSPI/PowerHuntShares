@@ -173,79 +173,28 @@ These individuals wrote open source code that was used as part of this project. 
 <strong>License</strong><Br>
 BSD 3-Clause
 
-Primary Todo
+Todos
 --
 **Pending Fixes/Bugs**
-* Directory listings on data insight pages
-* when we run as a DA, are we getting ntfs privs instead of share privs? check share write, and share acl write - they were a 1-1 on the last scan
-* need defintions to provide an overview of when create lastmodified and lastaccess dates get set on shares (they seem too closely correlated to the scan date) 
-* update code to avoid defender
-* fix owner sid resolution
-* grab system os version
+* Update logo
+* Update code to avoid defender
+* Fix file listing formatting on data insight pages
  
-**Features**
-* visual square with coloring mapped to share volume density by subnet or ip?.  ... like asm
-* Complete file type search
-* Add ability to specific additional groups
+**Pending Features**
+* Add ability to specify additional groups to target
+* Add directory listing to insights page.
+* Add ability to grab system OS information for data insights.
+* Add visualization: Visual squares with coloring mapped to share volume density by subnet or ip?. 
+* Add file type search. (half coded) + add to data insights.
+* Add file content search.
 * Add DontExcludePrintShares option
-* Add ability to target any domain and any DC in any user context
-* Add collection of computer os + charts 
-* Add file content search; snaffler like
-* Add an options to add more computers from a file, in case they are not domain joined.
-* Add auto targeting of groups that contain a large % of the user population; over 70% (make configurable) 
-* netlogon and sysvol you may get access denied when using windows 10 unless the setting below is configured. Automat a check for this, and attempt to modify if privs are at correct level. gpedit.msc, go to Computer -> Administrative Templates -> Network -> Network Provider -> Hardened UNC Paths, enable the policy and click "Show" button. Enter your server name (* for all servers) into "Value name" and enter the folowing text "RequireMutualAuthentication=0,RequireIntegrity=0,RequirePrivacy=0" wihtout quotes into the "Value" field. 
-* add an interesting shares insight to the csv/html reports - interesting shares - sql, backup, password, etc 
-* add download details links to all data insight pages
-* fix date format on scanner summary - home page
-* grab active sessions to help identify owners/users of share
-* pull spns and computer description/spn account descriptions to help identify owner/business unit
+* Add auto targeting of groups that contain a large % of the user population; over 70% (make configurable). Add as option. 
+* Add configuration fid:
+ netlogon and sysvol you may get access denied when using windows 10 unless the setting below is configured. Automat a check for this, and attempt to modify if privs are at correct level. gpedit.msc, go to Computer -> Administrative Templates -> Network -> Network Provider -> Hardened UNC Paths, enable the policy and click "Show" button. Enter your server name (* for all servers) into "Value name" and enter the folowing text "RequireMutualAuthentication=0,RequireIntegrity=0,RequirePrivacy=0" wihtout quotes into the "Value" field. 
+* Add an interesting shares based on names to data insights. example: sql, backup, password, etc.
+* Add active sessions data to help identify potential owners/users of share.
+* Pull spns and computer description/spn account descriptions to help identify owner/business unit.
  
-**Questions**
-* under what conditions are Creation time, "LastAccessTime" and "LastWriteTime" set? CreationTime is the time that the file was created on a disk partition;  Windows doesn't keep track of the last access times for directories since win7?;In general adding, renaming or deleting a file or folder will change both LastAccessTime and LastWriteTime.;last accessed timestamp is static unless the feature is enabled; fsutil behavior set disablelastaccess 0 (HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem\NtfsDisableLastAccessUpdate);Registry - default disabled setting: dword:80000003;However, if you move a file to a different partition/disk on your computer, the CreationTime will be updated, but because the content hasn't changed, the LastWriteTime won't be. 
-So you end up in a situation where your CreationTime is later than your LastWriteTime. 
-* what does share owner mean when system, vs trustedinstaller vs administrators vs network service - what can we infer that would be meaningful
-* what are some of the most common shares, can we automat profile them and highlight "known" application shars in the data insights?
-* can we predict file path with enough collect data to analyze?
-* are their faster ways pull and thread all this info?
-* what other visualisations and analysis techniques should be built in .. searching, grouping, clusting, etc
- 
- **References**
- * Get-SmbShareAccess
- * https://docs.microsoft.com/en-us/powershell/module/smbshare/get-smbshareaccess?view=windowsserver2022-ps
- * Get-ACL
- *  https://social.technet.microsoft.com/wiki/contents/articles/52329.powershell-how-to-get-acl-share-permissions-for-folder.aspx
- * https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.security/get-acl?view=powershell-7.2
- * https://docs.microsoft.com/en-us/dotnet/api/microsoft.powershell.security.activities.getacl?view=powershellsdk-1.1.0
- * TimeStamps
- * http://learningpcs.blogspot.com/2011/08/powershell-forensics-analysis-of.html
- * https://datadobi.com/blog/the-impact-of-timestamps/ 
- * https://www.forensixchange.com/posts/19_04_22_win10_ntfs_time_rules/
- * https://docs.microsoft.com/en-us/dotnet/api/system.io.filesysteminfo.lastwritetime?view=net-6.0
- * https://social.technet.microsoft.com/Forums/en-US/e90d8a90-9102-46a7-b5b0-d0a591719c23/getchilditem-differences-between-lastwritetime-and-lastaccesstime?forum=winserverpowershell
- 
- **CSS Things**
-<pre>
-https://css-tricks.com/pure-css-horizontal-scrolling/
-https://uxdesign.cc/creating-horizontal-scrolling-containers-the-right-way-css-grid-c256f64fc585
-https://www.freecodecamp.org/news/create-gantt-chart-using-css-grid/
-http://www.coding-dude.com/wp/html5/bar-chart-html/
-https://thomaswilburn.github.io/viz-book/css-positioning.html
-https://canvasjs.com/asp-net-mvc-charts/scatter-point-chart/
-https://www.educative.io/edpresso/how-to-create-a-scatter-plot-using-d3
-https://developers.google.com/chart/interactive/docs/gallery/scatterchart
-https://codepen.io/sandeepguggu/pen/IoFqJ
-https://www.cssscript.com/css-bar-scatter-plot-graphs/
-https://jessekorzan.github.io/scatter-plot/
-https://www.w3schools.com/ai/ai_scatter_plots.asp
-https://chartscss.org/charts/area/#multiple-datasets
-https://chartscss.org/charts/line/
-https://chartscss.org/charts/mixed/  
-https://www.w3schools.com/ai/tryit.asp?filename=tryai_plotly_scatter
-https://www.web-workers.ch/index.php/2017/05/16/domain-joined-windows-10-network-access-is-denied-on-sysvol-and-netlogon/
-https://github.com/SnaffCon/Snaffler 
-https://shellgeek.com/powershell-how-to-get-file-creation-date/#:~:text=To%20find%20files%20creation%20date,filter%20to%20select%20file%20only.&text=In%20the%20above%20PowerShell%20Get,output%20to%20the%20second%20command
-https://www.groovypost.com/howto/howto/enable-last-access-time-stamp-to-files-folder-windows-7/
-http://woshub.com/manage-ntfs-permissions-powershell/
 </pre>
  
 
