@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2022 NetSPI
 # License: 3-clause BSD
-# Version: v1.25
+# Version: v1.27
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -245,12 +245,22 @@ function Invoke-HuntSMBShares
         # Create output directory
         # ----------------------------------------------------------------------
         if(Test-Path $OutputDirectory){                                
-            # good
+
+            # Verify output directory path
+            $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+            $FolderDateTime =  Get-Date -Format "MMddyyyyHHmmss"
+            $OutputDirectoryBase = "$OutputDirectory\SmbShareHunt-$FolderDateTime"                                        
+
+            #  Create sub directories
+            mkdir $OutputDirectoryBase | Out-Null
+            $SubDir = "Results"
+            mkdir "$OutputDirectoryBase\$SubDir" | Out-Null
+            $OutputDirectory = "$OutputDirectoryBase\Results"
+            Write-Output " [*][$Time] Output Directory: $OutputDirectoryBase"
         }else{
-                $Time =  Get-Date -UFormat "%m/%d/%Y %R"
-                Write-Output " [x][$Time] The $OutputDirectory was not writable or does not exist."
-                Write-Output " [!][$Time] Aborting operation."
-                break
+            Write-Output " [x][$Time] The $OutputDirectory was not writable."
+            Write-Output " [!][$Time] Aborting operation."
+            break
         }
 
         # ----------------------------------------------------------------------
