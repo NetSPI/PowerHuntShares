@@ -156,7 +156,7 @@ SHARE REPORT SUMMARY
 </pre>
 
 # HTML Report Examples
-![HtmlReport1](https://raw.githubusercontent.com/NetSPI/PowerHuntShares/main/Sample1.png) 
+![HtmlReport1](https://raw.githubusercontent.com/NetSPI/PowerHuntShares/main/summary-report-1.png) 
 
 # Credits
 <strong>Author</strong><Br>
