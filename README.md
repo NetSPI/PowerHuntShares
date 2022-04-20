@@ -176,9 +176,8 @@ BSD 3-Clause
 Todos
 --
 **Pending Fixes/Bugs**
-* Update logo
 * Update code to avoid defender
-* Fix file listing formatting on data insight pages
+* Fix file listing formating on data insight pages
  
 **Pending Features**
 * Add ability to specify additional groups to target
