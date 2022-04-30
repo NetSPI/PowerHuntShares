@@ -193,6 +193,7 @@ Todos
 * Add an interesting shares based on names to data insights. example: sql, backup, password, etc.
 * Add active sessions data to help identify potential owners/users of share.
 * Pull spns and computer description/spn account descriptions to help identify owner/business unit.
+* Create bloodhound import file / edge (highrisk share)
  
 </pre>
  
