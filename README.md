@@ -194,6 +194,7 @@ Todos
 * Add active sessions data to help identify potential owners/users of share.
 * Pull spns and computer description/spn account descriptions to help identify owner/business unit.
 * Create bloodhound import file / edge (highrisk share)
+* Research to identify additional high risk share names based on common technology
  
 </pre>
  
