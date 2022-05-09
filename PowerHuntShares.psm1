@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2022 NetSPI
 # License: 3-clause BSD
-# Version: v1.28
+# Version: v1.29
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -6374,9 +6374,7 @@ function Invoke-Parallel
         else
         {
             $script:MaxQueue = $MaxQueue
-        }
-
-        #Write-Verbose "Throttle: '$throttle' SleepTimer '$sleepTimer' runSpaceTimeout '$runspaceTimeout' maxQueue '$maxQueue' logFile '$logFile'"
+        }        
 
         #If they want to import variables or modules, create a clean runspace, get loaded items, use those to exclude items
         if ($ImportVariables -or $ImportModules)
@@ -6534,13 +6532,6 @@ function Invoke-Parallel
                         $log = $null
                         $more = $true
                     }
-
-                    #log the results if a log file was indicated
-                    <#
-                            if($logFile -and $log){
-                            #($log | ConvertTo-Csv -Delimiter ";" -NoTypeInformation)[1] | out-file $LogFile -append
-                            }
-                    #>
                 }
 
                 #Clean out unused runspace jobs
@@ -6729,12 +6720,6 @@ function Invoke-Parallel
         }
 
         <#
-                #Set up log file if specified
-                if( $LogFile ){
-                New-Item -ItemType file -path $logFile -force | Out-Null
-                #("" | Select Date, Action, Runtime, Status, Details | ConvertTo-Csv -NoTypeInformation -Delimiter ";")[0] | Out-File $LogFile
-                }
-
                 #write initial log entry
                 $log = "" | Select Date, Action, Runtime, Status, Details
                 $log.Date = Get-Date
@@ -6742,9 +6727,6 @@ function Invoke-Parallel
                 $log.Runtime = $null
                 $log.Status = "Started"
                 $log.Details = $null
-                if($logFile) {
-                #($log | convertto-csv -Delimiter ";" -NoTypeInformation)[1] | Out-File $LogFile -Append
-                }
         #>
         $timedOutTasks = $false
 
@@ -13886,8 +13868,6 @@ function Invoke-Parallel
             $script:MaxQueue = $MaxQueue
         }
 
-        #Write-Verbose "Throttle: '$throttle' SleepTimer '$sleepTimer' runSpaceTimeout '$runspaceTimeout' maxQueue '$maxQueue' logFile '$logFile'"
-
         #If they want to import variables or modules, create a clean runspace, get loaded items, use those to exclude items
         if ($ImportVariables -or $ImportModules)
         {
@@ -14044,13 +14024,6 @@ function Invoke-Parallel
                         $log = $null
                         $more = $true
                     }
-
-                    #log the results if a log file was indicated
-                    <#
-                            if($logFile -and $log){
-                            #($log | ConvertTo-Csv -Delimiter ";" -NoTypeInformation)[1] | out-file $LogFile -append
-                            }
-                    #>
                 }
 
                 #Clean out unused runspace jobs
@@ -14239,12 +14212,6 @@ function Invoke-Parallel
         }
 
         <#
-                #Set up log file if specified
-                if( $LogFile ){
-                New-Item -ItemType file -path $logFile -force | Out-Null
-                #("" | Select Date, Action, Runtime, Status, Details | ConvertTo-Csv -NoTypeInformation -Delimiter ";")[0] | Out-File $LogFile
-                }
-
                 #write initial log entry
                 $log = "" | Select Date, Action, Runtime, Status, Details
                 $log.Date = Get-Date
@@ -14252,9 +14219,6 @@ function Invoke-Parallel
                 $log.Runtime = $null
                 $log.Status = "Started"
                 $log.Details = $null
-                if($logFile) {
-                #($log | convertto-csv -Delimiter ";" -NoTypeInformation)[1] | Out-File $LogFile -Append
-                }
         #>
         $timedOutTasks = $false
 
@@ -14513,9 +14477,7 @@ Function Invoke-Ping
                 else
                 {
                     $script:MaxQueue = $MaxQueue
-                }
-
-                #Write-Verbose "Throttle: '$throttle' SleepTimer '$sleepTimer' runSpaceTimeout '$runspaceTimeout' maxQueue '$maxQueue' logFile '$logFile'"
+                }               
 
                 #If they want to import variables or modules, create a clean runspace, get loaded items, use those to exclude items
                 if ($ImportVariables -or $ImportModules)
@@ -14647,11 +14609,6 @@ Function Invoke-Ping
                                 ElseIf ($runspace.Runspace -ne $null ) {
                                     $log = $null
                                     $more = $true
-                                }
-
-                                #log the results if a log file was indicated
-                                if($logFile -and $log){
-                                    #($log | ConvertTo-Csv -Delimiter ";" -NoTypeInformation)[1] | out-file $LogFile -append
                                 }
                             }
 
@@ -14795,12 +14752,6 @@ Function Invoke-Ping
                         $global:__bound = $true
                     }
 
-                    #Set up log file if specified
-                    if( $LogFile ){
-                        New-Item -ItemType file -path $logFile -force | Out-Null
-                        #("" | Select Date, Action, Runtime, Status, Details | ConvertTo-Csv -NoTypeInformation -Delimiter ";")[0] | Out-File $LogFile
-                    }
-
                     #write initial log entry
                     $log = "" | Select Date, Action, Runtime, Status, Details
                         $log.Date = Get-Date
@@ -14808,9 +14759,6 @@ Function Invoke-Ping
                         $log.Runtime = $null
                         $log.Status = "Started"
                         $log.Details = $null
-                        if($logFile) {
-                           # ($log | convertto-csv -Delimiter ";" -NoTypeInformation)[1] | Out-File $LogFile -Append
-                        }
 
 			        $timedOutTasks = $false
 
