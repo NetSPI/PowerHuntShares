@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2022 NetSPI
 # License: 3-clause BSD
-# Version: v1.29
+# Version: v1.30
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1031,7 +1031,7 @@ function Invoke-HuntSMBShares
         $Subnets = $ExcessiveSharePrivs | Select IPAddress -Unique |
         Foreach{  
     
-            $LastOctStart = (($_.IPAddress | Select-String '\.'  -AllMatches).Matches | select -last 1 | select index -ExpandProperty index)
+            [int]$LastOctStart = (($_.IPAddress | Select-String '\.'  -AllMatches).Matches | select -last 1 | select index -ExpandProperty index)
             $Subnet = $_.IPAddress.substring(0,$LastOctStart)
             $Subnet    
         } | select -Unique
@@ -1109,7 +1109,9 @@ function Invoke-HuntSMBShares
             $Object |  Add-Member Computers     $subnetcomputersCount
 
             # Return object
-            $Object 
+            if($Subnetdisplay -ne ".0"){
+                $Object 
+            }
 
         } | sort Acls -Descending
 
