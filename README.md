@@ -178,6 +178,7 @@ Todos
 **Pending Fixes/Bugs**
 * Update code to avoid defender
 * Fix file listing formating on data insight pages
+* IPv6 addresses dont show up in subnets summary
  
 **Pending Features**
 * Add ability to specify additional groups to target
