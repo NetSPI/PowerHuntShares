@@ -197,7 +197,7 @@ Todos
 * Create bloodhound import file / edge (highrisk share)
 * Research to identify additional high risk share names based on common technology
 * Add better support for IPv6
-* Dynamic identification of spikes in high risk share creation, need to better summarize supporting detail beyond just the timeline.
+* Dynamic identification of spikes in high risk share creation/common groupings, need to better summarize supporting detail beyond just the timeline. For each of the data insights, add average number of shares created for insight grouping by year/month (for folder hash / name etc), and the increase the month/year it spikes. (attempt to provide some historical context); maybe even list the most common non default directories being used by each of those.
  
 </pre>
  
