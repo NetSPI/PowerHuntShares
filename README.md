@@ -17,6 +17,9 @@ Bonus Features:
 * Generate directory listing dump for configurable depth
 * Search for file types across discovered shares
 
+I've also put together a short presentation outlining some of the common misconfigurations and strategies for prioritizing remediation here: 
+https://www.slideshare.net/nullbind/into-the-abyss-evaluating-active-directory-smb-shares-on-scale-secure360-251762721
+
 # Vocabulary
 PowerHuntShares will inventory SMB share ACLs configured with "excessive privileges" and highlight "high risk" ACLs.  Below is how those are defined in this context.
 
