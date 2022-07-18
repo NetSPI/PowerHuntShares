@@ -33,10 +33,10 @@ Below is some additional background:<br>
 * Domain Users can also create up to 10 computer accounts by default that get placed in the Domain Computers group
 * Domain Users that have local administrative access to a domain joined computer can also impersonate the computer account. 
 
-Please Note: Share permissions can be overruled by NTFS permissions. Also, be aware that testing excluded share names containing the following keywords: "print$", "prnproc$", "printer", "netlogon",and "sysvol".
+Please Note: Share permissions can be overruled by NTFS permissions. Also, be aware that testing excluded share names containing the following keywords: "print\$", "prnproc\$", "printer", "netlogon",and "sysvol".
 
 <strong>High Risk Shares</strong><br>
-In the context of this report, high risk shares have been defined as shares that provide unauthorized remote access to a system or application. By default, that includes wwwroot, inetpub, c$, and admin$ shares. However, additional exposures may exist that are not called out beyond that.
+In the context of this report, high risk shares have been defined as shares that provide unauthorized remote access to a system or application. By default, that includes wwwroot, inetpub, c\$, and admin\$ shares. However, additional exposures may exist that are not called out beyond that.
 
 # Example Commands
 Important Note: All commands should be run as an unprivileged domain user.
