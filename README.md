@@ -184,6 +184,7 @@ Todos
 * Update code to avoid defender
 * Fix file listing formating on data insight pages
 * IPv6 addresses dont show up in subnets summary
+* ACLs associated with Builtin\Users sometimes shows up as LocalSystem under undefined conditions, and as a result, doesnt show up in the Excessive Privileges export. - Thanks Sam!
  
 **Pending Features**
 * Add ability to specify additional groups to target
