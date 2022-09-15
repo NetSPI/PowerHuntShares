@@ -41,6 +41,7 @@ By default, that includes the shares <pre> wwwroot, inetpub, c$, and admin$   </
 However, additional exposures may exist that are not called out beyond that.
 
 # Setup Commands
+Below is a list of commands that can be used to load PowerHuntShares into your current PowerShell session. Please note that one of these will have to be run each time you run PowerShell is run.  It is not persistent. 
 <pre>
 Set-ExecutionPolicy -Scope Process Bypass
 Import-Module .\PowerHuntShares.psm1
