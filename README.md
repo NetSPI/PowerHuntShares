@@ -40,6 +40,18 @@ In the context of this report, high risk shares have been defined as shares that
 By default, that includes the shares <pre> wwwroot, inetpub, c$, and admin$   </pre>
 However, additional exposures may exist that are not called out beyond that.
 
+# Setup Commands
+<pre>
+Set-ExecutionPolicy -Scope Process Bypass
+Import-Module .\PowerHuntShares.psm1
+</pre>
+or
+<pre>
+[System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}
+[Net.ServicePointManager]::SecurityProtocol =[Net.SecurityProtocolType]::Tls12
+IEX(New-Object System.Net.WebClient).DownloadString("https://raw.githubusercontent.com/NetSPI/PowerHuntShares/main/PowerHuntShares.psm1")
+</pre>
+
 # Example Commands
 Important Note: All commands should be run as an unprivileged domain user.
 <pre>
