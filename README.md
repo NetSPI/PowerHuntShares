@@ -43,13 +43,19 @@ However, additional exposures may exist that are not called out beyond that.
 # Setup Commands
 Below is a list of commands that can be used to load PowerHuntShares into your current PowerShell session. Please note that one of these will have to be run each time you run PowerShell is run.  It is not persistent. 
 <pre>
+# Bypass execution policy restrictions
 Set-ExecutionPolicy -Scope Process Bypass
+
+# Import module that exists in the current directory
 Import-Module .\PowerHuntShares.psm1
-</pre>
+
 or
-<pre>
+
+# Reduce SSL operating level to support connection to github
 [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}
 [Net.ServicePointManager]::SecurityProtocol =[Net.SecurityProtocolType]::Tls12
+
+# Download and load PowerHuntShares.psm1 into memory
 IEX(New-Object System.Net.WebClient).DownloadString("https://raw.githubusercontent.com/NetSPI/PowerHuntShares/main/PowerHuntShares.psm1")
 </pre>
 
