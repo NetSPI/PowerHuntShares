@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2022 NetSPI
 # License: 3-clause BSD
-# Version: v1.30
+# Version: v1.31
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -2689,7 +2689,7 @@ $NewHtmlReport = @"
 		<div style="margin-left:10px;margin-top:3px">
 		<h2>Dashboard Charts</h2>			
 		Below is a summary of the shares configured with excessive privileges on accessible domain computers.
-		<a href="netspi.local-Shares-Inventory-Excessive-Privileges.csv">Download Details</a>			
+		<a href="$SubDir/$ShareACLsExFile">Download Details</a>			
 		</div> 	
 		<div style="border-bottom: 1px solid #DEDFE1 ;  background-color:#f0f3f5; height:5px; margin-bottom:10px;"></div>	
 
