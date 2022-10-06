@@ -3142,7 +3142,7 @@ Below is a summary of the domain computers that were targeted, connectivity to t
       <td><a href="$SubDir/$ShareACLsNonDefaultFile"><span class="cardsubtitle">CSV</a> | </span><a href="$SubDir/$ShareACLsNonDefaultFileH"><span class="cardsubtitle">HTML</span></a></td>  
     </tr>	
     <tr>
-      <td>HOST POTENITIALLY INSECURE SHARE</td>
+      <td>HOST POTENTIALLY INSECURE SHARE</td>
 	  <td><div class="divbarDomain"><div class="divbarDomainInside" style="width:$PercentComputerExPrivP;"></div></div></td>
       <td>$PercentComputerExPrivP</td>	
 	  <td>$ComputerWithExcessive</td>  
