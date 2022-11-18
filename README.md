@@ -210,7 +210,7 @@ Todos
 * Add directory listing to insights page.
 * Add ability to grab system OS information for data insights.
 * Add visualization: Visual squares with coloring mapped to share volume density by subnet or ip?. 
-* Add file type search. (half coded) + add to data insights.
+* Add file type search. (half coded) + add to data insights. Don't forget things like *.aws, *.azure *.gcp directories that store cloud credentials.
 * Add file content search.
 * Add DontExcludePrintShares option
 * Add auto targeting of groups that contain a large % of the user population; over 70% (make configurable). Add as option. 
