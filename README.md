@@ -73,7 +73,7 @@ PS C:\temp\test> Invoke-HuntSMBShares -Threads 100 -OutputDirectory c:\temp\test
 
 .EXAMPLE 4: Run from a non-domain computer with credential. Performs Active Directory computer discovery by default.
 C:\temp\test> runas /netonly /user:domain\user PowerShell.exe
-PS C:\temp\test> Import-Module Invoke-HuntSMBShares.ps1
+PS C:\temp\test> Import-Module PowerHuntShares.psm1
 PS C:\temp\test> Invoke-HuntSMBShares -Threads 100 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\ -DomainController 10.1.1.1 -Credential domain\user 
 
 ===============================================================
