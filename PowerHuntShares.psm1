@@ -17,13 +17,13 @@ function Invoke-HuntSMBShares
             .PARAMETER Output Directory
             File path where all csv and html report will be exported.
             .EXAMPLE
-	        PS C:\temp\test> Invoke-HuntSMBShares -Threads 100 -OutputDirectory c:\temp\test -DomainController 10.1.1.1 -Username domain\user -Password password
+	        PS C:\temp\test> Invoke-HuntSMBShares -Threads 20 -OutputDirectory c:\temp\test -DomainController 10.1.1.1 -ExportFindings -Username domain\user -Password password
             .EXAMPLE   
             C:\temp\test> runas /netonly /user:domain\user PowerShell.exe
             PS C:\temp\test> Import-Module Invoke-HuntSMBShares.ps1
-            PS C:\temp\test> Invoke-HuntSMBShares -Threads 100 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\ -DomainController 10.1.1.1 -Username domain\user -Password password        
+            PS C:\temp\test> Invoke-HuntSMBShares -Threads 20 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\ -DomainController 10.1.1.1 -ExportFindings -Username domain\user -Password password        
             .EXAMPLE
-			PS C:\temp\test> Invoke-HuntSMBShares -Threads 100 -OutputDirectory c:\temp\test
+			PS C:\temp\test> Invoke-HuntSMBShares -Threads 20 -ExportFindings -OutputDirectory c:\temp\test
 
              ---------------------------------------------------------------
              INVOKE-HUNTSMBSHARES                                        
@@ -149,7 +149,7 @@ function Invoke-HuntSMBShares
         
         [Parameter(Mandatory = $false,
         HelpMessage = 'Number of threads to process at once.')]
-        [int]$Threads = 100,
+        [int]$Threads = 20,
 
         [Parameter(Mandatory = $true,
         HelpMessage = 'Directory to output files to.')]
@@ -4081,14 +4081,14 @@ The command examples below can be used to identify potentially malicious share p
 <br><br>
 <strong style="color:#333">From Domain System</strong>
 <div style="border-radius:10px;border: 2px solid #CCC;margin-top:5px;padding: 5px;padding-left: 15px;width:95%;background-color:white;color:#757575;font-family:Lucida, Grande, sans-serif;">
-Invoke-HuntSMBShares -Threads 100 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\ 
+Invoke-HuntSMBShares -Threads 20 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\ 
 </div>
 <br>
 <strong style="color:#333">From Non-Domain System</strong>
 <div style="border-radius:10px;border: 2px solid #CCC;margin-top:5px;padding: 5px;padding-left: 15px;width:95%;background-color:white;color:#757575;font-family:Lucida, Grande, sans-serif;">
 runas /netonly /user:domain\user PowerShell.exe<Br>
 Import-Module Invoke-HuntSMBShares.ps1<br>
-Invoke-HuntSMBShares -Threads 100 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\ -DomainController 10.1.1.1 -Username domain\user -Password password 
+Invoke-HuntSMBShares -Threads 20 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\ -DomainController 10.1.1.1 -Username domain\user -Password password 
 </div>
 </div>
 </div>
