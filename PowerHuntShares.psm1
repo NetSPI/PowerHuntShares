@@ -201,7 +201,11 @@ function Invoke-HuntSMBShares
 
         [Parameter(Mandatory = $false,
         HelpMessage = 'Path to file of file paths to search for. One path per line.')]
-        [string] $FindFilesList
+        [string] $FindFilesList,
+
+        [Parameter(Mandatory = $false,
+        HelpMessage = 'Skip pinging of hosts.')]
+        [switch] $SkipPing
         
     )
 	
@@ -365,34 +369,42 @@ function Invoke-HuntSMBShares
         $Time =  Get-Date -UFormat "%m/%d/%Y %R"
         Write-Output " [*][$Time] Pinging $ComputerCount computers"
 
-        # Ping computerss
-        $PingResults = $DomainComputers | Invoke-Ping -Throttle $GlobalThreadCount
-
-        # select computers that respond
-        $ComputersPingable = $PingResults |
-        foreach {
-
-            $computername = $_.address
-            $status = $_.status
-            if($status -like "Responding"){
-                $object = new-object psobject            
-                $Object | add-member Noteproperty ComputerName $computername
-                $Object | add-member Noteproperty status $status
-                $Object
-            }
+        # Ping computers
+        if ($SkipPing){
+            Write-Output " [*][$Time] Skip pinging of $ComputerCount computers, assuming all hosts are alive."
+            $ComputersPingable = $DomainComputers
+            $ComputerPingableCount = $ComputersPingable.count
         }
+        else{
+            Write-Output " [*][$Time] Pinging $ComputerCount computers"
+            $PingResults = $DomainComputers | Invoke-Ping -Throttle $GlobalThreadCount
 
-        # Status user
-        $ComputerPingableCount = $ComputersPingable.count
-        $Time =  Get-Date -UFormat "%m/%d/%Y %R"
-        Write-Output " [*][$Time] - $ComputerPingableCount computers responded to ping requests."
-        
-        # Stop if no hosts are accessible
-        If ($ComputerPingableCount -eq 0)
-        {
+            # select computers that respond
+            $ComputersPingable = $PingResults |
+            foreach {
+
+                $computername = $_.address
+                $status = $_.status
+                if($status -like "Responding"){
+                    $object = new-object psobject            
+                    $Object | add-member Noteproperty ComputerName $computername
+                    $Object | add-member Noteproperty status $status
+                    $Object
+                }
+            }
+
+            # Status user
+            $ComputerPingableCount = $ComputersPingable.count
             $Time =  Get-Date -UFormat "%m/%d/%Y %R"
-            Write-Output " [*][$Time] - Aborting."
-            break
+            Write-Output " [*][$Time] - $ComputerPingableCount computers responded to ping requests."
+        
+            # Stop if no hosts are accessible
+            If ($ComputerPingableCount -eq 0)
+            {
+                $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+                Write-Output " [*][$Time] - Aborting."
+                break
+            }
         }
 
         # Save results
