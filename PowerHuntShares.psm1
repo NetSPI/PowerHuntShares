@@ -36,7 +36,7 @@ function Invoke-HuntSMBShares
               o Filter for computers that have TCP 445 open and accessible  
               o Enumerate SMB shares                                        
               o Enumerate SMB share permissions                             
-              o Identify shares with potentially excessive privielges       
+              o Identify shares with potentially excessive privileges      
               o Identify shares that provide reads & write access           
               o Identify shares thare are high risk                         
               o Identify common share owners, names, & directory listings   
