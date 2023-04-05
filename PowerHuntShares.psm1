@@ -2895,7 +2895,7 @@ $NewHtmlReport = @"
  <div class="card">	
 	<div class="cardtitle">
 		Top Share Names<br>
-		<span class="cardsubtitle2">configured with Excessive Privileges</span>
+		<span class="cardsubtitle2">configured with excessive privileges</span>
 	</div>
 	<div class="cardcontainer" align="center">	
 			<span class="piechartComputers">
