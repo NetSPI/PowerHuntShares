@@ -216,7 +216,7 @@ Todos
 * Add file content search.
 * Add DontExcludePrintShares option
 * Add auto targeting of groups that contain a large % of the user population; over 70% (make configurable). Add as option. 
-* Add "grouping confidence score"; Folders with the same name and the same file listing should have a high natural grouping score. Weights should also be added for owner, creator, creation dates, and modification dates.  this will help to distiguish between shares that are related and those that are not (aka simply common names like log or temp that are not related to the same system, process, or application).
+* Add "grouping confidence score"; Folders with the same name and the same file listing should have a high natural grouping score. Weights should also be added if the owner, creator, creation dates, and modification dates are shared.  this will help to distiguish between shares that are related and those that are not (aka simply common names like log or temp that are not related to the same system, process, or application).
 * Add configuration fid:
  netlogon and sysvol you may get access denied when using windows 10 unless the setting below is configured. Automat a check for this, and attempt to modify if privs are at correct level. gpedit.msc, go to Computer -> Administrative Templates -> Network -> Network Provider -> Hardened UNC Paths, enable the policy and click "Show" button. Enter your server name (* for all servers) into "Value name" and enter the folowing text "RequireMutualAuthentication=0,RequireIntegrity=0,RequirePrivacy=0" wihtout quotes into the "Value" field. 
 * Add an interesting shares based on names to data insights. example: sql, backup, password, etc.
