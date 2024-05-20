@@ -2,9 +2,9 @@
 #--------------------------------------
 # Function: Invoke-HuntSMBShares
 #--------------------------------------
-# Author: Scott Sutherland, 2022 NetSPI
+# Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.33
+# Version: v1.34
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -32,7 +32,7 @@ function Invoke-HuntSMBShares
                                                                 
               o Determine current computer's domain                         
               o Enumerate domain computers                                  
-              o Filter for computers that respond to ping reqeusts          
+              o Check if computers respond to ping requests         
               o Filter for computers that have TCP 445 open and accessible  
               o Enumerate SMB shares                                        
               o Enumerate SMB share permissions                             
@@ -201,7 +201,11 @@ function Invoke-HuntSMBShares
 
         [Parameter(Mandatory = $false,
         HelpMessage = 'Path to file of file paths to search for. One path per line.')]
-        [string] $FindFilesList
+        [string] $FindFilesList,
+
+        [Parameter(Mandatory = $false,
+        HelpMessage = 'Do not perform ping scan.')]
+        [switch] $NoPing
         
     )
 	
@@ -215,7 +219,7 @@ function Invoke-HuntSMBShares
         Write-Output "                                                                "
         Write-Output "  o Determine current computer's domain                         "
         Write-Output "  o Enumerate domain computers                                  "
-        Write-Output "  o Filter for computers that respond to ping reqeusts          "
+        Write-Output "  o Check if computers respond to ping requests                 "
         Write-Output "  o Filter for computers that have TCP 445 open and accessible  "
         Write-Output "  o Enumerate SMB shares                                        "
         Write-Output "  o Enumerate SMB share permissions                             "
@@ -361,46 +365,44 @@ function Invoke-HuntSMBShares
         # Identify computers that respond to ping reqeusts
         # ----------------------------------------------------------------------
 
-        # Status user
-        $Time =  Get-Date -UFormat "%m/%d/%Y %R"
-        Write-Output " [*][$Time] Pinging $ComputerCount computers"
+        if($NoPing){
+            Write-Output " [*][$Time] - Skipping ping scan."
+            $ComputerPingableCount = 0
+        }else{
 
-        # Ping computerss
-        $PingResults = $DomainComputers | Invoke-Ping -Throttle $GlobalThreadCount
-
-        # select computers that respond
-        $ComputersPingable = $PingResults |
-        foreach {
-
-            $computername = $_.address
-            $status = $_.status
-            if($status -like "Responding"){
-                $object = new-object psobject            
-                $Object | add-member Noteproperty ComputerName $computername
-                $Object | add-member Noteproperty status $status
-                $Object
-            }
-        }
-
-        # Status user
-        $ComputerPingableCount = $ComputersPingable.count
-        $Time =  Get-Date -UFormat "%m/%d/%Y %R"
-        Write-Output " [*][$Time] - $ComputerPingableCount computers responded to ping requests."
-        
-        # Stop if no hosts are accessible
-        If ($ComputerPingableCount -eq 0)
-        {
+            # Status user
             $Time =  Get-Date -UFormat "%m/%d/%Y %R"
-            Write-Output " [*][$Time] - Aborting."
-            break
-        }
+            Write-Output " [*][$Time] Pinging $ComputerCount computers"
 
-        # Save results
-        # Write-Output " [*] - Saving results to $OutputDirectory\$TargetDomain-Domain-Computers-Pingable.csv"
-        $ComputersPingable | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Domain-Computers-Pingable.csv"
-        $null = Convert-DataTableToHtmlTable -DataTable $ComputersPingable -Outfile "$OutputDirectory\$TargetDomain-Domain-Computers-Pingable.html" -Title "Domain Computers: Ping Response" -Description "This page shows the domain computers for the $TargetDomain Active Directory domain that responded to ping requests."
-        $ComputersPingableFile = "$TargetDomain-Domain-Computers-Pingable.csv"
-        $ComputersPingableFileH =  "$TargetDomain-Domain-Computers-Pingable.html"
+            # Ping computerss
+            $PingResults = $DomainComputers | Invoke-Ping -Throttle $GlobalThreadCount
+
+            # select computers that respond
+            $ComputersPingable = $PingResults |
+            foreach {
+
+                $computername = $_.address
+                $status = $_.status
+                if($status -like "Responding"){
+                    $object = new-object psobject            
+                    $Object | add-member Noteproperty ComputerName $computername
+                    $Object | add-member Noteproperty status $status
+                    $Object
+                }
+            }
+
+            # Status user
+            $ComputerPingableCount = $ComputersPingable.count
+            $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+            Write-Output " [*][$Time] - $ComputerPingableCount computers responded to ping requests."        
+
+            # Save results
+            # Write-Output " [*] - Saving results to $OutputDirectory\$TargetDomain-Domain-Computers-Pingable.csv"
+            $ComputersPingable | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Domain-Computers-Pingable.csv"
+            $null = Convert-DataTableToHtmlTable -DataTable $ComputersPingable -Outfile "$OutputDirectory\$TargetDomain-Domain-Computers-Pingable.html" -Title "Domain Computers: Ping Response" -Description "This page shows the domain computers for the $TargetDomain Active Directory domain that responded to ping requests."
+            $ComputersPingableFile = "$TargetDomain-Domain-Computers-Pingable.csv"
+            $ComputersPingableFileH =  "$TargetDomain-Domain-Computers-Pingable.html"
+        }
 
         # ----------------------------------------------------------------------
         # Identify computers that have TCP 445 open and accessible
@@ -408,10 +410,7 @@ function Invoke-HuntSMBShares
 
         # Status user
         $Time =  Get-Date -UFormat "%m/%d/%Y %R"
-        Write-Output " [*][$Time] Checking if TCP Port 445 is open on $ComputerPingableCount computers"
-
-        # Get clean list of pingable computers
-        $ComputersPingableClean = $ComputersPingable | Select-Object ComputerName
+        Write-Output " [*][$Time] Checking if TCP Port 445 is open on $ComputerCount computers"
 
         # Create script block to port scan tcp 445
         $MyScriptBlock = {
@@ -443,7 +442,7 @@ function Invoke-HuntSMBShares
         }
            
         # Perform port scan of tcp 445 threaded
-        $Computers445Open = $ComputersPingableClean | Invoke-Parallel -ScriptBlock $MyScriptBlock -ImportSessionFunctions -ImportVariables -Throttle $GlobalThreadCount -RunspaceTimeout $RunSpaceTimeOut -ErrorAction SilentlyContinue
+        $Computers445Open = $DomainComputers | Invoke-Parallel -ScriptBlock $MyScriptBlock -ImportSessionFunctions -ImportVariables -Throttle $GlobalThreadCount -RunspaceTimeout $RunSpaceTimeOut -ErrorAction SilentlyContinue
 
         # Status user
         $Computers445OpenCount = $Computers445Open.count
@@ -1494,6 +1493,12 @@ function Invoke-HuntSMBShares
         $StopWatch.Stop()
         $RunTime = $StopWatch | Select-Object Elapsed -ExpandProperty Elapsed
 
+        if($NoPing){
+            $NoPingMsg = "(No Ping)"
+        }else{
+            $NoPingMsg = ""
+        }
+
         #Write-Output " [*][$Time] -----------------------------------------------"
         #Write-Output " [*][$Time] Get-ShareInventory Summary Report"
         #Write-Output " [*][$Time] -----------------------------------------------"
@@ -1504,7 +1509,7 @@ function Invoke-HuntSMBShares
         Write-Output " [*][$Time] "
         Write-Output " [*][$Time] COMPUTER SUMMARY"
         Write-Output " [*][$Time] - $ComputerCount domain computers found."
-        Write-Output " [*][$Time] - $ComputerPingableCount ($PercentComputerPingP) domain computers responded to ping."
+        Write-Output " [*][$Time] - $ComputerPingableCount ($PercentComputerPingP) domain computers responded to ping. $NoPingMsg"
         Write-Output " [*][$Time] - $Computers445OpenCount ($PercentComputerPortP) domain computers had TCP port 445 accessible."
         Write-Output " [*][$Time] - $ComputerwithNonDefaultCount ($PercentComputerNonDefaultP) domain computers had shares that were non-default."  
         Write-Output " [*][$Time] - $ComputerWithExcessive ($PercentComputerExPrivP) domain computers had shares with potentially excessive privileges."      
