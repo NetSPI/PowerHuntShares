@@ -227,7 +227,6 @@ Todos
 * Add better support for IPv6
 * Dynamic identification of spikes in high risk share creation/common groupings, need to better summarize supporting detail beyond just the timeline. For each of the data insights, add average number of shares created for insight grouping by year/month (for folder hash / name etc), and the increase the month/year it spikes. (attempt to provide some historical context); maybe even list the most common non default directories being used by each of those. Potentially adding "first seen date" as well.
 * add showing share permissions (along with the already displayed NTFS permissions) and resultant access (most restrictive wins)
-* Top Share Name Updates - For each share name with a count greater than 2, generate a count of unique directory hashes, foreach of those directory hashes also include a count.
 * Use LLM to categorize share name groups based on share name, affected file lists, share owners, and users with acls to the affected shares.
  
 </pre>
