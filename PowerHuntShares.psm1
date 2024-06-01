@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.36
+# Version: v1.37
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -37,7 +37,7 @@ function Invoke-HuntSMBShares
               o Enumerate SMB shares                                        
               o Enumerate SMB share permissions                             
               o Identify shares with potentially excessive privileges      
-              o Identify shares that provide reads & write access           
+              o Identify shares that provide read or write access           
               o Identify shares thare are high risk                         
               o Identify common share owners, names, & directory listings   
               o Generate last written & last accessed timelines             
@@ -224,7 +224,7 @@ function Invoke-HuntSMBShares
         Write-Output "  o Enumerate SMB shares                                        "
         Write-Output "  o Enumerate SMB share permissions                             "
         Write-Output "  o Identify shares with potentially excessive privielges       "
-        Write-Output "  o Identify shares that provide reads & write access           "                     
+        Write-Output "  o Identify shares that provide read or write access           "                     
         Write-Output "  o Identify shares thare are high risk                         "
         Write-Output "  o Identify common share owners, names, & directory listings   "
         Write-Output "  o Generate last written & last accessed timelines             "
@@ -1607,7 +1607,8 @@ function Invoke-HuntSMBShares
             $ComputerBar = $ShareNameBars.ComputerBar
             $ShareBar = $ShareNameBars.ShareBar
             $AclBar = $ShareNameBars.AclBar
-            $ShareFolderGroupList = $ExcessiveSharePrivs|where sharename -like "$ShareName" | select filelistgroup -Unique | select filelistgroup -ExpandProperty filelistgroup
+            #$ShareFolderGroupList = $ExcessiveSharePrivs | where sharename -like "$ShareName" | select filelistgroup -Unique | select filelistgroup -ExpandProperty filelistgroup
+            $ShareFolderGroupList  = $ExcessiveSharePrivs | where sharename -EQ "$ShareName"   | Group-Object FileListGroup   | sort count -Descending | select count, name | foreach { $fdcount = $_.count; $fdname = $_.name;Write-Output "$fdcount $fdname<Br>"}
             $ThisRow = @" 
 	          <tr>
 	          <td>
