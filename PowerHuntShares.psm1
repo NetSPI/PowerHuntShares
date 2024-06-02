@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.41
+# Version: v1.42
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1628,8 +1628,8 @@ function Invoke-HuntSMBShares
                     $MyFdListBr = $MyFdList -replace "`n", "<br>"
 
                     $ThisFileDirList = @"
-                        (<strong>$fdcount</strong>) $fdname 
-                        <button class="collapsible"><span style="color:#CE112D;"></span>Files ($FdFileCount)</button>
+                        <strong>$fdcount</strong> $fdname 
+                        <button class="collapsible"><span style="color:#CE112D;"></span>($FdFileCount Files) </button>
                         <div class="content">
                         <div class="filelist" >
                         $MyFdListBr
@@ -1649,11 +1649,14 @@ function Invoke-HuntSMBShares
               $ShareName
 	          </td>		 
               <td>
-              $ShareFolderGroupCount
+                  
+                  <button class="collapsible"><span style="color:#CE112D;"></span>$ShareFolderGroupCount</button>
+                  <div class="content">
+                  <div class="filelistparent" >
+                  $ShareFolderGroupList
+                  </div>
+                  </div> 
               </td> 
-              <td>
-              $ShareFolderGroupList
-              </td>
 	          <td>
 	          $ComputerBar     	 
 	          </td>		  
@@ -2256,6 +2259,19 @@ $NewHtmlReport = @"
 		font-family:"Open Sans", sans-serif;
 		color:#666;
 		background-color:white;
+		border-radius: 0px;
+		padding: 5px;
+		margin-top: 5px;
+		margin-right: 5px;
+		margin-bottom: 5px;
+		width: 90%		
+	}
+
+	.filelistparent {
+		font-size: 14;
+		font-family:"Open Sans", sans-serif;
+		color:#666;
+		--background-color:white;
 		border-radius: 0px;
 		padding: 5px;
 		margin-top: 5px;
@@ -3609,7 +3625,6 @@ This section contains a list of the most common SMB share names. In some cases, 
       <th align="left">Share Count</th> 
       <th align="left">Share Name</th>
       <th align="left">Unique Folder Group Count</th>
-      <th align="left">Unique Folder Groups</th>
       <th align="left">Affected Computers</th>
 	  <th align="left">Affected Shares</th>
 	  <th align="left">Affected ACLs</th>	 	 
@@ -4159,7 +4174,8 @@ for (i = 0; i < coll.length; i++) {
     if (content.style.maxHeight){
       content.style.maxHeight = null;
     } else {
-      content.style.maxHeight = content.scrollHeight + "px";
+      content.style.Height = content.scrollHeight + "px";
+      content.style.maxHeight = "100%";
     } 
   });
 }
