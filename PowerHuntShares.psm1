@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.38
+# Version: v1.40
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1559,7 +1559,8 @@ function Invoke-HuntSMBShares
             $ComputerBarF = $ThisFileBars.ComputerBar
             $ShareBarF = $ThisFileBars.ShareBar
             $AclBarF = $ThisFileBars.AclBar
-            $ThisFileList = $ThisFileBars.FileList           
+            $ThisFileListPrep = $ThisFileBars.FileList 
+            $ThisFileList = $ThisFileListPrep -replace "`n", "<br>"          
             $ThisFileCount = $ThisFileBars.FileCount
             $ThisFileShareCount = $ThisFileBars.Sharecount
             $ThisRow = @" 
@@ -1570,12 +1571,14 @@ function Invoke-HuntSMBShares
 	          <td>
               $FileGroupName
 	          </td>	
-	          <td>
-              $ThisFileCount
+	          <td>              
+                  <button class="collapsible"><span style="color:#CE112D;"></span>$ThisFileCount Files</button>
+                  <div class="content">
+                  <div class="filelist" >
+                  $ThisFileList
+                  </div>
+                  </div>
 	          </td>		  
-	          <td>
-              $ThisFileList
-	          </td>
 	          <td>
 	          $ComputerBarF
 	          </td>		  
@@ -3678,7 +3681,6 @@ Folder groups are SMB shares that contain the exact same file listing. Each file
       <th align="left">Affected Shares</th>
       <th align="left">File Group</th>
       <th align="left">File Count</th>
-      <th align="left">File List</th>
       <th align="left">Affected Computers</th>
 	  <th align="left">Affected Shares</th>
 	  <th align="left">Affected ACLs</th>	 	 
