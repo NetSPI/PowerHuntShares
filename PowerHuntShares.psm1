@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.37
+# Version: v1.38
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1607,8 +1607,35 @@ function Invoke-HuntSMBShares
             $ComputerBar = $ShareNameBars.ComputerBar
             $ShareBar = $ShareNameBars.ShareBar
             $AclBar = $ShareNameBars.AclBar
-            #$ShareFolderGroupList = $ExcessiveSharePrivs | where sharename -like "$ShareName" | select filelistgroup -Unique | select filelistgroup -ExpandProperty filelistgroup
-            $ShareFolderGroupList  = $ExcessiveSharePrivs | where sharename -EQ "$ShareName"   | Group-Object FileListGroup   | sort count -Descending | select count, name | foreach { $fdcount = $_.count; $fdname = $_.name;Write-Output "$fdcount $fdname<Br>"}
+            #$ShareFolderGroupList = $ExcessiveSharePrivs | where sharename -like "$ShareName" | select filelistgroup -Unique | select filelistgroup -ExpandProperty filelistgroup 
+            $ShareFolderGroupList  = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select ShareName,FileListGroup -Unique | Group-Object FileListGroup   | sort count -Descending | select count, name | 
+            foreach { 
+
+                $fdcount = $_.count; 
+                $fdname = $_.name;
+
+                If($fdname){
+                
+                    # Get file count
+                    $FdFileCount = $ExcessiveSharePrivs | where FileListGroup -eq  $fdname | select FileCount -First 1 -ExpandProperty FileCount -ErrorAction SilentlyContinue
+
+                    # Get file ilst
+                    $MyFdList = $ExcessiveSharePrivs | where FileListGroup -eq  $fdname | select FileList -First 1 -ExpandProperty FileList -ErrorAction SilentlyContinue
+                    $MyFdListBr = $MyFdList -replace "`n", "<br>"
+
+                    $ThisFileDirList = @"
+                        (<strong>$fdcount</strong>) $fdname 
+                        <button class="collapsible"><span style="color:#CE112D;"></span>Files ($FdFileCount)</button>
+                        <div class="content">
+                        <div class="filelist" >
+                        $MyFdListBr
+                        </div>
+                        </div>                
+"@
+                    $ThisFileDirList
+                }
+            }
+
             $ThisRow = @" 
 	          <tr>
 	          <td>
@@ -2216,6 +2243,19 @@ $NewHtmlReport = @"
 		padding-bottom: 20px;
 		padding-left:15px;
 	}	
+
+	.filelist {
+		font-size: 14;
+		font-family:"Open Sans", sans-serif;
+		color:#666;
+		background-color:white;
+		border-radius: 0px;
+		padding: 5px;
+		margin-top: 5px;
+		margin-right: 5px;
+		margin-bottom: 5px;
+		width: 90%		
+	}
 
 	.tablecolinfo {
 		font-size: 14;
