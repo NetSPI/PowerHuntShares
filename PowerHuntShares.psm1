@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.40
+# Version: v1.41
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1597,7 +1597,7 @@ function Invoke-HuntSMBShares
         $CommonShareNamesTopString = $CommonShareNamesTop5 |
         foreach {
             $ShareCount = $_.count
-            $ShareName = $_.name
+            $ShareName = $_.name            
             Write-Output "$ShareCount $ShareName <br>"   
         }  
 
@@ -1606,6 +1606,7 @@ function Invoke-HuntSMBShares
         foreach {
             $ShareCount = $_.count
             $ShareName = $_.name
+            $ShareFolderGroupCount = $ExcessiveSharePrivs | where sharename -like "$ShareName" | select filelistgroup -Unique | measure | select count -ExpandProperty count 
             $ShareNameBars = Get-GroupNameBar -DataTable $ExcessiveSharePrivs -Name $ShareName -AllComputerCount $ComputerCount -AllShareCount $AllSMBSharesCount -AllAclCount $ShareACLsCount
             $ComputerBar = $ShareNameBars.ComputerBar
             $ShareBar = $ShareNameBars.ShareBar
@@ -1646,7 +1647,10 @@ function Invoke-HuntSMBShares
 	          </td>	
 	          <td>
               $ShareName
-	          </td>		  
+	          </td>		 
+              <td>
+              $ShareFolderGroupCount
+              </td> 
               <td>
               $ShareFolderGroupList
               </td>
@@ -3604,7 +3608,8 @@ This section contains a list of the most common SMB share names. In some cases, 
     <tr>      
       <th align="left">Share Count</th> 
       <th align="left">Share Name</th>
-      <th align="left">Folder Groups</th>
+      <th align="left">Unique Folder Group Count</th>
+      <th align="left">Unique Folder Groups</th>
       <th align="left">Affected Computers</th>
 	  <th align="left">Affected Shares</th>
 	  <th align="left">Affected ACLs</th>	 	 
