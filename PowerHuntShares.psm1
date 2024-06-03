@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.46
+# Version: v1.47
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1614,25 +1614,25 @@ function Invoke-HuntSMBShares
             $ShareNameBars = Get-GroupNameBar -DataTable $ExcessiveSharePrivs -Name $ShareName -AllComputerCount $ComputerCount -AllShareCount $AllSMBSharesCount -AllAclCount $ShareACLsCount
             $ComputerBar = $ShareNameBars.ComputerBar
             $ShareBar = $ShareNameBars.ShareBar
-            $AclBar = $ShareNameBars.AclBar
+            $AclBar = $ShareNameBars.AclBar            
             
             # Share Description
             $ShareDescriptionSample = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | where ShareDescription  -NE "" | select ShareDescription -first 1 -expandproperty ShareDescription | foreach {"<strong>Sample Description</strong><br> $_"}
 
             # First created
-            $ShareFirstCreated = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select creationdate | foreach{[datetime]$_.creationdate } | Sort-Object | select -First 1 | foreach {$_.tostring("MM.dd.yyyy HH:mm:ss")}
+            $ShareFirstCreated = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select creationdate | foreach{[datetime]$_.creationdate } | Sort-Object | select -First 1 | foreach {$_.tostring("MM/dd/yyyy HH:mm:ss")}
 
             # Last created
-            $ShareLastCreated  = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select creationdate | foreach{[datetime]$_.creationdate } | Sort-Object -Descending | select -First 1 | foreach {$_.tostring("MM.dd.yyyy HH:mm:ss")}
+            $ShareLastCreated  = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select creationdate | foreach{[datetime]$_.creationdate } | Sort-Object -Descending | select -First 1 | foreach {$_.tostring("MM/dd/yyyy HH:mm:ss")}
 
             # Last modified
-            $ShareLastModified = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select LastModifiedDate | foreach{[datetime]$_.LastModifiedDate } | Sort-Object -Descending | select -First 1 | foreach {$_.tostring("MM.dd.yyyy HH:mm:ss")}            
+            $ShareLastModified = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select LastModifiedDate | foreach{[datetime]$_.LastModifiedDate } | Sort-Object -Descending | select -First 1 | foreach {$_.tostring("MM/dd/yyyy HH:mm:ss")}            
 
             # Share owner list
-            $ShareOwnerList = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | Sort-Object | select ShareOwner -Unique -ExpandProperty  ShareOwner
+            $ShareOwnerList = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | Sort-Object | select ShareOwner -Unique -ExpandProperty ShareOwner
             
             # Share owner list count
-            $ShareOwnerListCount = $ShareOwnerList | measure-object | select count -expandproperty count                
+            $ShareOwnerListCount = $ShareOwnerList | select -Unique | measure-object | select count -expandproperty count               
 
             # Share folder group list
             $ShareFolderGroupList  = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select ShareName,FileListGroup -Unique | Group-Object FileListGroup   | sort count -Descending | select count, name | 
@@ -1646,7 +1646,7 @@ function Invoke-HuntSMBShares
                     # Get file count
                     $FdFileCount = $ExcessiveSharePrivs | where FileListGroup -eq  $fdname | select FileCount -First 1 -ExpandProperty FileCount -ErrorAction SilentlyContinue
 
-                    # Get file ilst
+                    # Get file list
                     $MyFdList = $ExcessiveSharePrivs | where FileListGroup -eq  $fdname | select FileList -First 1 -ExpandProperty FileList -ErrorAction SilentlyContinue
                     $MyFdListBr = $MyFdList -replace "`n", "<br>"
 
@@ -1663,6 +1663,97 @@ function Invoke-HuntSMBShares
                 }
             }
 
+            # ----
+            # Calculate similarity here - Start
+            # How do i deal with divid by 1...?
+
+            # Calculate share to file group ratio: 0 to 1           
+            # min value = 0
+            # max value = number of shares
+            # 10 shares / 1 group   = 10.0 - highest score when only one group - correct              
+            # 10 shares / 5 groups  =  2.0 - high score when fewer groups      - correct
+            # 10 shares / 10 groups =  1.0 - lower score when more groups      - correct
+            # 5  shares / 10 groups =  0.5 - lower score when more groups      - correct  
+            $SimularityCalcShareFg1 = [math]::Round($ShareCount/$ShareFolderGroupCount,4) # Original value
+            $SimularityCalcShareFg = $SimularityCalcShareFg1 / $ShareCount 
+                                    
+            # Calculate share to owner ration: 0 to 1 (to show difference between avg foldergroup ad overall)            
+            $SimularityCalcShareOwner1 = [math]::Round($ShareCount/$ShareOwnerListCount,4) 
+            $SimularityCalcShareOwner  = $SimularityCalcShareOwner1 / $ShareCount
+            
+            # Calculate file group to owner avg ratio avg per share name: 0 to 1 
+            $FGtoOwnersRatios = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select ShareName,FileListGroup -Unique | Group-Object FileListGroup   | sort count -Descending | select count, name |
+            foreach{                
+                $FgName  = $_.name
+                $FgCount = $_.count
+
+                # Get count of owners associated with file group
+                $FgNameOwnercount = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | where FileListGroup -EQ "$FgName" | select ShareOwner -Unique | measure | select count -expandproperty count
+
+                # Calculate file group to owners ratio
+                [math]::Round($FgCount/$FgNameOwnercount,4)                 
+            }
+            $FGtoOwnersRatiosSum = 0
+            $FGtoOwnersRatiosCount = $FGtoOwnersRatios | measure-object | select count -expandproperty count
+            $FGtoOwnersRatios | 
+            Foreach{
+                $FGtoOwnersRatiosSum += $_
+            }
+            $SimularityCalcFGOwnerAvg = [math]::Round($FGtoOwnersRatiosSum/$FGtoOwnersRatiosCount,4)
+            
+            # Caluatlate if at least 1 file group is 50% or greater: 0 or 1
+            # take total count ($ShareFolderGroupCount)
+            # divide the number of instances by individual
+            # foreach loop until yes.
+            $fiftyorgreater = 0
+            $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select ShareName,FileListGroup -Unique | Group-Object FileListGroup   | sort count -Descending | select count, name |
+            foreach{
+                
+                # Get % the file group represents for the share
+                $fgpercentage = [math]::Round($_.count/$ShareFolderGroupCount,4)
+
+                # If it's 50% or great flip the bit
+                if($fgpercentage -ge .5){
+                    $SimularityCalc50P = 1
+                }
+            }
+
+            # Calculate share to creation date ratio (just informational, not used in similarity score - for now)
+            $ShareCreateCount = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select creationdate -Unique | Measure-Object | Select-Object count -ExpandProperty count            
+            $SimularityCalcCreateDate1 = [math]::Round($ShareCount/$ShareCreateCount,4) 
+            $SimularityCalcCreateDate  =  $SimularityCalcCreateDate1 / $ShareCount
+
+            # Calculate share to modification date ratio (just informational, not used in similarity score - for now)
+            $ShareModifiedCount = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select LastModifiedDate -Unique | Measure-Object | Select-Object count -ExpandProperty count            
+            $SimularityCalcLastModDate1 = [math]::Round($ShareCount/$ShareModifiedCount,4) 
+            $SimularityCalcLastModDate  =  $SimularityCalcLastModDate1 / $ShareCount
+            
+            # Calculate combined similarity score
+            # WeightFileGroup  = 4
+            # WeightFiftyP     = 3
+            # WeightFgOwnerAvg = 2             
+            # WeightCreate     = 1
+            # WeightLastMod    = 1
+            # condense into 0-1, low (0-.50), medium(.51-.80), high similary (.81-1)
+
+            $SimularityCalcShareFgFinal      = $SimularityCalcShareFg     * 4 
+            $SimularityCalc50PFinal          = $SimularityCalc50P         * 3
+            $SimularityCalcFGOwnerAvgFinal   = $SimularityCalcFGOwnerAvg  * 2
+            $SimularityCalcCreateDateFinal   = $SimularityCalcCreateDate  * 1
+            $SimularityCalcLastModDateFinal  = $SimularityCalcLastModDate * 1
+
+            # Max is 4 + 3 + 2 + 1 + 1 = 11; Min is 0
+            $SimilarityTotal = $SimularityCalcShareFgFinal + $SimularityCalc50PFinal + $SimularityCalcFGOwnerAvgFinal +$SimularityCalcCreateDateFinal + $SimularityCalcLastModDateFinal
+            $SimilarityScore = $SimilarityTotal / 11
+            $SimilarityScoreP = $SimilarityScore.tostring("P")
+            If($SimilarityScore -gt .80){ $SimLevel = "High"}
+            If($SimilarityScore -lt .80){ $SimLevel = "Medium"}
+            If($SimilarityScore -lt .50){ $SimLevel = "Low"}
+            
+
+            # Calculate similarity here - End
+            # ---- 
+
             $ThisRow = @" 
 	          <tr>
 	          <td>
@@ -1671,11 +1762,26 @@ function Invoke-HuntSMBShares
 	          <td style="vertical-align: top;">
                   <button class="collapsible">$ShareName</button>
                   <div class="content">
-                  <div class="filelistparent" style="font-size: 10px;">                                  
+                  <div class="filelistparent" style="font-size: 10px;"> 
+                      $ShareDescriptionSample<br><br> 
+                      
+                      <strong>Timeline Context</strong><br>                               
                       First  Created: $ShareFirstCreated<br>
                       Last   Created: $ShareLastCreated<br>
                       Last  Modified: $ShareLastModified<br><br>
-                      $ShareDescriptionSample
+                      
+                      <button class="collapsible" style="font-size: 10px;"><strong>$SimLevel Similarity ($SimilarityScoreP)</strong></button>
+                      <div class="content">
+                          <div class="filelist" style="font-size: 10px;" >
+                              <strong>Normalized Ratio Details</strong><br>
+                              FolderGroup:                                   $SimularityCalcShareFg<br>
+                              OwnerFG  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:       $SimularityCalcFGOwnerAvg<br>
+                              Owner    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: $SimularityCalcShareOwner<br>
+                              Majority &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:       $SimularityCalc50P<br>
+                              Created  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: $SimularityCalcCreateDate<br>
+                              LastMod  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:       $SimularityCalcLastModDate<br>
+                          </div>
+                      </div> 
                   </div>
                   </div>              
 	          </td>		 
