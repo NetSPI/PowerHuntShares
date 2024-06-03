@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.42
+# Version: v1.43
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -398,8 +398,10 @@ function Invoke-HuntSMBShares
 
             # Save results
             # Write-Output " [*] - Saving results to $OutputDirectory\$TargetDomain-Domain-Computers-Pingable.csv"
-            $ComputersPingable | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Domain-Computers-Pingable.csv"
-            $null = Convert-DataTableToHtmlTable -DataTable $ComputersPingable -Outfile "$OutputDirectory\$TargetDomain-Domain-Computers-Pingable.html" -Title "Domain Computers: Ping Response" -Description "This page shows the domain computers for the $TargetDomain Active Directory domain that responded to ping requests."
+            if($ComputersPingable){
+                $ComputersPingable | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Domain-Computers-Pingable.csv"
+                $null = Convert-DataTableToHtmlTable -DataTable $ComputersPingable -Outfile "$OutputDirectory\$TargetDomain-Domain-Computers-Pingable.html" -Title "Domain Computers: Ping Response" -Description "This page shows the domain computers for the $TargetDomain Active Directory domain that responded to ping requests."
+            }
             $ComputersPingableFile = "$TargetDomain-Domain-Computers-Pingable.csv"
             $ComputersPingableFileH =  "$TargetDomain-Domain-Computers-Pingable.html"
         }
@@ -459,9 +461,11 @@ function Invoke-HuntSMBShares
         }
 
         # Save results
-        # Write-Output " [*] - Saving results to $OutputDirectory\$TargetDomain-Domain-Computers-Open445.csv"        
-        $Computers445Open | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Domain-Computers-Open445.csv"
-        $null = Convert-DataTableToHtmlTable -DataTable $Computers445Open -Outfile "$OutputDirectory\$TargetDomain-Domain-Computers-Open445.html" -Title "Domain Computers: Port 445 Open" -Description "This page shows the domain computers for the $TargetDomain Active Directory domain with port 445 open."
+        # Write-Output " [*] - Saving results to $OutputDirectory\$TargetDomain-Domain-Computers-Open445.csv"                
+        if($Computers445Open){
+            $Computers445Open | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Domain-Computers-Open445.csv"
+            $null = Convert-DataTableToHtmlTable -DataTable $Computers445Open -Outfile "$OutputDirectory\$TargetDomain-Domain-Computers-Open445.html" -Title "Domain Computers: Port 445 Open" -Description "This page shows the domain computers for the $TargetDomain Active Directory domain with port 445 open."
+        }
         $Computers445OpenFile = "$TargetDomain-Domain-Computers-Open445.csv"
         $Computers445OpenFileH ="$TargetDomain-Domain-Computers-Open445.html"
 
@@ -1611,7 +1615,17 @@ function Invoke-HuntSMBShares
             $ComputerBar = $ShareNameBars.ComputerBar
             $ShareBar = $ShareNameBars.ShareBar
             $AclBar = $ShareNameBars.AclBar
-            #$ShareFolderGroupList = $ExcessiveSharePrivs | where sharename -like "$ShareName" | select filelistgroup -Unique | select filelistgroup -ExpandProperty filelistgroup 
+            
+            # First created
+            $ShareFirstCreated = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select creationdate | foreach{[datetime]$_.creationdate } | Sort-Object | select -First 1 | foreach {$_.tostring("MM.dd.yyyy HH:mm:ss")}
+
+            # Last created
+            $ShareLastCreated  = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select creationdate | foreach{[datetime]$_.creationdate } | Sort-Object -Descending | select -First 1 | foreach {$_.tostring("MM.dd.yyyy HH:mm:ss")}
+
+            # Last modified
+            $ShareLastModified = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select LastModifiedDate | foreach{[datetime]$_.LastModifiedDate } | Sort-Object -Descending | select -First 1 | foreach {$_.tostring("MM.dd.yyyy HH:mm:ss")}            
+
+            # Share folder group list
             $ShareFolderGroupList  = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select ShareName,FileListGroup -Unique | Group-Object FileListGroup   | sort count -Descending | select count, name | 
             foreach { 
 
@@ -1646,7 +1660,12 @@ function Invoke-HuntSMBShares
               $ShareCount
 	          </td>	
 	          <td>
-              $ShareName
+              $ShareName<br>
+              <span style="font-size: 10px;">
+              First  Created: $ShareFirstCreated<br>
+              Last   Created: $ShareLastCreated<br>
+              Last  Modified: $ShareLastModified<br>
+              </span>
 	          </td>		 
               <td>
                   
