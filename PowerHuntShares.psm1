@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.45
+# Version: v1.46
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1617,7 +1617,7 @@ function Invoke-HuntSMBShares
             $AclBar = $ShareNameBars.AclBar
             
             # Share Description
-            $ShareDescriptionSample = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | where ShareDescription  -NE "" | select ShareDescription -first 1 -expandproperty ShareDescription | foreach {"Sample Description:<br> $_"}
+            $ShareDescriptionSample = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | where ShareDescription  -NE "" | select ShareDescription -first 1 -expandproperty ShareDescription | foreach {"<strong>Sample Description</strong><br> $_"}
 
             # First created
             $ShareFirstCreated = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select creationdate | foreach{[datetime]$_.creationdate } | Sort-Object | select -First 1 | foreach {$_.tostring("MM.dd.yyyy HH:mm:ss")}
@@ -1651,10 +1651,10 @@ function Invoke-HuntSMBShares
                     $MyFdListBr = $MyFdList -replace "`n", "<br>"
 
                     $ThisFileDirList = @"
-                        <strong>$fdcount</strong> $fdname 
-                        <button class="collapsible"><span style="color:#CE112D;"></span>($FdFileCount Files) </button>
+                        <strong style="font-size: 10px;">$fdcount</strong>
+                        <button class="collapsible" style="font-size: 10px;">$fdname ($FdFileCount Files)</button>
                         <div class="content">
-                        <div class="filelist" >
+                        <div class="filelist" style="font-size: 10px;">
                         $MyFdListBr
                         </div>
                         </div>                
@@ -1690,7 +1690,7 @@ function Invoke-HuntSMBShares
               <td>
                   <button class="collapsible">$ShareOwnerListCount</button>
                   <div class="content">
-                  <div class="filelistparent">
+                  <div class="filelistparent" style="font-size: 10px;">
                   $ShareOwnerList
                   </div>
                   </div> 
