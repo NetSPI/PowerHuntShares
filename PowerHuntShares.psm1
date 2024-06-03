@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.44
+# Version: v1.45
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1616,6 +1616,9 @@ function Invoke-HuntSMBShares
             $ShareBar = $ShareNameBars.ShareBar
             $AclBar = $ShareNameBars.AclBar
             
+            # Share Description
+            $ShareDescriptionSample = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | where ShareDescription  -NE "" | select ShareDescription -first 1 -expandproperty ShareDescription | foreach {"Sample Description:<br> $_"}
+
             # First created
             $ShareFirstCreated = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select creationdate | foreach{[datetime]$_.creationdate } | Sort-Object | select -First 1 | foreach {$_.tostring("MM.dd.yyyy HH:mm:ss")}
 
@@ -1665,16 +1668,19 @@ function Invoke-HuntSMBShares
 	          <td>
               $ShareCount
 	          </td>	
-	          <td>
-              $ShareName<br>
-              <span style="font-size: 10px;">
-              First  Created: $ShareFirstCreated<br>
-              Last   Created: $ShareLastCreated<br>
-              Last  Modified: $ShareLastModified<br>
-              </span>
+	          <td style="vertical-align: top;">
+                  <button class="collapsible">$ShareName</button>
+                  <div class="content">
+                  <div class="filelistparent" style="font-size: 10px;">                                  
+                      First  Created: $ShareFirstCreated<br>
+                      Last   Created: $ShareLastCreated<br>
+                      Last  Modified: $ShareLastModified<br><br>
+                      $ShareDescriptionSample
+                  </div>
+                  </div>              
 	          </td>		 
               <td>                  
-                  <button class="collapsible"><span style="color:#CE112D;"></span>$ShareFolderGroupCount</button>
+                  <button class="collapsible">$ShareFolderGroupCount</button>
                   <div class="content">
                   <div class="filelistparent" >
                   $ShareFolderGroupList
@@ -1682,9 +1688,9 @@ function Invoke-HuntSMBShares
                   </div> 
               </td> 
               <td>
-                  <button class="collapsible"><span style="color:#CE112D;"></span>$ShareOwnerListCount</button>
+                  <button class="collapsible">$ShareOwnerListCount</button>
                   <div class="content">
-                  <div class="filelistparent" >
+                  <div class="filelistparent">
                   $ShareOwnerList
                   </div>
                   </div> 
@@ -3656,7 +3662,7 @@ This section contains a list of the most common SMB share names. In some cases, 
     <tr>      
       <th align="left">Share Count</th> 
       <th align="left">Share Name</th>
-      <th align="left">Unique Folder Group Count</th>
+      <th align="left">Unique Folder Groups</th>
       <th align="left">Unique Owners</th>
       <th align="left">Affected Computers</th>
 	  <th align="left">Affected Shares</th>
