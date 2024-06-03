@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.43
+# Version: v1.44
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1625,6 +1625,12 @@ function Invoke-HuntSMBShares
             # Last modified
             $ShareLastModified = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select LastModifiedDate | foreach{[datetime]$_.LastModifiedDate } | Sort-Object -Descending | select -First 1 | foreach {$_.tostring("MM.dd.yyyy HH:mm:ss")}            
 
+            # Share owner list
+            $ShareOwnerList = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | Sort-Object | select ShareOwner -Unique -ExpandProperty  ShareOwner
+            
+            # Share owner list count
+            $ShareOwnerListCount = $ShareOwnerList | measure-object | select count -expandproperty count                
+
             # Share folder group list
             $ShareFolderGroupList  = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select ShareName,FileListGroup -Unique | Group-Object FileListGroup   | sort count -Descending | select count, name | 
             foreach { 
@@ -1667,8 +1673,7 @@ function Invoke-HuntSMBShares
               Last  Modified: $ShareLastModified<br>
               </span>
 	          </td>		 
-              <td>
-                  
+              <td>                  
                   <button class="collapsible"><span style="color:#CE112D;"></span>$ShareFolderGroupCount</button>
                   <div class="content">
                   <div class="filelistparent" >
@@ -1676,6 +1681,14 @@ function Invoke-HuntSMBShares
                   </div>
                   </div> 
               </td> 
+              <td>
+                  <button class="collapsible"><span style="color:#CE112D;"></span>$ShareOwnerListCount</button>
+                  <div class="content">
+                  <div class="filelistparent" >
+                  $ShareOwnerList
+                  </div>
+                  </div> 
+              </td>
 	          <td>
 	          $ComputerBar     	 
 	          </td>		  
@@ -3644,6 +3657,7 @@ This section contains a list of the most common SMB share names. In some cases, 
       <th align="left">Share Count</th> 
       <th align="left">Share Name</th>
       <th align="left">Unique Folder Group Count</th>
+      <th align="left">Unique Owners</th>
       <th align="left">Affected Computers</th>
 	  <th align="left">Affected Shares</th>
 	  <th align="left">Affected ACLs</th>	 	 
