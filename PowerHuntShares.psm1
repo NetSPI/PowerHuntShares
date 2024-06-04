@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.48
+# Version: v1.49
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1556,9 +1556,9 @@ function Invoke-HuntSMBShares
 		$SourceHost = (hostname) 
 
         # Get share list string list
-       $CommonShareFileGroupTopString = $CommonShareFileGroupTop5 |
+        $CommonShareFileGroupTopString = $CommonShareFileGroupTop5 |
         foreach {
-            $FileGroupName = $_.name              
+            $FileGroupName = $_.name                          
             $ThisFileBars = Get-GroupFileBar -DataTable $ExcessiveSharePrivs -Name $FileGroupName -AllComputerCount $ComputerCount -AllShareCount $AllSMBSharesCount -AllAclCount $ShareACLsCount
             $ComputerBarF = $ThisFileBars.ComputerBar
             $ShareBarF = $ThisFileBars.ShareBar
@@ -1567,10 +1567,16 @@ function Invoke-HuntSMBShares
             $ThisFileList = $ThisFileListPrep -replace "`n", "<br>"          
             $ThisFileCount = $ThisFileBars.FileCount
             $ThisFileShareCount = $ThisFileBars.Sharecount
+            $ThisFileShareNameList = $ExcessiveSharePrivs | where FileListGroup -eq $FileGroupName | select ShareName -unique -expandproperty sharename | foreach { "$_ <br>"}
             $ThisRow = @" 
 	          <tr>	
 	          <td>
-              $ThisFileShareCount
+                <button class="collapsible">$ThisFileShareCount</button>
+                <div class="content">
+                    <div class="filelist" >
+                    $ThisFileShareNameList
+                    </div>
+                </div>
 	          </td>
 	          <td>
               $FileGroupName
