@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.49
+# Version: v1.50
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1774,15 +1774,15 @@ function Invoke-HuntSMBShares
                       
                       <strong>Timeline Context</strong><br>   
                       <table class="subtable">
-                       <tr>
+                       <tr id="ignore">
                         <td>First Created:</td>                          
                         <td>&nbsp;$ShareFirstCreated</td> 
                        </tr>
-                       <tr>
+                       <tr id="ignore">
                         <td>Last Created:</td> 
                         <td>&nbsp;$ShareLastCreated</td> 
                        </tr>
-                       <tr>
+                       <tr id="ignore">
                         <td>Last Modified:</td> 
                         <td>&nbsp;$ShareLastModified</td> 
                        </tr>
@@ -1796,22 +1796,22 @@ function Invoke-HuntSMBShares
                         <div class="filelist" style="font-size: 10px;">
                             <strong>Normalized Ratio Details</strong><br>
                             <table class="subtable">
-                                <tr>
+                                <tr id="ignore">
                                     <td>FolderGroup:</td><td>&nbsp;$SimularityCalcShareFg</td>
                                 </tr>
-                                <tr>
+                                <tr id="ignore">
                                     <td>OwnerFG:</td><td>&nbsp;$SimularityCalcFGOwnerAvg</td>
                                 </tr>
-                                <tr>
+                                <tr id="ignore">
                                     <td>Owner:</td><td>&nbsp;$SimularityCalcShareOwner</td>
                                 </tr>
-                                <tr>
+                                <tr id="ignore">
                                     <td>MajorityExists:</td><td>&nbsp;$SimularityCalc50P</td>
                                 </tr>
-                                <tr>
+                                <tr id="ignore">
                                     <td>Created:</td><td>&nbsp;$SimularityCalcCreateDate</td>
                                 </tr>
-                                <tr>
+                                <tr id="ignore">
                                     <td>LastMod:</td><td>&nbsp;$SimularityCalcLastModDate</td>
                                 </tr>
                              </table> 
@@ -3870,8 +3870,8 @@ This section contains a list of the most common SMB share names. In some cases, 
 </div>
 
 <div style="border-bottom: 1px solid #DEDFE1 ;  background-color:#f0f3f5; height:5px; margin-bottom:10px;"></div>
-
-<table class="table table-striped table-hover tabledrop">
+<input type="text" id="sharenameinput" onkeyup="filterTable()" placeholder="Search..." style="margin-left:10px;">
+<table id="sharenametable" class="table table-striped table-hover tabledrop">
   <thead>
     <tr>      
       <th align="left">Shares</th> 
@@ -4432,6 +4432,30 @@ for (i = 0; i < coll.length; i++) {
     } 
   });
 }
+
+        function filterTable() {
+            var filterdata, filter1, filterdata2, filter2, table, tr, td, i, j, txtValue;
+            filterdata = document.getElementById("sharenameinput");
+            filter1 = filterdata.value.toUpperCase();
+            table = document.getElementById("sharenametable");
+            tr = table.getElementsByTagName("tr");
+
+            for (i = 1; i < tr.length; i++) {
+                if(tr[i].id !== "ignore") {
+                    tr[i].style.display = "none";
+                    td = tr[i].getElementsByTagName("td");
+                    for (j = 0; j < td.length; j++) {
+                        if (td[j]) {
+                            txtValue = td[j].textContent || td[j].innerText;
+                            if (td[1].innerText.toUpperCase().indexOf(filter1) > -1) {
+                                tr[i].style.display = "";
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
 </script>
 </div>
 </div>
