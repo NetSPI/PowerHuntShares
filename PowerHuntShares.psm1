@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.47
+# Version: v1.48
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1611,13 +1611,13 @@ function Invoke-HuntSMBShares
             $ShareCount = $_.count
             $ShareName = $_.name
             $ShareFolderGroupCount = $ExcessiveSharePrivs | where sharename -like "$ShareName" | select filelistgroup -Unique | measure | select count -ExpandProperty count 
-            $ShareNameBars = Get-GroupNameBar -DataTable $ExcessiveSharePrivs -Name $ShareName -AllComputerCount $ComputerCount -AllShareCount $AllSMBSharesCount -AllAclCount $ShareACLsCount
+            $ShareNameBars = Get-GroupNameNoBar -DataTable $ExcessiveSharePrivs -Name $ShareName -AllComputerCount $ComputerCount -AllShareCount $AllSMBSharesCount -AllAclCount $ShareACLsCount
             $ComputerBar = $ShareNameBars.ComputerBar
             $ShareBar = $ShareNameBars.ShareBar
             $AclBar = $ShareNameBars.AclBar            
             
             # Share Description
-            $ShareDescriptionSample = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | where ShareDescription  -NE "" | select ShareDescription -first 1 -expandproperty ShareDescription | foreach {"<strong>Sample Description</strong><br> $_"}
+            $ShareDescriptionSample = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | where ShareDescription  -NE "" | select ShareDescription -first 1 -expandproperty ShareDescription | foreach {"<strong>Sample Description</strong><br> $_ <br><br> "}
 
             # First created
             $ShareFirstCreated = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select creationdate | foreach{[datetime]$_.creationdate } | Sort-Object | select -First 1 | foreach {$_.tostring("MM/dd/yyyy HH:mm:ss")}
@@ -1745,7 +1745,8 @@ function Invoke-HuntSMBShares
             # Max is 4 + 3 + 2 + 1 + 1 = 11; Min is 0
             $SimilarityTotal = $SimularityCalcShareFgFinal + $SimularityCalc50PFinal + $SimularityCalcFGOwnerAvgFinal +$SimularityCalcCreateDateFinal + $SimularityCalcLastModDateFinal
             $SimilarityScore = $SimilarityTotal / 11
-            $SimilarityScoreP = $SimilarityScore.tostring("P")
+            $SimilarityScoreP1 =  [math]::round(($SimilarityScore.tostring("P") -replace('%','')))
+            $SimilarityScoreP = "$SimilarityScoreP1%"
             If($SimilarityScore -gt .80){ $SimLevel = "High"}
             If($SimilarityScore -lt .80){ $SimLevel = "Medium"}
             If($SimilarityScore -lt .50){ $SimLevel = "Low"}
@@ -1763,28 +1764,54 @@ function Invoke-HuntSMBShares
                   <button class="collapsible">$ShareName</button>
                   <div class="content">
                   <div class="filelistparent" style="font-size: 10px;"> 
-                      $ShareDescriptionSample<br><br> 
+                      $ShareDescriptionSample
                       
-                      <strong>Timeline Context</strong><br>                               
-                      First  Created: $ShareFirstCreated<br>
-                      Last   Created: $ShareLastCreated<br>
-                      Last  Modified: $ShareLastModified<br><br>
-                      
-                      <button class="collapsible" style="font-size: 10px;"><strong>$SimLevel Similarity ($SimilarityScoreP)</strong></button>
-                      <div class="content">
-                          <div class="filelist" style="font-size: 10px;" >
-                              <strong>Normalized Ratio Details</strong><br>
-                              FolderGroup:                                   $SimularityCalcShareFg<br>
-                              OwnerFG  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:       $SimularityCalcFGOwnerAvg<br>
-                              Owner    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: $SimularityCalcShareOwner<br>
-                              Majority &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:       $SimularityCalc50P<br>
-                              Created  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: $SimularityCalcCreateDate<br>
-                              LastMod  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:       $SimularityCalcLastModDate<br>
-                          </div>
-                      </div> 
+                      <strong>Timeline Context</strong><br>   
+                      <table class="subtable">
+                       <tr>
+                        <td>First Created:</td>                          
+                        <td>&nbsp;$ShareFirstCreated</td> 
+                       </tr>
+                       <tr>
+                        <td>Last Created:</td> 
+                        <td>&nbsp;$ShareLastCreated</td> 
+                       </tr>
+                       <tr>
+                        <td>Last Modified:</td> 
+                        <td>&nbsp;$ShareLastModified</td> 
+                       </tr>
+                      </table>                       
                   </div>
                   </div>              
 	          </td>		 
+	          <td>
+                <button class="collapsible" style="font-size: 10px;"><strong>$SimLevel ($SimilarityScoreP)</strong></button>
+                    <div class="content">
+                        <div class="filelist" style="font-size: 10px;">
+                            <strong>Normalized Ratio Details</strong><br>
+                            <table class="subtable">
+                                <tr>
+                                    <td>FolderGroup:</td><td>&nbsp;$SimularityCalcShareFg</td>
+                                </tr>
+                                <tr>
+                                    <td>OwnerFG:</td><td>&nbsp;$SimularityCalcFGOwnerAvg</td>
+                                </tr>
+                                <tr>
+                                    <td>Owner:</td><td>&nbsp;$SimularityCalcShareOwner</td>
+                                </tr>
+                                <tr>
+                                    <td>MajorityExists:</td><td>&nbsp;$SimularityCalc50P</td>
+                                </tr>
+                                <tr>
+                                    <td>Created:</td><td>&nbsp;$SimularityCalcCreateDate</td>
+                                </tr>
+                                <tr>
+                                    <td>LastMod:</td><td>&nbsp;$SimularityCalcLastModDate</td>
+                                </tr>
+                             </table> 
+                        </div>
+                    </div>	              	 
+	          </td>	
               <td>                  
                   <button class="collapsible">$ShareFolderGroupCount</button>
                   <div class="content">
@@ -1800,15 +1827,14 @@ function Invoke-HuntSMBShares
                   $ShareOwnerList
                   </div>
                   </div> 
-              </td>
-	          <td>
-	          $ComputerBar     	 
-	          </td>		  
-	          <td>
-	          $ShareBar    	 
+              </td>	  
+	          <td style="font-size: 10px;">
+              $ComputerBar
+	          $ShareBar
+              $AclBar  
 	          </td>  
 	          <td>
-	          $AclBar     	 
+	            PLACEHOLDER	 
 	          </td>          	  
 	          </tr>
 "@              
@@ -2105,6 +2131,69 @@ $NewHtmlReport = @"
 		vertical-align:top;
 		border-top:1px solid #eceeef
 	}
+
+	.subtable{
+		all: unset;
+        margin: 0;
+        padding: 0;
+        border: none;
+        background: none;
+        color: initial;
+        text-align: left;
+		font-family:"Proxima Nova","Open Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+		font-size:10px;	
+        border-collapse: unset;
+	}
+
+	.subtable td {
+		background: none;	
+        font-size:10px;	
+        text-align: left;
+        margin: 0;
+        padding: 0;
+        border: none;
+        border-collapse: unset;
+	}
+
+	.subtable tr {
+		background: none;	
+        font-size:10px;	
+        text-align: left;
+        margin: 0;
+        padding: 0;
+        border: none;
+        border-collapse: unset;
+	}
+
+	.subtable tbody td:nth-child(1) {
+		background: none;	
+        font-size:10px;	
+        text-align: left;
+        margin: 0;
+        padding: 0;
+        border: none;
+        border-collapse: unset;
+	}
+
+	.subtable  tbody tr:nth-of-type(odd) {
+		background: none;	
+        font-size:10px;
+        text-align: left;
+        margin: 0;
+        padding: 0;
+        border: none;
+        border-collapse: unset;
+	}
+
+	.subtable  tbody tr:hover {
+		background: none;	
+        font-size:10px;	
+        text-align: left;
+        margin: 0;
+        padding: 0;
+        border: none;
+        border-collapse: unset;
+	}
 	
 	h2{
 		font-size:2rem
@@ -2396,6 +2485,19 @@ $NewHtmlReport = @"
 		padding-top: 5px;
 		padding-bottom: 20px;
 		padding-left:15px;
+	}
+
+	.subexpandnocolor {
+		font-size: 14;
+		font-family:"Open Sans", sans-serif;
+		color:#666;
+		background-color:none;
+		border-radius: 0px;
+		padding: 5px;
+		margin-top: 5px;
+		margin-right: 5px;
+		margin-bottom: 5px;
+		width: 90%		
 	}	
 
 	.filelist {
@@ -3766,13 +3868,13 @@ This section contains a list of the most common SMB share names. In some cases, 
 <table class="table table-striped table-hover tabledrop">
   <thead>
     <tr>      
-      <th align="left">Share Count</th> 
+      <th align="left">Shares</th> 
       <th align="left">Share Name</th>
-      <th align="left">Unique Folder Groups</th>
-      <th align="left">Unique Owners</th>
-      <th align="left">Affected Computers</th>
-	  <th align="left">Affected Shares</th>
-	  <th align="left">Affected ACLs</th>	 	 
+      <th align="left">Similarity</th>
+      <th align="left">Folder Groups</th>
+      <th align="left">Share Owners</th>      
+	  <th align="left">Affected Assets</th>
+	  <th align="left">Timeline</th>	 	 
     </tr>
   </thead>
     <tbody>
@@ -5610,6 +5712,72 @@ function Get-GroupNameBar
     $UserComputerPercentString = $UserComputerPercent.tostring("P") -replace(" ","")
     $UserComputerPercentBarVal = ($UserComputerPercent *2).tostring("P") -replace(" %","px")
     $UserComputerPercentBarCode = "<span class=`"dashboardsub2`">$UserComputerPercentString ($UserComputerCount of $AllComputerCount)</span><br><div class=`"divbarDomain`"><div class=`"divbarDomainInside`" style=`"width: $UserComputerPercentString;`"></div></div>"
+
+    # Return object with all counts
+    $TheCounts = new-object psobject            
+    $TheCounts | add-member  Noteproperty ComputerBar   $UserComputerPercentBarCode
+    $TheCounts | add-member  Noteproperty ShareBar      $UserSharePercentBarCode    
+    $TheCounts | add-member  Noteproperty AclBar        $UserAclsPercentBarCode
+    $TheCounts
+}
+
+# -------------------------------------------
+# Function: Get-GroupNameNoBar
+# -------------------------------------------
+function Get-GroupNameNoBar
+{
+    param (
+        $DataTable,
+        $Name,
+        $AllComputerCount,
+        $AllShareCount,
+        $AllAclCount
+    )
+
+    # Get acl counts
+    $UserAcls = $DataTable | Where ShareName -like "$Name" | Select-Object ComputerName, ShareName, SharePath, FileSystemRights
+    $UserAclsCount = $UserAcls | measure | select count -ExpandProperty count
+    $UserAclsPercent = [math]::Round($UserAclsCount/$AllAclCount,4)
+    $UserAclsPercentString = $UserAclsPercent.tostring("P") -replace(" ","")
+    $UserAclsPercentBarVal = ($UserAclsPercent *2).tostring("P") -replace(" %","px")
+    $UserAclsPercentBarCode = @"                    
+                    <button class="collapsible" style="font-size: 10px;"><strong>$UserAclsCount</strong> Acls</button>
+                    <div class="content">
+                        <div class="subexpandnocolor" style="font-size: 10px; background-color: none;" >
+                        $UserAclsCount of $AllAclCount ($UserAclsPercentString)
+                        </div>
+                    </div>
+"@
+
+    # Get share counts
+    $UserShare = $UserAcls | Select-Object SharePath -Unique
+    $UserShareCount = $UserShare | measure | select count -ExpandProperty count
+    $UserSharePercent = [math]::Round($UserShareCount/$AllShareCount,4)
+    $UserSharePercentString = $UserSharePercent.tostring("P") -replace(" ","")
+    $UserSharePercentBarVal = ($UserSharePercent *2).tostring("P") -replace(" %","px")
+    $UserSharePercentBarCode = @"
+                    <button class="collapsible" style="font-size: 10px;"><strong>$UserShareCount</strong> Shares</button>
+                    <div class="content">
+                        <div class="subexpandnocolor" style="font-size: 10px; background-color: none;" >
+                        $UserShareCount of $AllShareCount ($UserSharePercentString)
+                        </div>
+                    </div>
+"@
+
+    # Get computer counts
+    $UserComputer = $UserAcls | Select-Object ComputerName -Unique
+    $UserComputerCount = $UserComputer | measure | select count -ExpandProperty count   
+    $UserComputerPercent = [math]::Round($UserComputerCount/$AllComputerCount,4)
+    $UserComputerPercentString = $UserComputerPercent.tostring("P") -replace(" ","")
+    $UserComputerPercentBarVal = ($UserComputerPercent *2).tostring("P") -replace(" %","px")
+    $UserComputerPercentBarCode = @"
+                        <button class="collapsible" style="font-size: 10px;"><strong>$UserComputerCount</strong> Computers</button>
+                    <div class="content">
+                        <div class="subexpandnocolor" style="font-size: 10px; background-color: none;" >
+                        $UserComputerCount of $AllComputerCount ($UserComputerPercentString)
+                        </div>
+                    </div>
+"@
 
     # Return object with all counts
     $TheCounts = new-object psobject            
