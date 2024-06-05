@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.51
+# Version: v1.52
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1547,6 +1547,7 @@ function Invoke-HuntSMBShares
             Write-Output " [*][$Time]   - $ShareCount $ShareName"   
         }
         Write-Output " [*] -----------------------------------------------"
+        Write-Output " [*][$Time]   - Generating HTML Report" 
         
         # ----------------------------------------------------------------------
         # Display final summary - NEW HTML REPORT
@@ -1670,8 +1671,7 @@ function Invoke-HuntSMBShares
             }
 
             # ----
-            # Calculate similarity here - Start
-            # How do i deal with divid by 1...?
+            # Calculate similarity here - START
 
             # Calculate share to file group ratio: 0 to 1           
             # min value = 0
@@ -1758,8 +1758,82 @@ function Invoke-HuntSMBShares
             If($SimilarityScore -lt .50){ $SimLevel = "Low"}
             
 
-            # Calculate similarity here - End
+            # Calculate similarity here - END
             # ---- 
+            ######
+            # ---- 
+            # Calculate peak event date range - START
+            # Assumptions: a) if only two unique dates exist, then both will be included in the observation window. 
+
+            # Count total number of events
+            $ShareEventCountTotal = $ExcessivePrivileges | where sharename -eq "$ShareName" | select SharePath, CreationDate -unique | measure | select count -expandproperty count
+
+            # Identify the first event date
+            $ShareEventFirst = $ExcessivePrivileges | where sharename -eq "$ShareName" | select SharePath, CreationDate -unique | foreach {[datetime]$_.CreationDate} | sort | select -first 1
+
+            # Identify the last event date
+            $ShareEventLast = $ExcessivePrivileges | where sharename -eq "$ShareName" | select SharePath, CreationDate -unique | foreach {[datetime]$_.CreationDate} | sort -desc | select -first 1
+
+            # Determine total time between start and end of all events
+            [timespan]$ShareEventTotalTime = $ShareEventLast -  $ShareEventFirst
+
+            # Calculate the observation window date range based on the largest interval between events
+            $ShareEventsSorted = $ExcessivePrivileges | where sharename -eq "$ShareName" | select SharePath, CreationDate -unique | foreach {[datetime]$_.CreationDate} | sort 
+            [timespan]$ObservationWindow = "00:00:00"
+            $ShareEventsSorted |
+            foreach {                
+                 [timespan]$Diff = ($_ - $ShareEventFirst )               
+                 if($ObservationWindow -lt $Diff){
+                    [timespan]$ObservationWindow = $Diff
+                 }                 
+            }          
+
+            # Set initial observation window start and end dates
+            $ObservationWindowStartDate = $ShareEventFirst
+            $ObservationWindowsEndDate  = $ShareEventFirst + $ObservationWindow
+            [datetime]$ObvWinnerFirst = '00:00:00'
+            [datetime]$ObvWinnerLast = '00:00:00'
+            $ObservationWindowRangecountWinner = 0
+            $ObservationWindowsBiggest = 0
+            $ObservationWindowsBiggestObject = ""
+            if($ShareEventTotalTime.TotalMinutes -eq 0 -and $ObservationWindow.TotalMinutes -eq 0){
+                $ObservationWindowInstanceCount = 0
+            }else{
+                $ObservationWindowInstanceCount = $ShareEventTotalTime.TotalMinutes / $ObservationWindow.TotalMinutes
+            }
+
+            # Iterate through the observeration windows to identify the one with the greatest number of events
+            1..$ObservationWindowInstanceCount |
+            Foreach{                                      
+
+                    # Select range and get count
+                    $ObservationWindowRangecount = $ShareEventsSorted | Where-Object { $_ -ge $ObservationWindowStartDate -and $_ -le $ObservationWindowsEndDate} | measure | select count -expandproperty count                                                   
+
+                    # Check if count is bigger than last, if so set tracker
+                    if($ObservationWindowsBiggest -le $ObservationWindowRangecount){
+
+                        # Get window first date
+                        [datetime]$ObvWinnerFirst = $ShareEventsSorted | Where-Object { $_ -ge $ObservationWindowStartDate -and $_ -le $ObservationWindowsEndDate} | select -first 1                        
+
+                        # Get window last date
+                        [datetime]$ObvWinnerLast = $ShareEventsSorted | Where-Object { $_ -ge $ObservationWindowStartDate -and $_ -le $ObservationWindowsEndDate} | sort -desc | select -first 1
+
+                        $ObservationWindowRangecountWinner = $ObservationWindowRangecount                         
+
+                        # Create object
+                        # $ObservationWindowsBiggestObject = [PSCustomObject]@{ TotalCount = $ShareEventCountTotal; WindowCount = $ObservationWindowRangecount; WindowFirstDate = [datetime]$ObvWinnerFirst; WindowLastDate = [datetime]$ObvWinnerLast}
+                    }
+
+                    # Set $ObservationWindowStartDate to $ObservationWindowsEndDate
+                    $ObservationWindowStartDate = $ObservationWindowsEndDate 
+
+                    # Set $ObservationWindowsEndDate to $ObservationWindowsEndDate + $ObservationWindow
+                    $ObservationWindowsEndDate  = $ObservationWindowsEndDate + $ObservationWindow
+             }
+
+            # Calculate peak event date range - END
+            # ---- 
+
 
             $ThisRow = @" 
 	          <tr>
@@ -1785,6 +1859,28 @@ function Invoke-HuntSMBShares
                        <tr id="ignore">
                         <td>Last Modified:</td> 
                         <td>&nbsp;$ShareLastModified</td> 
+                       </tr>
+                       </table>   
+
+                      <br><br>
+
+                      <strong>Peak Window Details</strong><br>
+                      <table class="subtable">
+                       <tr id="ignore">
+                        <td>Total Share Instances:</td>                          
+                        <td>&nbsp;$ShareEventCountTotal</td> 
+                       </tr>
+                       <tr id="ignore">
+                        <td>Peak Window Instances:</td> 
+                        <td>&nbsp;$ObservationWindowRangecountWinner</td> 
+                       </tr>
+                       <tr id="ignore">
+                        <td>Peak Window Start:</td> 
+                        <td>&nbsp;$ObvWinnerFirst</td> 
+                       </tr>
+                       <tr id="ignore">
+                        <td>Peak Window End:</td> 
+                        <td>&nbsp;$ObvWinnerLast</td> 
                        </tr>
                       </table>                       
                   </div>
@@ -4478,9 +4574,10 @@ $NewHtmlReport | Out-File "$OutputDirectoryBase\Summary-Report.html"
         # ----------------------------------------------------------------------
         # Generate Excessive Privilege Findings
         # ----------------------------------------------------------------------
-        if($ExportFindings){           
-                        
-            Write-Output " [*] Generating exccessive privileges export."        
+        if($ExportFindings){ 
+                      
+             $Time =  Get-Date -UFormat "%m/%d/%Y %R"           
+             Write-Output " [*][$Time]   - Generating exccessive privileges export."                    
 
             # Define excessive priv fields           
             $ExcessivePrivID = "M:2989294"
@@ -4605,7 +4702,8 @@ The 5 most common share names are:
         # ----------------------------------------------------------------------
         if($ExportFindings){
 
-            Write-Output " [*] Generating HIGH RISK exccessive privileges export." 
+            $Time =  Get-Date -UFormat "%m/%d/%Y %R"    
+            Write-Output " [*][$Time]   - Generating HIGH RISK exccessive privileges export." 
 
             # Define excessive priv fields 
             $ExcessivehighRiskID = "MAN:M:e581ab69-a0fc-4cb1-a7ff-87256c1a9e91"
@@ -5589,8 +5687,7 @@ function Get-CardLastModified
     </div>
 '@
 
-    $HTMLEND
-
+    $HTMLEND    
 }
 
 # -------------------------------------------
