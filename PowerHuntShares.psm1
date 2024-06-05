@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.50
+# Version: v1.51
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1793,7 +1793,7 @@ function Invoke-HuntSMBShares
 	          <td>
                 <button class="collapsible" style="font-size: 10px;"><strong>$SimLevel ($SimilarityScoreP)</strong></button>
                     <div class="content">
-                        <div class="filelist" style="font-size: 10px;">
+                        <div class="filelistparent" style="font-size: 10px;">
                             <strong>Normalized Ratio Details</strong><br>
                             <table class="subtable">
                                 <tr id="ignore">
