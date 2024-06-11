@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.55
+# Version: v1.56
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1643,7 +1643,7 @@ function Invoke-HuntSMBShares
             $ShareOwnerListCount = $ShareOwnerList | select -Unique | measure-object | select count -expandproperty count               
 
             # Share folder group list
-            $ShareFolderGroupList  = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select ShareName,FileListGroup -Unique | Group-Object FileListGroup   | sort count -Descending | select count, name | 
+            $ShareFolderGroupList  = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select SharePath,FileListGroup -Unique | Group-Object FileListGroup   | sort count -Descending | select count, name | 
             foreach { 
 
                 $fdcount = $_.count; 
@@ -1935,10 +1935,7 @@ function Invoke-HuntSMBShares
               $ComputerBar
 	          $ShareBar
               $AclBar  
-	          </td>  
-	          <td>
-	            PLACEHOLDER	 
-	          </td>          	  
+	          </td>            	  
 	          </tr>
 "@              
             $ThisRow  
@@ -3976,8 +3973,7 @@ This section contains a list of the most common SMB share names. In some cases, 
       <th align="left">Similarity</th>
       <th align="left">Folder Groups</th>
       <th align="left">Share Owners</th>      
-	  <th align="left">Affected Assets</th>
-	  <th align="left">Timeline</th>	 	 
+	  <th align="left">Affected Assets</th>	 	 
     </tr>
   </thead>
     <tbody>
