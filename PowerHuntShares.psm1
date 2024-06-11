@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.52
+# Version: v1.53
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1637,6 +1637,7 @@ function Invoke-HuntSMBShares
 
             # Share owner list
             $ShareOwnerList = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | Sort-Object | select ShareOwner -Unique -ExpandProperty ShareOwner
+            $ShareOwnerListHTML = $ShareOwnerList | foreach{ "$_ <br>"}
             
             # Share owner list count
             $ShareOwnerListCount = $ShareOwnerList | select -Unique | measure-object | select count -expandproperty count               
@@ -1926,7 +1927,7 @@ function Invoke-HuntSMBShares
                   <button class="collapsible">$ShareOwnerListCount</button>
                   <div class="content">
                   <div class="filelistparent" style="font-size: 10px;">
-                  $ShareOwnerList
+                  $ShareOwnerListHTML
                   </div>
                   </div> 
               </td>	  
