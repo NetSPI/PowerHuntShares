@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.53
+# Version: v1.54
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1713,6 +1713,7 @@ function Invoke-HuntSMBShares
             # divide the number of instances by individual
             # foreach loop until yes.
             $fiftyorgreater = 0
+            $SimularityCalc50P = 0
             $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select ShareName,FileListGroup -Unique | Group-Object FileListGroup   | sort count -Descending | select count, name |
             foreach{
                 
@@ -1743,11 +1744,11 @@ function Invoke-HuntSMBShares
             # WeightLastMod    = 1
             # condense into 0-1, low (0-.50), medium(.51-.80), high similary (.81-1)
 
-            $SimularityCalcShareFgFinal      = $SimularityCalcShareFg     * 4 
-            $SimularityCalc50PFinal          = $SimularityCalc50P         * 3
-            $SimularityCalcFGOwnerAvgFinal   = $SimularityCalcFGOwnerAvg  * 2
-            $SimularityCalcCreateDateFinal   = $SimularityCalcCreateDate  * 1
-            $SimularityCalcLastModDateFinal  = $SimularityCalcLastModDate * 1
+            $SimularityCalcShareFgFinal      = $SimularityCalcShareFg     * 4  # File group ratio 
+            $SimularityCalc50PFinal          = $SimularityCalc50P         * 3  # A file group exists with 50% or more
+            $SimularityCalcFGOwnerAvgFinal   = $SimularityCalcFGOwnerAvg  * 2  # Owner to share file group ratio average
+            $SimularityCalcCreateDateFinal   = $SimularityCalcCreateDate  * 1  # Share to creation date ratio
+            $SimularityCalcLastModDateFinal  = $SimularityCalcLastModDate * 1  # Share to modification date ratio
 
             # Max is 4 + 3 + 2 + 1 + 1 = 11; Min is 0
             $SimilarityTotal = $SimularityCalcShareFgFinal + $SimularityCalc50PFinal + $SimularityCalcFGOwnerAvgFinal +$SimularityCalcCreateDateFinal + $SimularityCalcLastModDateFinal
@@ -1756,8 +1757,7 @@ function Invoke-HuntSMBShares
             $SimilarityScoreP = "$SimilarityScoreP1%"
             If($SimilarityScore -gt .80){ $SimLevel = "High"}
             If($SimilarityScore -lt .80){ $SimLevel = "Medium"}
-            If($SimilarityScore -lt .50){ $SimLevel = "Low"}
-            
+            If($SimilarityScore -lt .50){ $SimLevel = "Low"}                       
 
             # Calculate similarity here - END
             # ---- 
