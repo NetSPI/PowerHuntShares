@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.54
+# Version: v1.55
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1767,19 +1767,19 @@ function Invoke-HuntSMBShares
             # Assumptions: a) if only two unique dates exist, then both will be included in the observation window. 
 
             # Count total number of events
-            $ShareEventCountTotal = $ExcessivePrivileges | where sharename -eq "$ShareName" | select SharePath, CreationDate -unique | measure | select count -expandproperty count
+            $ShareEventCountTotal = $ExcessiveSharePrivs | where sharename -eq "$ShareName" | select SharePath, CreationDate -unique | measure | select count -expandproperty count
 
             # Identify the first event date
-            $ShareEventFirst = $ExcessivePrivileges | where sharename -eq "$ShareName" | select SharePath, CreationDate -unique | foreach {[datetime]$_.CreationDate} | sort | select -first 1
+            $ShareEventFirst = $ExcessiveSharePrivs | where sharename -eq "$ShareName" | select SharePath, CreationDate -unique | foreach {[datetime]$_.CreationDate} | sort | select -first 1
 
             # Identify the last event date
-            $ShareEventLast = $ExcessivePrivileges | where sharename -eq "$ShareName" | select SharePath, CreationDate -unique | foreach {[datetime]$_.CreationDate} | sort -desc | select -first 1
+            $ShareEventLast = $ExcessiveSharePrivs | where sharename -eq "$ShareName" | select SharePath, CreationDate -unique | foreach {[datetime]$_.CreationDate} | sort -desc | select -first 1
 
             # Determine total time between start and end of all events
             [timespan]$ShareEventTotalTime = $ShareEventLast -  $ShareEventFirst
 
             # Calculate the observation window date range based on the largest interval between events
-            $ShareEventsSorted = $ExcessivePrivileges | where sharename -eq "$ShareName" | select SharePath, CreationDate -unique | foreach {[datetime]$_.CreationDate} | sort 
+            $ShareEventsSorted = $ExcessiveSharePrivs | where sharename -eq "$ShareName" | select SharePath, CreationDate -unique | foreach {[datetime]$_.CreationDate} | sort 
             [timespan]$ObservationWindow = "00:00:00"
             $ShareEventsSorted |
             foreach {                
