@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.56
+# Version: v1.57
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1620,8 +1620,8 @@ function Invoke-HuntSMBShares
             $ShareFolderGroupCount = $ExcessiveSharePrivs | where sharename -like "$ShareName" | select filelistgroup -Unique | measure | select count -ExpandProperty count 
             $ShareNameBars = Get-GroupNameNoBar -DataTable $ExcessiveSharePrivs -Name $ShareName -AllComputerCount $ComputerCount -AllShareCount $AllSMBSharesCount -AllAclCount $ShareACLsCount
             $ComputerBar = $ShareNameBars.ComputerBar
-            $ShareBar = $ShareNameBars.ShareBar
-            $AclBar = $ShareNameBars.AclBar            
+            $ShareBar    = $ShareNameBars.ShareBar
+            $AclBar      = $ShareNameBars.AclBar            
             
             # Share Description
             $ShareDescriptionSample = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | where ShareDescription  -NE "" | select ShareDescription -first 1 -expandproperty ShareDescription | foreach {"<strong>Sample Description</strong><br> $_ <br><br> "}
@@ -2118,6 +2118,7 @@ $NewHtmlReport = @"
 		text-decoration: none;
 		padding-top:5px;
 		padding-bottom:5px;
+        color: white;
 	}	
 	
 
@@ -2126,6 +2127,7 @@ $NewHtmlReport = @"
 		background-color:#5D5C5C;		
 		width:auto;		
 		padding-left: 15px;	
+        color: white;
 	}	
 	
 	.stuff:visited {
@@ -2199,7 +2201,7 @@ $NewHtmlReport = @"
 	
 	table thead th{
 		vertical-align:bottom;
-		background-color: #3D3935;
+		background-color: #07142A;
 		color:white;
 		border:1px solid #3D3935;
 	}
@@ -2328,7 +2330,7 @@ $NewHtmlReport = @"
 		font-size:1rem;
 		color:#bd4147;
 		background-color:#f7f7f9;
-		-border-radius:.25rem
+		--border-radius:.25rem
 	}
 	
 	p{
@@ -2400,14 +2402,14 @@ $NewHtmlReport = @"
 		font-weight:bold;
 		--color:#9B3722;
 		--color:#CE112D;
-		color:#222222;
+		color:#07142A;
 	}
 	
 	.pagetitlesub {
 		font-size: 20;
 		font-weight:bold;
 		--color:#9B3722;
-		color:#CE112D;
+		color:#07142A;
 		--color:#222222;
 	}	
 	
@@ -2423,7 +2425,8 @@ $NewHtmlReport = @"
   
 	.divbarDomainInside{
 		--background:#9B3722;
-		background:#CE0E2D;		
+		--background:#CE0E2D;	
+        background:#F56A00;
 		text-align:center;
 		height: 15px;
 		vertical-align:middle;
@@ -2548,14 +2551,14 @@ $NewHtmlReport = @"
 	}	
 	
 	.landingheader2a	{
-        background-color: 9B3722;
+        background-color: #07142A;
 		--background-color: #999;		
 		padding-left:120px;;
 		padding-right: 5px;
 	}	
 
 	.landingheader2b	{
-        background-color: 9B3722;
+        background-color: #07142A;
 		--background-color: #999;		
 		padding-left: 5px;
 		padding-right: 5px;
@@ -2570,7 +2573,7 @@ $NewHtmlReport = @"
 		font-family:"Open Sans", sans-serif;
 		color:#666;
 		background-color:white;
-		border-radius: 10px;
+		--border-radius: 10px;
 		padding: 20px;
 		margin-top: 10px;
 		margin-right: 10px;
@@ -2592,7 +2595,7 @@ $NewHtmlReport = @"
 		font-family:"Open Sans", sans-serif;
 		color:#666;
 		background-color:none;
-		border-radius: 0px;
+		--border-radius: 0px;
 		padding: 5px;
 		margin-top: 5px;
 		margin-right: 5px;
@@ -2605,7 +2608,7 @@ $NewHtmlReport = @"
 		font-family:"Open Sans", sans-serif;
 		color:#666;
 		background-color:white;
-		border-radius: 0px;
+		--border-radius: 0px;
 		padding: 5px;
 		margin-top: 5px;
 		margin-right: 5px;
@@ -2618,7 +2621,7 @@ $NewHtmlReport = @"
 		font-family:"Open Sans", sans-serif;
 		color:#666;
 		--background-color:white;
-		border-radius: 0px;
+		--border-radius: 0px;
 		padding: 5px;
 		margin-top: 5px;
 		margin-right: 5px;
@@ -2636,7 +2639,7 @@ $NewHtmlReport = @"
 		width: 250px;
 		box-shadow: 0 2px 4px 0 #DEDFE1;	
 		transition:0.3s;
-		background-color: #3D3935;
+		background-color: #07142A;
 		font-family:"Open Sans", sans-serif;
 		font-size: 12;
 		font-weight: 2;
@@ -2646,7 +2649,7 @@ $NewHtmlReport = @"
 		display:block;
 		margin:10px;
 		margin-bottom:20px;
-        border-radius: 10px;
+        --border-radius: 10px;
 	}
 
 	.card:hover{	
@@ -2663,7 +2666,7 @@ $NewHtmlReport = @"
 		font-weight:bold;
 		font-family:"Open Sans", sans-serif;
 		border-bottom:1.5px solid transparent;
-		border-bottom-color:#757575;
+		border-bottom-color:#07142A;
 	}
 
 	.cardsubtitle {
@@ -2707,7 +2710,7 @@ $NewHtmlReport = @"
 		font-family:"Open Sans", sans-serif;
 		--border-bottom:1.5px solid transparent;
 		--border-bottom-color:#222222;
-		background-color: #222222;
+		background-color: #07142A;
 	}
 
 	.cardtitlescansub {
@@ -2725,8 +2728,8 @@ $NewHtmlReport = @"
 		border-right:1px solid #ccc;
 		border-left:1px solid #ccc;
 		border-bottom:1px solid #ccc;	
-		border-bottom-right-radius: 10px;
-		border-bottom-left-radius: 10px;
+		--border-bottom-right-radius: 10px;
+		--border-bottom-left-radius: 10px;
 	}		
 
 	.cardbarouter{
@@ -2739,7 +2742,8 @@ $NewHtmlReport = @"
 	  
 	.cardbarinside{
 		--background:#9B3722;
-		background:#CE112D;
+		--background:#CE112D;
+        background:#F56A00;
 		text-align:center;
 		height: 15px;
 		vertical-align:middle;
@@ -2778,7 +2782,7 @@ $NewHtmlReport = @"
     box-shadow: 0 2px 4px 0;
 	width: 180px;
 	height: 100%;
-	background-color:#222222;
+	background-color:#07142A;
 	position: fixed; /* Stay in place */
 	top: 0; 
 	left: 0;
@@ -2817,7 +2821,7 @@ $NewHtmlReport = @"
 		display:block;
 		margin:0px;
 		margin-bottom:20px;
-        border-radius: 10px;
+        --border-radius: 10px;
 	}
 
 	.Minicard:hover{	
@@ -2829,11 +2833,11 @@ $NewHtmlReport = @"
 		padding:5px;	
 		--padding-left: 20px;
 		font-size: 13;
-		color: #222222;
+		color: #07142A;
 		font-weight:bold;
 		font-family:"Open Sans", sans-serif;
 		border-bottom:1.5px solid transparent;
-		border-bottom-color:#757575;
+		border-bottom-color:#07142A;
 	}
 	
 	.Minicardcontainer {
@@ -2844,8 +2848,8 @@ $NewHtmlReport = @"
 		border-right:1px solid #ccc;
 		border-left:1px solid #ccc;
 		border-bottom:1px solid #ccc;	
-		border-bottom-right-radius: 10px;
-		border-bottom-left-radius: 10px;
+		--border-bottom-right-radius: 10px;
+		--border-bottom-left-radius: 10px;
 	}		
 
 	.MinicardconnectLine {    		
@@ -2960,7 +2964,7 @@ $NewHtmlReport = @"
     margin-left: 20px;
     margin-top: 10px;
 	-margin-bottom:20px;
-    border-radius: 10px;
+    --border-radius: 10px;
 }
 
 .TimelineMinicard:hover{	
@@ -2970,7 +2974,7 @@ $NewHtmlReport = @"
 .TimelineMinicardtitle{	
 	padding:5px;	
 	font-size: 10;
-	color: #222222;
+	color: #07142A;
 	font-weight:bold;
 	font-family:"Open Sans", sans-serif;
 	border-bottom:1.5px solid transparent;
@@ -2983,8 +2987,8 @@ $NewHtmlReport = @"
 	border-right:1px solid #ccc;
 	border-left:1px solid #ccc;
 	border-bottom:1px solid #ccc;	
-	border-bottom-right-radius: 10px;
-	border-bottom-left-radius: 10px;
+	--border-bottom-right-radius: 10px;
+	--border-bottom-left-radius: 10px;
 }		
 
 .TimelineMinicardconnectLine {    		
@@ -3000,7 +3004,7 @@ $NewHtmlReport = @"
 	width: 788px;
 	box-shadow: 0 2px 4px 0 #DEDFE1;	
 	transition:0.3s;
-	background-color: #3D3935;
+	background-color: #07142A;
 	font-family:"Open Sans", sans-serif;
 	font-size: 12;
 	font-weight: 2;
@@ -3009,7 +3013,7 @@ $NewHtmlReport = @"
 	display:block;
 	margin:10px;
 	margin-bottom:20px;
-	border-radius: 10px;
+	--border-radius: 10px;
 }
 
 .LargeCard:hover{	
@@ -3041,8 +3045,8 @@ $NewHtmlReport = @"
 	border-right:1px solid #ccc;
 	border-left:1px solid #ccc;
 	border-bottom:1px solid #ccc;	
-	border-bottom-right-radius: 10px;
-	border-bottom-left-radius: 10px;
+	--border-bottom-right-radius: 10px;
+	--border-bottom-left-radius: 10px;
 }
 
   </style>
@@ -3054,10 +3058,10 @@ $NewHtmlReport = @"
 -->
 <div class="sidenav">	
 	
-	<div style="border-bottom:1px solid red;width: 80%;display: block;margin-left:20px">			
+	<div style="border-bottom:1px solid #F56A00;width: 80%;display: block;margin-left:20px">			
 		<div  style="font-size: 15;font-weight:bolder;color:white;margin-bottom:5px; margin-top:28px;" align="center">
-		 POWERHUNT
-         SHARES
+		 <a href="https://github.com/NetSPI/PowerHuntShares" style="text-decoration: none; color:#F56A00;cursor: pointer;">POWERHUNT
+         SHARES</a>
 		</div>
 	</div>
 
@@ -3067,29 +3071,21 @@ $NewHtmlReport = @"
 
 	<div id="tabs" class="tabs" data-tabs-ignore-url="false">
 		<label href="#" class="stuff" style="width:100%;margin-top:15px" onClick="radiobtn = document.getElementById('home');radiobtn.checked = true;">Home</label>		
-		<label class="tabLabel" style="width:100%;color:white;background-color:#333;border-top:1px solid #757575;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:2px;font-weight:bolder"><Strong>Reports</Strong></label>	
+		<label class="tabLabel" style="width:100%;color:#07142A;background-color:#F56A00;border-top:1px solid #757575;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:2px;font-weight:bolder"><Strong>Reports</Strong></label>	
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('dashboard');radiobtn.checked = true;">Dashboard</label>		
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('computersummary');radiobtn.checked = true;">Computer Summary</label>		
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('sharesum');radiobtn.checked = true;">Share Summary</label>		
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ACLsum');radiobtn.checked = true;">ACL Summary</label>		
-		<label class="tabLabel" style="width:100%;color:white;background-color:#333;padding-top:5px;padding-bottom:5px;margin-top:2px;margin-bottom:2px;"><Strong>Data Insights</Strong></label>	  	  	
+		<label class="tabLabel" style="width:100%;color:#07142A;background-color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:2px;margin-bottom:2px;"><Strong>Data Insights</Strong></label>	  	  	
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('accounts');radiobtn.checked = true;">Group Stats</label>		
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;">Top Share Names</label>		
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareOwner');radiobtn.checked = true;">Top Share Owners</label>		
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareFolders');radiobtn.checked = true;">Top Folder Groups</label>		
         <label href="#" class="stuff" style="width:100%;" onclick="radiobtn = document.getElementById('SubNets');radiobtn.checked = true;">Affected Subnets</label>	
-		<label class="tabLabel" style="width:100%;color:white;background-color:#333;padding-top:5px;padding-bottom:5px;margin-top:2px;margin-bottom:2px;"><strong>Recommendations</strong></label>
+		<label class="tabLabel" style="width:100%;color:#07142A;background-color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:2px;margin-bottom:2px;"><strong>Recommendations</strong></label>
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Attacks');radiobtn.checked = true;">Exploit Share Access</label>		
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Detections');radiobtn.checked = true;">Detect Share Scans</label>
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Remediation');radiobtn.checked = true;">Prioritize Remediation</label>		
-	</div>
-	<img style="float: right;" src="data:image/png;base64, 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" />
-	<div class="sidenavcred" style="border-top:1px solid #757575;position: absolute;bottom:0px;width:91%;color:#757575;background-color:#222222">
-		<br>
-		<strong style="color:#DEDFE1;">Invoke-HuntSMBShares</strong><br>
-		<strong>Author:</strong> Scott Sutherland<br>
-		<strong>License:</strong> 3-clause BSD<br>
-		<br>
 	</div>
 </div>
 <div id="main">
@@ -4494,12 +4490,12 @@ Collect SMB Share data and generate this HTML report by running <a href="https:/
 The command examples below can be used to identify potentially malicious share permissions. 
 <br><br>
 <strong style="color:#333">From Domain System</strong>
-<div style="border-radius:10px;border: 2px solid #CCC;margin-top:5px;padding: 5px;padding-left: 15px;width:95%;background-color:white;color:#757575;font-family:Lucida, Grande, sans-serif;">
+<div style="border: 2px solid #CCC;margin-top:5px;padding: 5px;padding-left: 15px;width:95%;background-color:white;color:#757575;font-family:Lucida, Grande, sans-serif;">
 Invoke-HuntSMBShares -Threads 20 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\ 
 </div>
 <br>
 <strong style="color:#333">From Non-Domain System</strong>
-<div style="border-radius:10px;border: 2px solid #CCC;margin-top:5px;padding: 5px;padding-left: 15px;width:95%;background-color:white;color:#757575;font-family:Lucida, Grande, sans-serif;">
+<div style="border: 2px solid #CCC;margin-top:5px;padding: 5px;padding-left: 15px;width:95%;background-color:white;color:#757575;font-family:Lucida, Grande, sans-serif;">
 runas /netonly /user:domain\user PowerShell.exe<Br>
 Import-Module Invoke-HuntSMBShares.ps1<br>
 Invoke-HuntSMBShares -Threads 20 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\ -DomainController 10.1.1.1 -Username domain\user -Password password 
@@ -5017,7 +5013,7 @@ foreach {
         $MonthAclReadCount = $MonthAcls | Where-Object {($_.FileSystemRights -like "*Read*") -or ($_.FileSystemRights -like "*Append*") } | Where-Object {($_.FileSystemRights -notlike "*GenericAll*") -and ($_.FileSystemRights -notlike "*Write*")} |  Measure-Object | select count -ExpandProperty count
         if($MonthAclReadCount -eq 0){
             $MonthAclReadCountP = 0;
-            $ReadDot = "<div class=`"TimelineDot`" style=`"border:1px solid #F2F3F4;bottom:15px;background-color:gray;`"></div>"
+            $ReadDot = "<div class=`"TimelineDot`" style=`"border:1px solid #F2F3F4;bottom:15px;background-color:#F56A00;`"></div>"
         }else{
             $MonthAclReadCountP = [math]::Round($MonthAclReadCount/$HighestTypeCount,4).tostring("P") -replace(" ","")    
             $ReadDot = "<div class=`"TimelineDot`" style=`"border:1px solid #F2F3F4;bottom:15px;background-color:Orange;opacity: .25;`"></div>"
@@ -6133,7 +6129,7 @@ function Convert-DataTableToHtmlTable
 		        font-size:1rem;
 		        color:#bd4147;
 		        background-color:#f7f7f9;
-		        border-radius:.25rem
+		        --border-radius:.25rem
 	        }
 	
 	        p{
