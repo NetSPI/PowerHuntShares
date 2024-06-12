@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.58
+# Version: v1.59
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1708,12 +1708,13 @@ function Invoke-HuntSMBShares
             }
             $SimularityCalcFGOwnerAvg = [math]::Round($FGtoOwnersRatiosSum/$FGtoOwnersRatiosCount,4)
             
-            # Caluatlate if at least 1 file group is 50% or greater: 0 or 1
+            # Caluatlate if at least 1 file group is 30%/50% or greater: 0 or 1
             # take total count ($ShareFolderGroupCount)
             # divide the number of instances by individual
             # foreach loop until yes.
             $fiftyorgreater = 0
             $SimularityCalc50P = 0
+            $SimularityCalOver30 = 0
             $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select ShareName,FileListGroup -Unique | Group-Object FileListGroup   | sort count -Descending | select count, name |
             foreach{
                 
@@ -1731,6 +1732,36 @@ function Invoke-HuntSMBShares
                 }
             }
 
+            # Caluatlate if at least one file name exists across 80 or more of the shares
+            # Configurations
+            $SameFileNamePercentageThreshold = .8
+            $SameFileNameCountThreshold      = 2
+            $SameFileNameMeetsThresholds     = 0
+            # Get list of files from share name folder groups
+            $FullFileListSim = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select FileListGroup,FileList -Unique | Select FileList | foreach {$_.FileList -split "`r`n"} | Where-Object { $_.Trim() -ne "" }        
+            # Count how many of each file name exist for the share name
+            $FullFileListSimCounts = $FullFileListSim | Group-Object | sort count -Descending | select count,name
+            # Foreach file determine if any of them exist in 80% or more of the folder groups
+            $FullFileListSimCounts80 = $FullFileListSimCounts | 
+            Foreach{
+                $SameFileNameCount = $_.count
+                $SameFileName      = $_.name
+                $SameFileNameCoverage = [math]::Round($SameFileNameCount/$ShareFolderGroupCount,4)
+                if($SameFileNameCoverage -ge $SameFileNamePercentageThreshold){
+                    $object = New-Object psobject
+                    $object | add-member noteproperty count $SameFileNameCount
+                    $object | add-member noteproperty name  $SameFileName
+                    $object  
+                }
+            }
+            # Count how many files are over 80%
+            If($FullFileListSimCounts80){
+                $FullFileListSimCounts80Count = $FullFileListSimCounts80 | Measure | select count -expandproperty count
+                if($FullFileListSimCounts80Count -ge $SameFileNameCountThreshold){
+                    $SameFileNameMeetsThresholds = 1
+                }
+            }
+
             # Calculate share to creation date ratio (just informational, not used in similarity score - for now)
             $ShareCreateCount = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select creationdate -Unique | Measure-Object | Select-Object count -ExpandProperty count            
             $SimularityCalcCreateDate1 = [math]::Round($ShareCount/$ShareCreateCount,4) 
@@ -1743,25 +1774,25 @@ function Invoke-HuntSMBShares
             
             # Calculate combined similarity score
             # WeightFileGroup  = 4
+            # WeightFn802      = 3
             # Weightfg50       = 3
-            # Weightfg30       = 2
+            # Weightfg30       = 2          
             # WeightFgOwnerAvg = 2             
             # WeightCreate     = 1
             # WeightLastMod    = 1
             # condense into 0-1, low (0-.50), medium(.51-.80), high similary (.81-1)
 
-            $SimularityCalcShareFgFinal      = $SimularityCalcShareFg     * 4  # File group ratio 
-            $SimularityCalc50PFinal          = $SimularityCalc50P         * 3  # A file group exists that represent 50% or more of the fg population for the sharename
-            $SimularityCalOver30Final        = $SimularityCalOver30       * 2  # A file group exists that represent 30% or more of the fg population for the sharename
-                                                                               # File coverage does any given file exist in all fg groups...or over 80%
-                                                                               # Create list of all filename, count, divide by the totalfg groups                                                                               
-            $SimularityCalcFGOwnerAvgFinal   = $SimularityCalcFGOwnerAvg  * 2  # Owner to share file group ratio average
-            $SimularityCalcCreateDateFinal   = $SimularityCalcCreateDate  * 1  # Share to creation date ratio
-            $SimularityCalcLastModDateFinal  = $SimularityCalcLastModDate * 1  # Share to modification date ratio
+            $SimularityCalcShareFgFinal       = $SimularityCalcShareFg       * 4  # File group ratio 
+            $SameFileNameMeetsThresholdsFinal = $SameFileNameMeetsThresholds * 3  # A file exists in 80% of the file groups associated with the sharename
+            $SimularityCalc50PFinal           = $SimularityCalc50P           * 3  # A file group exists that represent 50% or more of the fg population for the sharename
+            $SimularityCalOver30Final         = $SimularityCalOver30         * 2  # A file group exists that represent 30% or more of the fg population for the sharename                                      
+            $SimularityCalcFGOwnerAvgFinal    = $SimularityCalcFGOwnerAvg    * 2  # Owner to share file group ratio average
+            $SimularityCalcCreateDateFinal    = $SimularityCalcCreateDate    * 1  # Share to creation date ratio
+            $SimularityCalcLastModDateFinal   = $SimularityCalcLastModDate   * 1  # Share to modification date ratio
 
-            # Max is 4 + 3 + 2 + 2 + 1 + 1 = 13; Min is 0
-            $SimilarityTotal = $SimularityCalcShareFgFinal + $SimularityCalc50PFinal + $SimularityCalOver30Final + $SimularityCalcFGOwnerAvgFinal +$SimularityCalcCreateDateFinal + $SimularityCalcLastModDateFinal
-            $SimilarityScore = $SimilarityTotal / 13
+            # Max is 4 + 3 + 3 + 2 + 2 + 1 + 1 = 16; Min is 0
+            $SimilarityTotal = $SimularityCalcShareFgFinal + $SameFileNameMeetsThresholdsFinal + $SimularityCalc50PFinal + $SimularityCalOver30Final + $SimularityCalcFGOwnerAvgFinal +$SimularityCalcCreateDateFinal + $SimularityCalcLastModDateFinal
+            $SimilarityScore = $SimilarityTotal / 16
             $SimilarityScoreP1 =  [math]::round(($SimilarityScore.tostring("P") -replace('%','')))
             $SimilarityScoreP = "$SimilarityScoreP1%"
             If($SimilarityScore -gt .80){ $SimLevel = "High"}
@@ -1911,6 +1942,9 @@ function Invoke-HuntSMBShares
                                 <tr id="ignore">
                                     <td>Owner:</td><td>&nbsp;$SimularityCalcShareOwner</td>
                                 </tr>
+                                 <tr id="ignore">
+                                    <td>80% FN:</td><td>&nbsp;$SameFileNameMeetsThresholds</td>
+                                </tr>                                
                                 <tr id="ignore">
                                     <td>30% FG:</td><td>&nbsp;$SimularityCalOver30</td>
                                 </tr>
