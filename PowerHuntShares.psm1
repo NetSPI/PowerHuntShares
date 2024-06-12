@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.57
+# Version: v1.58
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1720,6 +1720,11 @@ function Invoke-HuntSMBShares
                 # Get % the file group represents for the share
                 $fgpercentage = [math]::Round($_.count/$ShareFolderGroupCount,4)
 
+                # If it's 30% or great flip the bit
+                if($fgpercentage -ge .3){
+                    $SimularityCalOver30 = 1
+                }
+
                 # If it's 50% or great flip the bit
                 if($fgpercentage -ge .5){
                     $SimularityCalc50P = 1
@@ -1738,21 +1743,25 @@ function Invoke-HuntSMBShares
             
             # Calculate combined similarity score
             # WeightFileGroup  = 4
-            # WeightFiftyP     = 3
+            # Weightfg50       = 3
+            # Weightfg30       = 2
             # WeightFgOwnerAvg = 2             
             # WeightCreate     = 1
             # WeightLastMod    = 1
             # condense into 0-1, low (0-.50), medium(.51-.80), high similary (.81-1)
 
             $SimularityCalcShareFgFinal      = $SimularityCalcShareFg     * 4  # File group ratio 
-            $SimularityCalc50PFinal          = $SimularityCalc50P         * 3  # A file group exists with 50% or more
+            $SimularityCalc50PFinal          = $SimularityCalc50P         * 3  # A file group exists that represent 50% or more of the fg population for the sharename
+            $SimularityCalOver30Final        = $SimularityCalOver30       * 2  # A file group exists that represent 30% or more of the fg population for the sharename
+                                                                               # File coverage does any given file exist in all fg groups...or over 80%
+                                                                               # Create list of all filename, count, divide by the totalfg groups                                                                               
             $SimularityCalcFGOwnerAvgFinal   = $SimularityCalcFGOwnerAvg  * 2  # Owner to share file group ratio average
             $SimularityCalcCreateDateFinal   = $SimularityCalcCreateDate  * 1  # Share to creation date ratio
             $SimularityCalcLastModDateFinal  = $SimularityCalcLastModDate * 1  # Share to modification date ratio
 
-            # Max is 4 + 3 + 2 + 1 + 1 = 11; Min is 0
-            $SimilarityTotal = $SimularityCalcShareFgFinal + $SimularityCalc50PFinal + $SimularityCalcFGOwnerAvgFinal +$SimularityCalcCreateDateFinal + $SimularityCalcLastModDateFinal
-            $SimilarityScore = $SimilarityTotal / 11
+            # Max is 4 + 3 + 2 + 2 + 1 + 1 = 13; Min is 0
+            $SimilarityTotal = $SimularityCalcShareFgFinal + $SimularityCalc50PFinal + $SimularityCalOver30Final + $SimularityCalcFGOwnerAvgFinal +$SimularityCalcCreateDateFinal + $SimularityCalcLastModDateFinal
+            $SimilarityScore = $SimilarityTotal / 13
             $SimilarityScoreP1 =  [math]::round(($SimilarityScore.tostring("P") -replace('%','')))
             $SimilarityScoreP = "$SimilarityScoreP1%"
             If($SimilarityScore -gt .80){ $SimLevel = "High"}
@@ -1891,7 +1900,7 @@ function Invoke-HuntSMBShares
                 <button class="collapsible" style="font-size: 10px;"><strong>$SimLevel ($SimilarityScoreP)</strong></button>
                     <div class="content">
                         <div class="filelistparent" style="font-size: 10px;">
-                            <strong>Normalized Ratio Details</strong><br>
+                            <strong>Probability Distributions</strong><br>
                             <table class="subtable">
                                 <tr id="ignore">
                                     <td>FolderGroup:</td><td>&nbsp;$SimularityCalcShareFg</td>
@@ -1903,8 +1912,11 @@ function Invoke-HuntSMBShares
                                     <td>Owner:</td><td>&nbsp;$SimularityCalcShareOwner</td>
                                 </tr>
                                 <tr id="ignore">
-                                    <td>MajorityExists:</td><td>&nbsp;$SimularityCalc50P</td>
+                                    <td>30% FG:</td><td>&nbsp;$SimularityCalOver30</td>
                                 </tr>
+                                <tr id="ignore">
+                                    <td>50% FG:</td><td>&nbsp;$SimularityCalc50P</td>
+                                </tr>                                
                                 <tr id="ignore">
                                     <td>Created:</td><td>&nbsp;$SimularityCalcCreateDate</td>
                                 </tr>
@@ -2114,7 +2126,7 @@ $NewHtmlReport = @"
 
 	.stuff:hover{
 		font-weight: normal;
-		background-color:#555555;
+		background-color:#17405A;
 		text-decoration: none;
 		padding-top:5px;
 		padding-bottom:5px;
@@ -2124,7 +2136,7 @@ $NewHtmlReport = @"
 
 	.stuff:active {
 		font-weight: normal;		 
-		background-color:#5D5C5C;		
+		background-color:#25648C;		
 		width:auto;		
 		padding-left: 15px;	
         color: white;
@@ -3071,7 +3083,7 @@ $NewHtmlReport = @"
 
 	<div id="tabs" class="tabs" data-tabs-ignore-url="false">
 		<label href="#" class="stuff" style="width:100%;margin-top:15px" onClick="radiobtn = document.getElementById('home');radiobtn.checked = true;">Home</label>		
-		<label class="tabLabel" style="width:100%;color:#07142A;background-color:#F56A00;border-top:1px solid #757575;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:2px;font-weight:bolder"><Strong>Reports</Strong></label>	
+		<label class="tabLabel" style="width:100%;color:#07142A;background-color:#F56A00;border-top:1px solid white;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:2px;font-weight:bolder"><Strong>Reports</Strong></label>	
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('dashboard');radiobtn.checked = true;">Dashboard</label>		
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('computersummary');radiobtn.checked = true;">Computer Summary</label>		
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('sharesum');radiobtn.checked = true;">Share Summary</label>		
