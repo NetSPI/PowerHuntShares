@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.59
+# Version: v1.60
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1721,8 +1721,8 @@ function Invoke-HuntSMBShares
                 # Get % the file group represents for the share
                 $fgpercentage = [math]::Round($_.count/$ShareFolderGroupCount,4)
 
-                # If it's 30% or great flip the bit
-                if($fgpercentage -ge .3){
+                # If it's 25% or great flip the bit
+                if($fgpercentage -ge .25){
                     $SimularityCalOver30 = 1
                 }
 
@@ -1773,8 +1773,8 @@ function Invoke-HuntSMBShares
             $SimularityCalcLastModDate  =  $SimularityCalcLastModDate1 / $ShareCount
             
             # Calculate combined similarity score
-            # WeightFileGroup  = 4
-            # WeightFn802      = 3
+            # WeightFn802      = 5
+            # WeightFileGroup  = 4            
             # Weightfg50       = 3
             # Weightfg30       = 2          
             # WeightFgOwnerAvg = 2             
@@ -1782,17 +1782,17 @@ function Invoke-HuntSMBShares
             # WeightLastMod    = 1
             # condense into 0-1, low (0-.50), medium(.51-.80), high similary (.81-1)
 
-            $SimularityCalcShareFgFinal       = $SimularityCalcShareFg       * 4  # File group ratio 
-            $SameFileNameMeetsThresholdsFinal = $SameFileNameMeetsThresholds * 3  # A file exists in 80% of the file groups associated with the sharename
+            $SameFileNameMeetsThresholdsFinal = $SameFileNameMeetsThresholds * 5  # A file exists in 80% of the file groups associated with the sharename
+            $SimularityCalcShareFgFinal       = $SimularityCalcShareFg       * 4  # File group ratio 11            
             $SimularityCalc50PFinal           = $SimularityCalc50P           * 3  # A file group exists that represent 50% or more of the fg population for the sharename
             $SimularityCalOver30Final         = $SimularityCalOver30         * 2  # A file group exists that represent 30% or more of the fg population for the sharename                                      
             $SimularityCalcFGOwnerAvgFinal    = $SimularityCalcFGOwnerAvg    * 2  # Owner to share file group ratio average
             $SimularityCalcCreateDateFinal    = $SimularityCalcCreateDate    * 1  # Share to creation date ratio
             $SimularityCalcLastModDateFinal   = $SimularityCalcLastModDate   * 1  # Share to modification date ratio
 
-            # Max is 4 + 3 + 3 + 2 + 2 + 1 + 1 = 16; Min is 0
+            # Max is 5 + 4 + 3 + 2 + 2 + 1 + 1 = 17; Min is 0
             $SimilarityTotal = $SimularityCalcShareFgFinal + $SameFileNameMeetsThresholdsFinal + $SimularityCalc50PFinal + $SimularityCalOver30Final + $SimularityCalcFGOwnerAvgFinal +$SimularityCalcCreateDateFinal + $SimularityCalcLastModDateFinal
-            $SimilarityScore = $SimilarityTotal / 16
+            $SimilarityScore = $SimilarityTotal / 18
             $SimilarityScoreP1 =  [math]::round(($SimilarityScore.tostring("P") -replace('%','')))
             $SimilarityScoreP = "$SimilarityScoreP1%"
             If($SimilarityScore -gt .80){ $SimLevel = "High"}
@@ -1946,7 +1946,7 @@ function Invoke-HuntSMBShares
                                     <td>80% FN:</td><td>&nbsp;$SameFileNameMeetsThresholds</td>
                                 </tr>                                
                                 <tr id="ignore">
-                                    <td>30% FG:</td><td>&nbsp;$SimularityCalOver30</td>
+                                    <td>25% FG:</td><td>&nbsp;$SimularityCalOver30</td>
                                 </tr>
                                 <tr id="ignore">
                                     <td>50% FG:</td><td>&nbsp;$SimularityCalc50P</td>
