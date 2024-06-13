@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.60
+# Version: v1.61
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1735,7 +1735,7 @@ function Invoke-HuntSMBShares
             # Caluatlate if at least one file name exists across 80 or more of the shares
             # Configurations
             $SameFileNamePercentageThreshold = .8
-            $SameFileNameCountThreshold      = 2
+            $SameFileNameCountThreshold      = 1
             $SameFileNameMeetsThresholds     = 0
             # Get list of files from share name folder groups
             $FullFileListSim = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select FileListGroup,FileList -Unique | Select FileList | foreach {$_.FileList -split "`r`n"} | Where-Object { $_.Trim() -ne "" }        
