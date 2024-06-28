@@ -231,6 +231,7 @@ Todos
 * Dynamic identification of share creation, modification, and access cadence across a share population that share a name and have a high similarity level.
 * add showing share permissions (along with the already displayed NTFS permissions) and resultant access (most restrictive wins)
 * Use LLM to categorize share name groups based on share name, affected file lists, share owners, and users with acls to the affected shares.
+* add depth, file/directory flag, filename/dirname parse, parent direname parse to depth listing
  
 </pre>
  
