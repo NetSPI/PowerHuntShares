@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.61
+# Version: v1.70
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -258,7 +258,7 @@ function Invoke-HuntSMBShares
             #  Create sub directories
             mkdir $OutputDirectoryBase | Out-Null
             $SubDir = "Results"
-            mkdir "$OutputDirectoryBase\$SubDir" | Out-Null
+            mkdir "$OutputDirectoryBase\Results" | Out-Null
             $OutputDirectory = "$OutputDirectoryBase\Results"
             Write-Output " [*][$Time] Output Directory: $OutputDirectoryBase"
         }else{
@@ -1546,8 +1546,18 @@ function Invoke-HuntSMBShares
             $ShareName = $_.name
             Write-Output " [*][$Time]   - $ShareCount $ShareName"   
         }
-        Write-Output " [*] -----------------------------------------------"
-        Write-Output " [*][$Time]   - Generating HTML Report" 
+        
+        # Estimate report generation time
+        If($AllSMBSharesCount -le 500   ) {$ReportGenTimeEstimate = "1 minute or less" }
+        If($AllSMBSharesCount -ge 1000  ) {$ReportGenTimeEstimate = "3 minute or less" }
+        If($AllSMBSharesCount -ge 2000  ) {$ReportGenTimeEstimate = "5 minute or less" }
+        If($AllSMBSharesCount -ge 10000 ) {$ReportGenTimeEstimate = "10 minute or less"}
+        If($AllSMBSharesCount -ge 15000 ) {$ReportGenTimeEstimate = "15 minute or less"}
+        If($AllSMBSharesCount -ge 30000 ) {$ReportGenTimeEstimate = "20 minute or less"}
+
+        Write-Output " [*] -----------------------------------------------" 
+        Write-Output " [*][$Time]   - Generating HTML Report"
+        Write-Output " [*][$Time]   - Estimated generation time: $ReportGenTimeEstimate"  
         
         # ----------------------------------------------------------------------
         # Display final summary - NEW HTML REPORT
@@ -1627,13 +1637,16 @@ function Invoke-HuntSMBShares
             $ShareDescriptionSample = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | where ShareDescription  -NE "" | select ShareDescription -first 1 -expandproperty ShareDescription | foreach {"<strong>Sample Description</strong><br> $_ <br><br> "}
 
             # First created
-            $ShareFirstCreated = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select creationdate | foreach{[datetime]$_.creationdate } | Sort-Object | select -First 1 | foreach {$_.tostring("MM/dd/yyyy HH:mm:ss")}
+            # $ShareFirstCreated = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select creationdate | foreach{[datetime]$_.creationdate } | Sort-Object | select -First 1 | foreach {$_.tostring("MM/dd/yyyy HH:mm:ss")}
+            $ShareFirstCreated = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select creationdate | foreach{[datetime]$_.creationdate } | Sort-Object | select -First 1 | foreach {$_.tostring("MM/dd/yyyy")}
 
             # Last created
-            $ShareLastCreated  = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select creationdate | foreach{[datetime]$_.creationdate } | Sort-Object -Descending | select -First 1 | foreach {$_.tostring("MM/dd/yyyy HH:mm:ss")}
+            # $ShareLastCreated  = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select creationdate | foreach{[datetime]$_.creationdate } | Sort-Object -Descending | select -First 1 | foreach {$_.tostring("MM/dd/yyyy HH:mm:ss")}
+            $ShareLastCreated  = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select creationdate | foreach{[datetime]$_.creationdate } | Sort-Object -Descending | select -First 1 | foreach {$_.tostring("MM/dd/yyyy")}
 
             # Last modified
-            $ShareLastModified = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select LastModifiedDate | foreach{[datetime]$_.LastModifiedDate } | Sort-Object -Descending | select -First 1 | foreach {$_.tostring("MM/dd/yyyy HH:mm:ss")}            
+            # $ShareLastModified = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select LastModifiedDate | foreach{[datetime]$_.LastModifiedDate } | Sort-Object -Descending | select -First 1 | foreach {$_.tostring("MM/dd/yyyy HH:mm:ss")}            
+            $ShareLastModified = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select LastModifiedDate | foreach{[datetime]$_.LastModifiedDate } | Sort-Object -Descending | select -First 1 | foreach {$_.tostring("MM/dd/yyyy")}  
 
             # Share owner list
             $ShareOwnerList = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | Sort-Object | select ShareOwner -Unique -ExpandProperty ShareOwner
@@ -1671,139 +1684,460 @@ function Invoke-HuntSMBShares
                 }
             }
 
-            # ----
-            # Calculate similarity here - START
-
-            # Calculate share to file group ratio: 0 to 1           
-            # min value = 0
-            # max value = number of shares
-            # 10 shares / 1 group   = 10.0 - highest score when only one group - correct              
-            # 10 shares / 5 groups  =  2.0 - high score when fewer groups      - correct
-            # 10 shares / 10 groups =  1.0 - lower score when more groups      - correct
-            # 5  shares / 10 groups =  0.5 - lower score when more groups      - correct  
-            $SimularityCalcShareFg1 = [math]::Round($ShareCount/$ShareFolderGroupCount,4) # Original value
-            $SimularityCalcShareFg = $SimularityCalcShareFg1 / $ShareCount 
-                                    
-            # Calculate share to owner ration: 0 to 1 (to show difference between avg foldergroup ad overall)            
-            $SimularityCalcShareOwner1 = [math]::Round($ShareCount/$ShareOwnerListCount,4) 
-            $SimularityCalcShareOwner  = $SimularityCalcShareOwner1 / $ShareCount
+            #region SimilarityScore
+            # ----------------------------------------------------------------------
+            # Calculate Similarity Score - START  
+            # ----------------------------------------------------------------------
             
-            # Calculate file group to owner avg ratio avg per share name: 0 to 1 
-            $FGtoOwnersRatios = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select ShareName,FileListGroup -Unique | Group-Object FileListGroup   | sort count -Descending | select count, name |
-            foreach{                
-                $FgName  = $_.name
-                $FgCount = $_.count
+            ## ---
+            ## Folder Group Coverage Weighted Calculations 
+            ## ---------------------------------------------
 
-                # Get count of owners associated with file group
-                $FgNameOwnercount = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | where FileListGroup -EQ "$FgName" | select ShareOwner -Unique | measure | select count -expandproperty count
-
-                # Calculate file group to owners ratio
-                [math]::Round($FgCount/$FgNameOwnercount,4)                 
-            }
-            $FGtoOwnersRatiosSum = 0
-            $FGtoOwnersRatiosCount = $FGtoOwnersRatios | measure-object | select count -expandproperty count
-            $FGtoOwnersRatios | 
-            Foreach{
-                $FGtoOwnersRatiosSum += $_
-            }
-            $SimularityCalcFGOwnerAvg = [math]::Round($FGtoOwnersRatiosSum/$FGtoOwnersRatiosCount,4)
+            ##
+            ## Determine if the percentage of shares that exists in each folder group for the target share name meet the defined thresholds.
             
-            # Caluatlate if at least 1 file group is 30%/50% or greater: 0 or 1
-            # take total count ($ShareFolderGroupCount)
-            # divide the number of instances by individual
-            # foreach loop until yes.
-            $fiftyorgreater = 0
-            $SimularityCalc50P = 0
-            $SimularityCalOver30 = 0
-            $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select ShareName,FileListGroup -Unique | Group-Object FileListGroup   | sort count -Descending | select count, name |
+            # Start all values at 0
+            $SimularityFolderGroupCoverageScore = 0
+            $SimularityFolderGroupCoverage10    = 0
+            $SimularityFolderGroupCoverage20    = 0
+            $SimularityFolderGroupCoverage30    = 0
+            $SimularityFolderGroupCoverage40    = 0
+            $SimularityFolderGroupCoverage50    = 0
+            $SimularityFolderGroupCoverage60    = 0
+            $SimularityFolderGroupCoverage70    = 0
+            $SimularityFolderGroupCoverage80    = 0
+            $SimularityFolderGroupCoverage90    = 0            
+            $SimularityFolderGroupCoverage100   = 0            
+
+            # Get the share count for each folder group
+            $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select SharePath,FileListGroup -Unique | Group-Object FileListGroup | sort count -Descending | select count, name |
             foreach{
                 
-                # Get % the file group represents for the share
-                $fgpercentage = [math]::Round($_.count/$ShareFolderGroupCount,4)
+                # Determine if thesholds where met and update tracker variables
 
-                # If it's 25% or great flip the bit
-                if($fgpercentage -ge .25){
-                    $SimularityCalOver30 = 1
+                # Get % of shares the folder group includes
+                $PercentOfSharesInFg = [math]::Round($_.count/$ShareCount,4)
+
+                # Check if 10% of shares share the same file group
+                if($PercentOfSharesInFg -ge .10){
+                    $SimularityFolderGroupCoverage10  = 1
                 }
 
-                # If it's 50% or great flip the bit
-                if($fgpercentage -ge .5){
-                    $SimularityCalc50P = 1
+                # Check if 20% of shares share the same file group
+                if($PercentOfSharesInFg -ge .20){
+                    $SimularityFolderGroupCoverage20  = 1
+                }
+
+                # Check if 30% of shares share the same file group
+                if($PercentOfSharesInFg -ge .30){
+                    $SimularityFolderGroupCoverage30  = 1
+                }
+
+                # Check if 40% of shares share the same file group
+                if($PercentOfSharesInFg -ge .40){
+                    $SimularityFolderGroupCoverage40  = 1
+                }
+
+                # Check if 51% of shares share the same file group
+                if($PercentOfSharesInFg -ge .51){
+                    $SimularityFolderGroupCoverage50  = 1
+                }
+
+                # Check if 60% of shares share the same file group
+                if($PercentOfSharesInFg -ge .60){
+                    $SimularityFolderGroupCoverage60  = 1
+                }
+                # Check if 70% of shares share the same file group
+                if($PercentOfSharesInFg -ge .70){
+                    $SimularityFolderGroupCoverage70  = 1
+                }
+
+                # Check if 80% of shares share the same file group
+                if($PercentOfSharesInFg -ge .80){
+                    $SimularityFolderGroupCoverage80  = 1
+                }
+
+                # Check if 90% of shares share the same file group
+                if($PercentOfSharesInFg -ge .90){
+                    $SimularityFolderGroupCoverage90  = 1
+                }
+
+                # Check if 100% of shares share the same file group
+                if($PercentOfSharesInFg -ge 1){
+                    $SimularityFolderGroupCoverage100 = 1
                 }
             }
 
-            # Caluatlate if at least one file name exists across 80 or more of the shares
-            # Configurations
-            $SameFileNamePercentageThreshold = .8
-            $SameFileNameCountThreshold      = 1
-            $SameFileNameMeetsThresholds     = 0
-            # Get list of files from share name folder groups
-            $FullFileListSim = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select FileListGroup,FileList -Unique | Select FileList | foreach {$_.FileList -split "`r`n"} | Where-Object { $_.Trim() -ne "" }        
-            # Count how many of each file name exist for the share name
-            $FullFileListSimCounts = $FullFileListSim | Group-Object | sort count -Descending | select count,name
-            # Foreach file determine if any of them exist in 80% or more of the folder groups
-            $FullFileListSimCounts80 = $FullFileListSimCounts | 
-            Foreach{
-                $SameFileNameCount = $_.count
-                $SameFileName      = $_.name
-                $SameFileNameCoverage = [math]::Round($SameFileNameCount/$ShareFolderGroupCount,4)
-                if($SameFileNameCoverage -ge $SameFileNamePercentageThreshold){
-                    $object = New-Object psobject
-                    $object | add-member noteproperty count $SameFileNameCount
-                    $object | add-member noteproperty name  $SameFileName
-                    $object  
-                }
-            }
-            # Count how many files are over 80%
-            If($FullFileListSimCounts80){
-                $FullFileListSimCounts80Count = $FullFileListSimCounts80 | Measure | select count -expandproperty count
-                if($FullFileListSimCounts80Count -ge $SameFileNameCountThreshold){
-                    $SameFileNameMeetsThresholds = 1
-                }
-            }
+            # Set the weighted values
+            $SimularityFolderGroupCoverage10w     =  $SimularityFolderGroupCoverage10   * 10
+            $SimularityFolderGroupCoverage20w     =  $SimularityFolderGroupCoverage20   * 10
+            $SimularityFolderGroupCoverage30w     =  $SimularityFolderGroupCoverage30   * 10
+            $SimularityFolderGroupCoverage40w     =  $SimularityFolderGroupCoverage40   * 10
+            $SimularityFolderGroupCoverage50w     =  $SimularityFolderGroupCoverage50   * 10
+            $SimularityFolderGroupCoverage60w     =  $SimularityFolderGroupCoverage60   * 10
+            $SimularityFolderGroupCoverage70w     =  $SimularityFolderGroupCoverage70   * 10
+            $SimularityFolderGroupCoverage80w     =  $SimularityFolderGroupCoverage80   * 10
+            $SimularityFolderGroupCoverage90w     =  $SimularityFolderGroupCoverage90   * 10
+            $SimularityFolderGroupCoverage100w    =  $SimularityFolderGroupCoverage100  * 10
 
-            # Calculate share to creation date ratio (just informational, not used in similarity score - for now)
-            $ShareCreateCount = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select creationdate -Unique | Measure-Object | Select-Object count -ExpandProperty count            
-            $SimularityCalcCreateDate1 = [math]::Round($ShareCount/$ShareCreateCount,4) 
-            $SimularityCalcCreateDate  =  $SimularityCalcCreateDate1 / $ShareCount
+            # Set max value
+            $SimularityFolderGroupCoverageMax     =  100
 
-            # Calculate share to modification date ratio (just informational, not used in similarity score - for now)
-            $ShareModifiedCount = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select LastModifiedDate -Unique | Measure-Object | Select-Object count -ExpandProperty count            
-            $SimularityCalcLastModDate1 = [math]::Round($ShareCount/$ShareModifiedCount,4) 
-            $SimularityCalcLastModDate  =  $SimularityCalcLastModDate1 / $ShareCount
+            # Set actual value
+            $SimularityFolderGroupCoverageValue   =  $SimularityFolderGroupCoverage10w  + 
+                                                     $SimularityFolderGroupCoverage20w  + 
+                                                     $SimularityFolderGroupCoverage30w  + 
+                                                     $SimularityFolderGroupCoverage40w  + 
+                                                     $SimularityFolderGroupCoverage50w  + 
+                                                     $SimularityFolderGroupCoverage60w  + 
+                                                     $SimularityFolderGroupCoverage70w  + 
+                                                     $SimularityFolderGroupCoverage80w  + 
+                                                     $SimularityFolderGroupCoverage90w  + 
+                                                     $SimularityFolderGroupCoverage100w  
+
+
+            # Calculate Weighted Score
+            $SimularityFolderGroupCoverageScore   =  $SimularityFolderGroupCoverageValue / $SimularityFolderGroupCoverageMax 
+            $SimularityFolderGroupCoverageScoreP1 =  [math]::round(($SimularityFolderGroupCoverageScore.tostring("P") -replace('%','')))
+            $SimularityFolderGroupCoverageScoreP  =  "$SimularityFolderGroupCoverageScoreP1%"
             
-            # Calculate combined similarity score
-            # WeightFn802      = 5
-            # WeightFileGroup  = 4            
-            # Weightfg50       = 3
-            # Weightfg30       = 2          
-            # WeightFgOwnerAvg = 2             
-            # WeightCreate     = 1
-            # WeightLastMod    = 1
-            # condense into 0-1, low (0-.50), medium(.51-.80), high similary (.81-1)
 
-            $SameFileNameMeetsThresholdsFinal = $SameFileNameMeetsThresholds * 5  # A file exists in 80% of the file groups associated with the sharename
-            $SimularityCalcShareFgFinal       = $SimularityCalcShareFg       * 4  # File group ratio 11            
-            $SimularityCalc50PFinal           = $SimularityCalc50P           * 3  # A file group exists that represent 50% or more of the fg population for the sharename
-            $SimularityCalOver30Final         = $SimularityCalOver30         * 2  # A file group exists that represent 30% or more of the fg population for the sharename                                      
-            $SimularityCalcFGOwnerAvgFinal    = $SimularityCalcFGOwnerAvg    * 2  # Owner to share file group ratio average
-            $SimularityCalcCreateDateFinal    = $SimularityCalcCreateDate    * 1  # Share to creation date ratio
-            $SimularityCalcLastModDateFinal   = $SimularityCalcLastModDate   * 1  # Share to modification date ratio
+            ## --- 
+            ## File Name Coverage Weighted Calculations  
+            ## ---------------------------------------------       
 
-            # Max is 5 + 4 + 3 + 2 + 2 + 1 + 1 = 17; Min is 0
-            $SimilarityTotal = $SimularityCalcShareFgFinal + $SameFileNameMeetsThresholdsFinal + $SimularityCalc50PFinal + $SimularityCalOver30Final + $SimularityCalcFGOwnerAvgFinal +$SimularityCalcCreateDateFinal + $SimularityCalcLastModDateFinal
-            $SimilarityScore = $SimilarityTotal / 18
-            $SimilarityScoreP1 =  [math]::round(($SimilarityScore.tostring("P") -replace('%','')))
-            $SimilarityScoreP = "$SimilarityScoreP1%"
-            If($SimilarityScore -gt .80){ $SimLevel = "High"}
-            If($SimilarityScore -lt .80){ $SimLevel = "Medium"}
-            If($SimilarityScore -lt .50){ $SimLevel = "Low"}                       
+            ##
+            ## Determine if at least one file is the same across the target percentages of file groups for the target share.
 
-            # Calculate similarity here - END
-            # ---- 
-            ######
-            # ---- 
+            # Start all values at 0
+            $SimularityFileCoverageScore  = 0
+            $SimularityFileCoverage10     = 0
+            $SimularityFileCoverage20     = 0
+            $SimularityFileCoverage30     = 0
+            $SimularityFileCoverage40     = 0
+            $SimularityFileCoverage50     = 0
+            $SimularityFileCoverage60     = 0
+            $SimularityFileCoverage70     = 0
+            $SimularityFileCoverage80     = 0
+            $SimularityFileCoverage90     = 0
+            $SimularityFileCoverage100    = 0
+            $SimularityFileCommonList     = ""
+            $SimularityFileCommonList     = New-Object System.Data.DataTable 
+            $SimularityFileCommonList.Columns.Add("Count") | Out-Null
+            $SimularityFileCommonList.Columns.Add("FileName") | Out-Null
+            $SimularityFileCommonList.Columns.Add("Coverage") | Out-Null
+
+            # Get a list of file names from each folder group for the target share name
+            $FullFileListSim = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select FileListGroup,FileList -Unique | Select FileList | foreach {$_.FileList -split "`r`n"} | Where-Object {$_ -ne ''}                              
+            
+            # Count how many file groups (file name instances) each file is seen in
+            $FullFileListSimCounts = $FullFileListSim | Group-Object | sort count -Descending | select count,name | Where-Object {$_.name -ne ''}
+
+            # Determine if at least one file meets each coverage threshold
+            $FullFileListSimCounts | 
+            Foreach{
+                [string]$SameFileNameCount    = $_.count
+                [string]$SameFileName         = $_.name
+                $SameFileNameCoverage         = [math]::Round($SameFileNameCount/$ShareFolderGroupCount,4)            
+
+                # Check for 10% coverage
+                if($SameFileNameCoverage -ge .10){ 
+                   $SimularityFileCoverage10  = 1
+                   $SimularityFileCommonList.rows.Add($SameFileNameCount,"$SameFileName",$SameFileNameCoverage) | Out-Null
+                }
+
+                # Check for 20% coverage
+                if($SameFileNameCoverage -ge .20){ 
+                   $SimularityFileCoverage20  = 1
+                   $SimularityFileCommonList.rows.Add($SameFileNameCount,"$SameFileName",$SameFileNameCoverage) | Out-Null
+                }
+
+                # Check for 30% coverage
+                if($SameFileNameCoverage -ge .30){ 
+                   $SimularityFileCoverage30  = 1
+                   $SimularityFileCommonList.rows.Add($SameFileNameCount,"$SameFileName",$SameFileNameCoverage) | Out-Null
+                }
+
+                # Check for 40% coverage
+                if($SameFileNameCoverage -ge .40){ 
+                   $SimularityFileCoverage40  = 1
+                   $SimularityFileCommonList.rows.Add($SameFileNameCount,"$SameFileName",$SameFileNameCoverage) | Out-Null
+                }
+
+                # Check for 50% coverage
+                if($SameFileNameCoverage -ge .51){ 
+                   $SimularityFileCoverage50  = 1
+                   $SimularityFileCommonList.rows.Add($SameFileNameCount,"$SameFileName",$SameFileNameCoverage) | Out-Null
+                }
+
+                # Check for 60% coverage
+                if($SameFileNameCoverage -ge .60){ 
+                   $SimularityFileCoverage60  = 1
+                   $SimularityFileCommonList.rows.Add($SameFileNameCount,"$SameFileName",$SameFileNameCoverage) | Out-Null
+                }
+
+                # Check for 70% coverage
+                if($SameFileNameCoverage -ge .70){ 
+                   $SimularityFileCoverage70  = 1
+                   $SimularityFileCommonList.rows.Add($SameFileNameCount,"$SameFileName",$SameFileNameCoverage) | Out-Null
+                }
+
+                # Check for 80% coverage
+                if($SameFileNameCoverage -ge .80){ 
+                   $SimularityFileCoverage80  = 1
+                   $SimularityFileCommonList.rows.Add($SameFileNameCount,"$SameFileName",$SameFileNameCoverage) | Out-Null
+                }
+
+                # Check for 90% coverage
+                if($SameFileNameCoverage -ge .90){ 
+                   $SimularityFileCoverage90  = 1
+                   $SimularityFileCommonList.rows.Add($SameFileNameCount,"$SameFileName",$SameFileNameCoverage) | Out-Null
+                }
+
+                # Check for 100% coverage
+                if($SameFileNameCoverage -ge 1){ 
+                   $SimularityFileCoverage100 = 1
+                   $SimularityFileCommonList.rows.Add($SameFileNameCount,"$SameFileName",$SameFileNameCoverage) | Out-Null
+                } 
+            }
+
+            # Set common file constraints
+            If($ShareCount -eq 1){
+                $CommonFileConstraint = 0
+            }else{
+                $CommonFileConstraint = 1
+            }
+
+            # Select a list of all files found in 10% or more of folder groups
+            $SimularityFileCommonListTop = $SimularityFileCommonList | where Coverage -ge .10 | where Count -gt $CommonFileConstraint |
+            foreach {
+                $SimularityFileTopName          = $_.FileName
+                $SimularityFileTopCount         = $_.Count
+                $SimularityFileTopCountCalc     = [math]::Round($SimularityFileTopCount/$ShareFolderGroupCount,4)                  
+                $SimularityFileTopCPercentage   = ($SimularityFileTopCountCalc * 100).ToString() + '%'
+                "<tr id='ignore'><td>$SimularityFileTopName</td><td>&nbsp;$SimularityFileTopCPercentage ($SimularityFileTopCount)</td></tr>"
+            } | select -Unique
+            
+            # This supports situations when the a file exist in more than one group, but the total folder group count is less than 10
+            # we need this should we only show common files with more than one instance
+            If($ShareFolderGroupCount -lt 10 -and $ShareFolderGroupCount -gt 1 -and $ShareCount -gt 2) {
+                $SimularityFileCommonListTop = $SimularityFileCommonList | where Count -gt 1 |
+                foreach {
+                    $SimularityFileTopName          = $_.FileName
+                    $SimularityFileTopCount         = $_.Count
+                    $SimularityFileTopCountCalc     = [math]::Round($SimularityFileTopCount/$ShareFolderGroupCount,4)                  
+                    $SimularityFileTopCPercentage   = ($SimularityFileTopCountCalc * 100).ToString() + '%'
+                    "<tr id='ignore'><td>$SimularityFileTopName</td><td>&nbsp;$SimularityFileTopCPercentage ($SimularityFileTopCount)</td></tr>"
+                } | select -Unique
+            }  
+            
+            # This supports situations when the a file exist in more than one group, but there is only one group
+            If($ShareFolderGroupCount -eq 1 -and $ShareCount -gt 1) {
+                $SimularityFileCommonListTop = $SimularityFileCommonList | 
+                foreach {
+                    $SimularityFileTopName          = $_.FileName
+                    $SimularityFileTopCount         = $_.Count
+                    $SimularityFileTopCountCalc     = [math]::Round($SimularityFileTopCount/$ShareFolderGroupCount,4)                  
+                    $SimularityFileTopCPercentage   = ($SimularityFileTopCountCalc * 100).ToString() + '%'
+                    "<tr id='ignore'><td>$SimularityFileTopName</td><td>&nbsp;$SimularityFileTopCPercentage ($SimularityFileTopCount)</td></tr>"
+                } | select -Unique
+            }                      
+            
+            # Set count for display
+            $SimularityFileCommonListTopNum = $SimularityFileCommonListTop | measure | select count -ExpandProperty count         
+
+            # Format list for display
+            $SimularityFileCommonListTxt = $SimularityFileCommonListTop -join "`n"
+
+            # Set the weighted values
+            $SimularityFileCoverage10w            =  $SimularityFileCoverage10   * 10
+            $SimularityFileCoverage20w            =  $SimularityFileCoverage20   * 10
+            $SimularityFileCoverage30w            =  $SimularityFileCoverage30   * 10
+            $SimularityFileCoverage40w            =  $SimularityFileCoverage40   * 10
+            $SimularityFileCoverage50w            =  $SimularityFileCoverage50   * 10
+            $SimularityFileCoverage60w            =  $SimularityFileCoverage60   * 10
+            $SimularityFileCoverage70w            =  $SimularityFileCoverage70   * 10
+            $SimularityFileCoverage80w            =  $SimularityFileCoverage80   * 10
+            $SimularityFileCoverage90w            =  $SimularityFileCoverage90   * 10
+            $SimularityFileCoverage100w           =  $SimularityFileCoverage100  * 10            
+
+            # Set max value
+            $SimularityFileCoverageMax            =  100
+
+            # Set actual value
+            $SimularityFileCoverageValue          =  $SimularityFileCoverage10w   +
+                                                     $SimularityFileCoverage20w   +
+                                                     $SimularityFileCoverage30w   +
+                                                     $SimularityFileCoverage40w   +
+                                                     $SimularityFileCoverage50w   +
+                                                     $SimularityFileCoverage60w   +
+                                                     $SimularityFileCoverage70w   +
+                                                     $SimularityFileCoverage80w   +
+                                                     $SimularityFileCoverage90w   +
+                                                     $SimularityFileCoverage100w 
+
+
+            # Calculate Weighted Score
+            $SimularityFileCoverageScore          =  $SimularityFileCoverageValue  / $SimularityFileCoverageMax
+            $SimularityFileCoverageScoreP1        =  [math]::round(($SimularityFileCoverageScore.tostring("P") -replace('%','')))
+            $SimularityFileCoverageScoreP         =  "$SimularityFileCoverageScoreP1%"    
+            
+            ## --- 
+            ## Share Properties Weight Group Calculations  
+            ## ---------------------------------------------  
+
+            ##
+            ## Calculate share name ratio
+            ## Output Value: 0 or 1 
+            $SimularitySharePropShareName = 1         
+
+            ##
+            ## Calculate creation date ratio
+            ## Output Value: 0 to 1
+            $ShareCreateCount                    = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select creationdate -Unique | Measure-Object | Select-Object count -ExpandProperty count            
+            $SimularityCalcCreateDate1           = [math]::Round($ShareCount/$ShareCreateCount,4) 
+            $SimularitySharePropCreateDateRatio  = $SimularityCalcCreateDate1 / $ShareCount
+            $SimularitySharePropCreateDateRatioT  = $SimularitySharePropCreateDateRatio.ToString("F2")
+           
+            ##
+            ## Calculate modification date ratio
+            ## Output Value: 0 to 1
+            $ShareModifiedCount                   = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select LastModifiedDate -Unique | Measure-Object | Select-Object count -ExpandProperty count            
+            $SimularityCalcLastModDate1           = [math]::Round($ShareCount/$ShareModifiedCount,4) 
+            $SimularitySharePropModDateRatio      = $SimularityCalcLastModDate1 / $ShareCount
+            $SimularitySharePropModDateRatioT     = $SimularitySharePropModDateRatio.ToString("F2") 
+                        
+            ##
+            ## Calculate file group owner ratio average 
+            ## Output Value: 0 to 1
+
+            # Reset avg score
+            $SimularitySharePropFGOwnerAvg = 0
+                      
+            # Foreach folder group calculate owner to folder group ratio
+            $FGtoOwnerFGList = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | select FileListGroup -Unique  | 
+            foreach{
+
+                # Get folder group name
+                $FGtoOwnerFG = $_.FileListGroup              
+
+                # Get number of shares in folder group          
+                $FGtoOwnerShareCount = $ExcessiveSharePrivs | where ShareName -EQ "$ShareName" | where FileListGroup -eq "$FGtoOwnerFG" | select SharePath -Unique | Measure-Object | select count -ExpandProperty count
+                               
+                # Get number of owners associated with folder group
+                $FGtoOwnerOwnerCount = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | where FileListGroup -EQ "$FGtoOwnerFG" | select ShareOwner -Unique | Measure-Object | select count -ExpandProperty count                
+
+                # Calculate fg to owner ratio               
+                $FGtoOwnerThings = $FGtoOwnerOwnerCount/$FGtoOwnerShareCount
+                $FGtoOwnerThings              
+            } 
+
+            # Calculate file group owner ratio average 
+            $FGtoOwnerMax   = $FGtoOwnerFGList | measure | select count -ExpandProperty count
+            $FGtoOwnerValue = ($FGtoOwnerFGList | measure -sum).sum            
+            $SimularitySharePropFGOwnerAvg = [math]::Round($FGtoOwnerValue/$FGtoOwnerMax,4)
+            $SimularitySharePropFGOwnerAvgT = $SimularitySharePropFGOwnerAvg.ToString("F2")
+
+            ##
+            ## Calculate group score
+
+            # Set the weighted values
+            $SimularitySharePropShareNameW             =  $SimularitySharePropShareName        * 90
+            $SimularitySharePropFGOwnerAvgW            =  $SimularitySharePropFGOwnerAvg       * 5
+            $SimularitySharePropCreateDateRatioW       =  $SimularitySharePropCreateDateRatio  * 3
+            $SimularitySharePropModDateRatioW          =  $SimularitySharePropModDateRatio     * 2
+
+            # Set max value
+            $SimularitySharePropCoverageMax            =  100
+
+            # Set actual value
+            $SimularitySharePropCoverageValue          =  $SimularitySharePropShareNameW       +
+                                                          $SimularitySharePropFGOwnerAvgW      +
+                                                          $SimularitySharePropCreateDateRatioW +
+                                                          $SimularitySharePropModDateRatioW
+            # Calculate Weighted Score
+            $SimularitySharePropCoverageScore          =  $SimularitySharePropCoverageValue  / $SimularitySharePropCoverageMax
+            $SimularitySharePropCoverageScoreP1        =  [math]::round(($SimularitySharePropCoverageScore.tostring("P") -replace('%','')))
+            $SimularitySharePropCoverageScoreP         =  "$SimularityFolderGroupCoverageScoreP1%"       
+
+            ## ---
+            ## General metrics (Not included in similarity score, but displayed in details)  
+            ## ---------------------------------------------                                
+                                              
+            # Calculate the share to owner ratio
+            # Output value: 0 to 1     
+            $SimularityCalcShareOwner1 = [math]::Round($ShareCount/$ShareOwnerListCount,4) 
+            $SimularityCalcShareOwner  = $SimularityCalcShareOwner1 / $ShareCount
+            $SimularityCalcShareOwner  = $SimularityCalcShareOwner.ToString("F2")
+
+            ## Calculate share to folder group ratio
+            # Output value: 0 to 1                                       
+            $SimularityCalcShareFg1 = [math]::Round($ShareCount/$ShareFolderGroupCount,4) # Original value
+            $SimularityCalcShareFg  = $SimularityCalcShareFg1 / $ShareCount 
+            $SimularityCalcShareFg  = $SimularityCalcShareFg.ToString("F2")
+
+            ##
+            ## Calculate if all descriptions for the target share name are the same.
+            ## Output Value: 0 or 1
+            $ShareDescriptionCount    = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | where ShareDescription -NE ""| select ShareDescription -Unique | measure | select count -ExpandProperty count        
+            If($ShareDescriptionCount -ge 1){
+                $SimularityCalcShareDesc = 1
+            }else{
+                $SimularityCalcShareDesc = 0
+            }            
+
+            ## ---
+            ## Final Similarity Weighting V1
+            ## ---------------------------------------------  
+                      
+            # Normalize Weight Groups
+            # - File Name Coverage Weight Group
+            # - File Group Coverage Wieght Group
+            # - Share Properties Weight Group
+            
+            # Set final max
+            $FinalSimilarityMax                     = 3.85
+
+            # Set weighted values
+            if($SimularityFileCoverageScore -eq 0){
+
+                # 0 matches patch; means all folders are empty, so we want to weight up.
+                $SimularityFileCoverageScoreW       = 2.25
+            }else{
+
+                # Default setting
+                $SimularityFileCoverageScoreW       = $SimularityFileCoverageScore         * 2.25
+            }
+            $SimularityFolderGroupCoverageScoreW    = $SimularityFolderGroupCoverageScore  * 1          
+            $SimularitySharePropCoverageScoreW      = $SimularitySharePropCoverageScore    * .6
+
+            # Set final value
+            $FinalSimilarityValue                   = $SimularityFolderGroupCoverageScoreW + 
+                                                      $SimularityFileCoverageScoreW        +
+                                                      $SimularitySharePropCoverageScoreW 
+
+            # Set cumulative score
+            $FinalSimilarityScore   = $FinalSimilarityValue / $FinalSimilarityMax
+            $FinalSimilarityScoreP1 = [math]::round(($FinalSimilarityScore.tostring("P") -replace('%','')))
+            $FinalSimilarityScoreP  = "$FinalSimilarityScoreP1%"           
+
+            #
+            # Set similarity classification
+            #
+            If($FinalSimilarityScore -ge .80){ $SimLevel = "$FinalSimilarityScoreP High"}
+            If($FinalSimilarityScore -ge .95){ $SimLevel = "$FinalSimilarityScoreP Very High"}
+            If($FinalSimilarityScore -lt .80){ $SimLevel = "$FinalSimilarityScoreP Medium"}
+            If($FinalSimilarityScore -lt .50){ $SimLevel = "$FinalSimilarityScoreP Low"}                             
+
+            # ----------------------------------------------------------------------
+            # Calculate Similarity Score - END   
+            # ---------------------------------------------------------------------- 
+            #endregion SimilarityScore
+            
+            #region PeakDateRange
+            # ----------------------------------------------------------------------
             # Calculate peak event date range - START
+            # ----------------------------------------------------------------------
             # Assumptions: a) if only two unique dates exist, then both will be included in the observation window. 
 
             # Count total number of events
@@ -1872,22 +2206,493 @@ function Invoke-HuntSMBShares
                     $ObservationWindowsEndDate  = $ObservationWindowsEndDate + $ObservationWindow
              }
 
+            # ----------------------------------------------------------------------
             # Calculate peak event date range - END
-            # ---- 
+            # ----------------------------------------------------------------------
+            #endregion PeakDateRange
+
+            #region Access Checks
+            # ----------------------------------------------------------------------
+            # Check share access types for name - START  
+            # ----------------------------------------------------------------------
+
+            # Check if high risk     
+            try{                                
+                $ShareRowHighRisk = $ExcessiveSharePrivs | Where ShareName -like "$ShareName" | 
+                Foreach {
+                    if(($_.ShareName -like 'c$') -or ($_.ShareName -like 'admin$') -or ($_.ShareName -like "*wwwroot*") -or ($_.ShareName -like "*inetpub*") -or ($_.ShareName -like 'c') -or ($_.ShareName -like 'c_share'))
+                    {
+                        $_ # out to file
+                    }
+                }
+                
+                $ShareRowCountHRAcls         = $ShareRowHighRisk  | Measure-Object | select count -ExpandProperty count 
+                $ShareRowCountHRShares       = $ShareRowHighRisk  | Select-Object SharePath    -Unique   | Measure-Object | select count -ExpandProperty count
+                $ShareRowCountHRComputers    = $ShareRowHighRisk  | Select-Object ComputerName -Unique   | Measure-Object | select count -ExpandProperty count
+                $ShareRowCountHRSharesCacl   = $ShareRowCountHRShares / $ShareCount
+                $ShareRowCountHRSharesCaclP1 = [math]::round(($ShareRowCountHRSharesCacl.tostring("P") -replace('%','')))
+                $ShareRowCountHRSharesCaclP  = "$ShareRowCountHRSharesCaclP1% ($ShareRowCountHRShares)"  
+
+                if($ShareRowCountHRAcls -gt 0){
+                   $ShareRowHasHighRisk    = "Yes"
+                }else{
+                   $ShareRowHasHighRisk    = "No"
+                }
+            }catch{
+                $ShareRowCountHRAcls       = "Unknown"   
+                $ShareRowCountHRShares     = "Unknown"   
+                $ShareRowCountHRComputers  = "Unknown"   
+                $ShareRowHasHighRisk       = "Unknown"              
+            }
+
+            # Check if write
+            try{                                
+                $ShareRowWrite = $ExcessiveSharePrivs | Where ShareName -like "$ShareName" | 
+                Foreach {
+                    if(($_.FileSystemRights -like "*GenericAll*") -or ($_.FileSystemRights -like "*Write*"))
+                    {
+                        $_ # out to file
+                    }
+                }
+                
+                $ShareRowCountWriteAcls         = $ShareRowWrite    | Measure-Object | select count -ExpandProperty count 
+                $ShareRowCountWriteShares       = $ShareRowWrite    | Select-Object SharePath    -Unique   | Measure-Object | select count -ExpandProperty count
+                $ShareRowCountWriteComputers    = $ShareRowWrite    | Select-Object ComputerName -Unique   | Measure-Object | select count -ExpandProperty count
+                $ShareRowCountwriteSharesCacl   = $ShareRowCountwriteShares / $ShareCount
+                $ShareRowCountwriteSharesCaclP1 = [math]::round(($ShareRowCountwriteSharesCacl.tostring("P") -replace('%','')))
+                $ShareRowCountwriteSharesCaclP  = "$ShareRowCountwriteSharesCaclP1% ($ShareRowCountwriteShares)"  
+
+                if($ShareRowCountWriteAcls -gt 0){
+                   $ShareRowHasWrite          = "Yes"
+                }else{
+                   $ShareRowHasWrite          = "No" 
+                }
+            }catch{
+                $ShareRowCountWriteAcls       = "Unknown"   
+                $ShareRowCountWriteShares     = "Unknown"   
+                $ShareRowCountWriteComputers  = "Unknown"   
+                $ShareRowHasWrite             = "Unknown"              
+            }
+
+            # Check if read
+            try{                                
+                $ShareRowRead = $ExcessiveSharePrivs | Where ShareName -like "$ShareName" | 
+                Foreach {
+                    if(($_.FileSystemRights -like "*read*"))
+                    {
+                        $_ # out to file
+                    }
+                }
+                
+                $ShareRowCountReadAcls         = $ShareRowRead   | Measure-Object | select count -ExpandProperty count 
+                $ShareRowCountReadShares       = $ShareRowRead   | Select-Object SharePath    -Unique   | Measure-Object | select count -ExpandProperty count
+                $ShareRowCountReadComputers    = $ShareRowRead   | Select-Object ComputerName -Unique   | Measure-Object | select count -ExpandProperty count
+                $ShareRowCountReadSharesCacl   = $ShareRowCountReadShares / $ShareCount
+                $ShareRowCountReadSharesCaclP1 = [math]::round(($ShareRowCountReadSharesCacl.tostring("P") -replace('%','')))
+                $ShareRowCountReadSharesCaclP  = "$ShareRowCountReadSharesCaclP1% ($ShareRowCountReadShares)"  
+
+                if($ShareRowCountReadAcls -gt 0){
+                   $ShareRowHasRead         = "Yes"
+                }else{
+                   $ShareRowHasRead         = "No" 
+                }
+            }catch{
+                $ShareRowCountReadAcls      = "Unknown"   
+                $ShareRowCountReadShares    = "Unknown"   
+                $ShareRowCountReadComputers = "Unknown"   
+                $ShareRowHasRead            = "Unknown"              
+            }
+
+            # Check if non defaults
+            try{                                
+                $ShareRowNonDefault = $ExcessiveSharePrivs | Where ShareName -like "$ShareName" | 
+                Foreach {
+                    if(($_.ShareName -like 'admin$') -or ($_.ShareName -like 'c$') -or ($_.ShareName -like 'd$') -or ($_.ShareName -like 'e$') -or ($_.ShareName -like 'f$'))
+                    {
+                        $_ # out to file
+                    }
+                }
+                
+                $ShareRowCountNonDefaultAcls      = $ShareRowNonDefault | Measure-Object | select count -ExpandProperty count                 
+                if($ShareRowCountNonDefaultAcls -gt 0){
+                   $ShareRowHasDefault         = "Yes"
+                }else{
+                   $ShareRowHasDefault         = "No"  
+                }
+            }catch{  
+                $ShareRowHasDefault            = "Unknown"              
+            }
+
+            # Check if empty
+            try{                                
+                $ShareRowEmpty = $ExcessiveSharePrivs | Where ShareName -like "$ShareName" | where FileCount -eq 0
+                
+                $ShareRowCountEmptyAcls      = $ShareRowEmpty  | Measure-Object | select count -ExpandProperty count 
+                $ShareRowCountEmptyShares    = $ShareRowEmpty  | Select-Object SharePath    -Unique   | Measure-Object | select count -ExpandProperty count
+                $ShareRowCountEmptyComputers = $ShareRowEmpty  | Select-Object ComputerName -Unique   | Measure-Object | select count -ExpandProperty count
+                $ShareRowCountEmptySharesCacl   = $ShareRowCountEmptyShares / $ShareCount
+                $ShareRowCountEmptySharesCaclP1 = [math]::round(($ShareRowCountEmptySharesCacl.tostring("P") -replace('%','')))
+                $ShareRowCountEmptySharesCaclP  = "$ShareRowCountEmptySharesCaclP1% ($ShareRowCountEmptyShares)"    
+
+                if($ShareRowCountEmptyAcls -gt 0){
+                   $ShareRowHasEmpty         = "Yes"
+                }else{
+                   $ShareRowHasEmpty         = "No" 
+                }
+            }catch{
+                $ShareRowCountEmptyAcls      = "Unknown"   
+                $ShareRowCountEmptyShares    = "Unknown"   
+                $ShareRowCountEmptyComputers = "Unknown"   
+                $ShareRowHasEmpty            = "Unknown"              
+            }
+
+            # Check if stale
+            try{                                
+                $oneYearAgo = (Get-Date).AddYears(-1)
+                $ShareRowStale = $ExcessiveSharePrivs | Where ShareName -like "$ShareName" | where { $_.LastModifiedDate-ge $oneYearAgo }
+                
+                $ShareRowCountStaleAcls      = $ShareRowStale  | Measure-Object | select count -ExpandProperty count 
+                $ShareRowCountStaleShares    = $ShareRowStale  | Select-Object SharePath    -Unique   | Measure-Object | select count -ExpandProperty count
+                $ShareRowCountStaleComputers = $ShareRowStale  | Select-Object ComputerName -Unique   | Measure-Object | select count -ExpandProperty count
+                $ShareRowCountStaleSharesCacl   = $ShareRowCountStaleShares / $ShareCount
+                $ShareRowCountStaleSharesCaclP1 = [math]::round(($ShareRowCountStaleSharesCacl.tostring("P") -replace('%','')))
+                $ShareRowCountStaleSharesCaclP  = "$ShareRowCountStaleSharesCaclP1% ($ShareRowCountStaleShares)"           
+
+                if($ShareRowCountStaleAcls -gt 0){
+                   $ShareRowHasStale         = "Yes"
+                }else{
+                   $ShareRowHasStale         = "No" 
+                }
+            }catch{
+                $ShareRowCountStaleAcls      = "Unknown"   
+                $ShareRowCountStaleShares    = "Unknown"   
+                $ShareRowCountStaleComputers = "Unknown"   
+                $ShareRowHasStale            = "Unknown"           
+            }
+
+            # Set default
+            $ShareRowCountInteresting                = "No"
+
+            # Define common image and other formats to filter out later
+            $ImageFormats = @("*.jpg", "*.jpeg", "*.png", "*.gif", "*.bmp", "*.ico", "*.svg", "*.webp", "*.mif", "*.heic", "*.msi")
+
+            # Check if interesting files - Secrets
+            # Files that may contain passwords, key, or other authentication tokens
+            $ShareRowInterestingFileListSecrets      = ""
+            $ShareRowInterestingFileListSecretsCount = 0
+            $ShareRowCountInterestingSecrets         = "No"            
+            $FileNamePatternsSecrets = @(
+                "*.bacpac*",
+                "*.bat*",
+                "*.config*",
+                "*.dtsx*",
+                "*.json*",
+                "*.ps1*",
+                "*.psm1*",
+                "*.UDL*",
+                "*config.php*",
+                "*Credentials*",
+                "*Creds*",
+                "*keys*",
+                "*pass*",
+                "*private*",
+                "*secret*",
+                "*secure*",
+                "*security*",
+                "*web.conf*",
+                "*htaccess*",
+                "*htpasswd*",
+                "*inetpub*",
+                "applicationhost.config*",
+                "auth*",
+                "config.xml*",
+                "context.xml*",
+                "db2cli.ini*",
+                "ftpd.*",
+                "ftpusers*",
+                "httpd.conf*",
+                "hudson.security.HudsonPrivateSecurityRealm.*",
+                "jboss-cli.xml*",
+                "jboss-logmanager.properties*",
+                "jenkins.model.JenkinsLocationConfiguration.*",
+                "machine.config*",
+                "my.*",
+                "mysql.user*",
+                "nginx.conf*",
+                "pg_hba.conf*",
+                "php.ini*",
+                "putty.reg*",
+                "postgresql.conf*",
+                "SAM",
+                "SAM-*",
+                "SAM_*",
+                "server.xml*",
+                "shadow*",
+                "standalone.xml*",
+                "tnsnames.ora*",
+                "tomcat-users.xml*",
+                "sitemanager.xml*",
+                "users.*",
+                "*.vmx*",
+                "*.vmdk*",
+                "*.nvram*",
+                "*.vmsd*",
+                "*.vmsn*",
+                "*.vmss*",
+                "*.vmem*",
+                "*.vhd*",
+                "*.vhdx*",
+                "*.avhd*",
+                "*.avhdx*",
+                "*.vsv*",
+                "*.vbox*",
+                "*.vbox-prev*",
+                "*.vdi*",
+                "*.hdd*",
+                "*.sav*",
+                "*.pvm*",
+                "*.pvs*",
+                "*.qcow*",
+                "*.qcow2*",
+                "*.img*",
+                "*vcenter*",
+                "*vault*",
+                "*DefaultAppPool*",
+                "*WinSCP.ini*",
+                "*.kdbx",
+                "wp-config.php*"
+            )
+
+            # Check for matches            
+            $ShareRowInterestingFileListSecrets = foreach ($pattern in $FileNamePatternsSecrets) {
+                
+                # Parse the filenames for all shares with the target name into a list
+                # $FullFileListSim - define in above sections
+                
+                # Check if interesting file pattern matches the file name                
+                $FullFileListSim |
+                foreach {
+                    
+                    # Reset exclude flag
+                    $ExcludeThisFile = 0
+
+                    # File to check
+                    $CheckThisfileOut = $_
+
+                    # Check if it should be excluded
+                    $ImageFormats | 
+                    foreach{
+                        if($CheckThisfileOut -like "$_"){
+                            $ExcludeThisFile = 1
+                        }
+                    }
+
+                    # Check if it matches pattern
+                    if ($_ -like $pattern -and $ExcludeThisFile -eq 0) {
+
+                        # v1 add file name to link
+                        "$_<br>"
+
+                        # v2 add hyperlinked sharepath that expands betwen the: file name %(count)
+                    }
+                }
+            } 
+            
+            $ShareRowInterestingFileListSecrets = $ShareRowInterestingFileListSecrets | select -Unique | sort
+
+            # Count number of interesting files and update status
+            $ShareRowInterestingFileListSecretsCount = $ShareRowInterestingFileListSecrets | select -Unique | sort | Measure | select count -ExpandProperty count
+            if( $ShareRowInterestingFileListSecretsCount -gt 0){
+                $ShareRowCountInterestingSecrets         = "Yes"
+                $ShareRowCountInteresting                = "Yes"
+            }
+
+ 	        # Check if interesting files - Sensitive Data
+            $ShareRowInterestingFileListData         = ""
+            $ShareRowInterestingFileListDataCount    = 0
+            $ShareRowCountInterestingData            = "No"
+            $FileNamePatternsData = @(               
+                "*credit*",
+                "*card*",               
+                "*pci*",
+                "*social*",
+                "*ssn*",
+                "*database*",
+                "human*",
+                "finance*",
+                "Health*",
+                "Billing*",
+                "patient*",
+                "*.bak*",
+                "*backup*",
+                "*.sql",
+                "*.mdb",
+                "*.mdf",
+                "*.idf",
+                "*.sqlite",
+                "*ftp",
+                "*Program Files*",
+                "HR*"
+            )
+
+            # Check for matches
+            $ShareRowInterestingFileListData = foreach ($pattern in $FileNamePatternsData) {
+                
+                # Parse the filenames for all shares with the target name into a list
+                # $FullFileListSim - define in above sections
+                
+                # Check if interesting file pattern matches the file name
+                $FullFileListSim | 
+                foreach {
+
+                    # Reset exclude flag
+                    $ExcludeThisFile = 0
+
+                    # File to check
+                    $CheckThisfileOut = $_
+
+                    # Check if it should be excluded
+                    $ImageFormats | 
+                    foreach{
+                        if($CheckThisfileOut -like "$_"){
+                            $ExcludeThisFile = 1
+                        }
+                    }
+
+                    if ($_ -like $pattern-and $ExcludeThisFile -eq 0) {
 
 
+                        # v1 add file name to link
+                        "$_<br>"
+
+                        # v2 add hyperlinked sharepath that expands betwen the: file name %(count)
+                    }
+                }
+            } 
+            
+            $ShareRowInterestingFileListData = $ShareRowInterestingFileListData | select -Unique | sort
+
+            # Count number of interesting files and update status
+            $ShareRowInterestingFileListDataCount = $ShareRowInterestingFileListData | select -Unique | sort | Measure | select count -ExpandProperty count
+            if( $ShareRowInterestingFileListDataCount -gt 0){
+                $ShareRowCountInterestingData            = "Yes"
+                $ShareRowCountInteresting                = "Yes"
+            }
+
+            $ShareRowInterestingFileTotalCount = $ShareRowInterestingFileListDataCount + $ShareRowInterestingFileListSecretsCount 
+
+            # Build coverage icon set
+            $CoverageIcons = ""
+            if($ShareRowHasHighRisk        -eq "Yes"){ $CoverageIcons = $CoverageIcons + "<div class=`"tooltip`"><div class=`"circle`">H</div><span class=`"tooltiptext`">Highly Exploitable</span></div>&nbsp;" }
+            if($ShareRowHasWrite           -eq "Yes"){ $CoverageIcons = $CoverageIcons + "<div class=`"tooltip`"><div class=`"circle`">W</div><span class=`"tooltiptext`">Write Access</span></div>&nbsp;" }
+            if($ShareRowHasRead            -eq "Yes"){ $CoverageIcons = $CoverageIcons + "<div class=`"tooltip`"><div class=`"circle`">R</div><span class=`"tooltiptext`">Read Access</span></div>&nbsp;" }
+            if($ShareRowCountInteresting   -eq "Yes"){ $CoverageIcons = $CoverageIcons + "<div class=`"tooltip`"><div class=`"circle`">I</div><span class=`"tooltiptext`">Interesting Files<br>such as secrets<br>and sensitive data.</span></div>&nbsp;" }
+            if($ShareRowHasEmpty           -eq "Yes"){ $CoverageIcons = $CoverageIcons + "<div class=`"tooltip`"><div class=`"circle`">E</div><span class=`"tooltiptext`">Empty. <br>At least one folder<br>group is empty.</span></div>&nbsp;" }
+            if($ShareRowHasStale           -eq "Yes"){ $CoverageIcons = $CoverageIcons + "<div class=`"tooltip`"><div class=`"circle`">S</div><span class=`"tooltiptext`">Stale. <br>No modifications in <br>a year or more.</span></div>&nbsp;" }
+
+            # ----------------------------------------------------------------------
+            # Check share access types for name - END 
+            # ----------------------------------------------------------------------
+            #endregion Check Access
+
+
+            # ----------------------------------------------------------------------
+            # Calculate Risk Level
+            # ----------------------------------------------------------------------
+
+            # Define Weights 
+
+            $RiskWeightRCE             = 11
+
+            $RiskWeightData            = 8
+            $RiskWeightDataVolume      = 1
+
+            $RiskWeightSecrets         = 2
+            $RiskWeightSecretsVolume   = 1
+
+            $RiskWeightWrite           = 4
+            $RiskWeightRead            = 3
+
+            $RiskWeightLargeVolume     = 1  
+            $RiskWeightOfficeDocs      = 1  # TBD; Placeholder    
+
+            $RiskWeightEmpty           = -1
+            $RiskWeightStale           = -1
+
+            # Calculate Actual Value
+            $ShareNameRiskValue = 0
+            if($ShareRowHasHighRisk                     -eq "Yes"){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightRCE           } # Potential RCE
+            if($ShareRowCountInterestingData            -eq "Yes"){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightData          } # Potential Sensitive Data 
+            if($ShareRowInterestingFileListDataCount    -gt  10  ){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightDataVolume    } # Potential Sensitive Data Volume            
+            if($ShareRowCountInterestingSecrets         -eq "Yes"){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightSecrets       } # Potential Password Access 
+            if($ShareRowInterestingFileListDataCount    -gt  10  ){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightSecretsVolume } # Potential Sensitive Data Volume 
+            if($ShareRowHasWrite                        -eq "Yes"){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightWrite         } # Write Access          
+            if($ShareRowHasRead                         -eq "Yes"){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightRead          } # Read Access                        
+            if($SimularityFileCommonListTopNum          -gt  100 ){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightLargeVolume   } # Large number of common files  
+            if($ShareRowHasEmpty                        -eq "Yes"){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightEmpty         } # Empty Folders
+            if($ShareRowHasStale                        -eq "Yes"){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightStale         } # Stake Folders          
+
+            # Set Risk Score
+            If($ShareNameRiskValue -ge 11 ) { $RiskLevel = "$ShareNameRiskValue High"}
+            If($ShareNameRiskValue -ge 20 ) { $RiskLevel = "$ShareNameRiskValue Very High"}
+            If($ShareNameRiskValue -lt 11 ) { $RiskLevel = "$ShareNameRiskValue Medium"}
+            If($ShareNameRiskValue -lt 4  ) { $RiskLevel = "$ShareNameRiskValue Low"}       
+
+            <#
+            # Determine Max Value
+            $ShareNameRiskMax   = $RiskWeightRCE              +
+                                  $RiskWeightData             +
+                                  $RiskWeightDataVolume       +
+                                  $RiskWeightSecrets          +
+                                  $RiskWeightSecretsVolume    +
+                                  $RiskWeightWrite            +
+                                  $RiskWeightRead             +
+                                  $RiskWeightLargeVolume
+            
+            # Calculate Score
+            $ShareNameRiskScore   = $ShareNameRiskValue / $ShareNameRiskMax
+            $ShareNameRiskScoreP1 = [math]::round(($ShareNameRiskScore.tostring("P") -replace('%','')))
+            $ShareNameRiskScoreP  = "$ShareNameRiskScoreP1%"           
+
+            # Set Risk Score            
+            If($ShareNameRiskScore -ge .80){ $RiskLevel = "$ShareNameRiskScoreP High"}
+            If($ShareNameRiskScore -ge .95){ $RiskLevel = "$ShareNameRiskScoreP Very High"}
+            If($ShareNameRiskScore -lt .80){ $RiskLevel = "$ShareNameRiskScoreP Medium"}
+            If($ShareNameRiskScore -lt .50){ $RiskLevel = "$ShareNameRiskScoreP Low"} 
+            #>
+                                      
+            # ----------------------------------------------------------------------
+            # Build Share Name Summary Page Rows
+            # ----------------------------------------------------------------------
+            # Build Rows
             $ThisRow = @" 
-	          <tr>
-	          <td>
+	          <tr h="$ShareRowHasHighRisk" w="$ShareRowHasWrite" r="$ShareRowHasRead" i="$ShareRowCountInteresting" e="$ShareRowHasEmpty" s="$ShareRowHasStale" n="$ShareRowHasDefault" >
+              <td>
               $ShareCount
-	          </td>	
-	          <td style="vertical-align: top;">
-                  <button class="collapsible">$ShareName</button>
+	          </td>	 
+	          <td style="vertical-align: top;text-align:left">
+                  <button class="collapsible" style="text-align:left">
+                  $ShareName<br>
+                  $CoverageIcons
+                  </button>
                   <div class="content">
                   <div class="filelistparent" style="font-size: 10px;"> 
-                      $ShareDescriptionSample
-                      
-                      <strong>Timeline Context</strong><br>   
+                      $ShareDescriptionSample                                                                
+                      <strong>Affected Assets</strong><br>
+                      <table class="subtable">
+                       <tr id="ignore">
+                        <td>Computers:</td><td>&nbsp;$ComputerBar</td>
+                       </tr>
+                       <tr id="ignore">
+                        <td>Shares:</td><td>&nbsp;$ShareBar</td>
+                       </tr>
+                       <tr id="ignore">
+                        <td>ACLs:</td><td>&nbsp;$AclBar</td>
+                       </tr>
+                      </table>      
+                      <br><br>
+
+                      <strong>Timeline Context</strong><br>
                       <table class="subtable">
                        <tr id="ignore">
                         <td>First Created:</td>                          
@@ -1898,90 +2703,216 @@ function Invoke-HuntSMBShares
                         <td>&nbsp;$ShareLastCreated</td> 
                        </tr>
                        <tr id="ignore">
-                        <td>Last Modified:</td> 
+                        <td>Last Mod:</td> 
                         <td>&nbsp;$ShareLastModified</td> 
                        </tr>
-                       </table>   
+                       </table>  
+                       <br><br>
 
-                      <br><br>
-
-                      <strong>Peak Window Details</strong><br>
+                      <strong>Owners ($ShareOwnerListCount)</strong> 
+                      <br>                  
+                      $ShareOwnerListHTML                                                        
+                  </div>
+                  </div>                            
+	          </td>	
+              <td>
+		        <button class="collapsible" style="text-align:left; font-size: 10px;">
+               <strong>$RiskLevel</strong>
+                </button>
+                <div class="content">
+                    <div class="filelistparent" style="font-size: 10px;"> 
+                      <strong>Risk Summary</strong><br>
                       <table class="subtable">
                        <tr id="ignore">
-                        <td>Total Share Instances:</td>                          
-                        <td>&nbsp;$ShareEventCountTotal</td> 
+                        <td>HE:</td><td>&nbsp;$ShareRowCountHRSharesCaclP</td>
                        </tr>
                        <tr id="ignore">
-                        <td>Peak Window Instances:</td> 
-                        <td>&nbsp;$ObservationWindowRangecountWinner</td> 
+                        <td>Write:</td><td>&nbsp;$ShareRowCountwriteSharesCaclP</td>
                        </tr>
                        <tr id="ignore">
-                        <td>Peak Window Start:</td> 
-                        <td>&nbsp;$ObvWinnerFirst</td> 
+                        <td>Read:</td><td>&nbsp;$ShareRowCountReadSharesCaclP</td>
                        </tr>
                        <tr id="ignore">
-                        <td>Peak Window End:</td> 
-                        <td>&nbsp;$ObvWinnerLast</td> 
+                        <td>Stale:</td><td>&nbsp;$ShareRowCountStaleSharesCaclP</td>
                        </tr>
-                      </table>                       
-                  </div>
-                  </div>              
-	          </td>		 
+                       <tr id="ignore">
+                        <td>Empty:</td><td>&nbsp;$ShareRowCountEmptySharesCaclP</td>
+                       </tr>
+                       <tr id="ignore">
+                        <td>Default:</td><td>&nbsp;$ShareRowHasDefault</td>
+                       </tr>
+                       <tr id="ignore">
+                        <td>Sensitive:</td><td>&nbsp;$ShareRowInterestingFileListDataCount</td>
+                       </tr>
+                       <tr id="ignore">
+                        <td>Secrets:</td><td>&nbsp;$ShareRowInterestingFileListSecretsCount</td>
+                       </tr>
+                      </table>      
+                    </div>
+                </div>  
+              </td>		 
 	          <td>
-                <button class="collapsible" style="font-size: 10px;"><strong>$SimLevel ($SimilarityScoreP)</strong></button>
+                <button class="collapsible" style="font-size: 10px;"><strong>$SimLevel</strong></button>
                     <div class="content">
-                        <div class="filelistparent" style="font-size: 10px;">
-                            <strong>Probability Distributions</strong><br>
+                        <div class="filelistparent" style="font-size: 10px;">          
                             <table class="subtable">
                                 <tr id="ignore">
-                                    <td>FolderGroup:</td><td>&nbsp;$SimularityCalcShareFg</td>
+                                    <td><strong>Final Weighted Score: </strong>:</td><td>&nbsp;<strong>$FinalSimilarityScoreP</strong></td>
+                                </tr> 
+                                <tr id="ignore">
+                                    <td>File Name Coverage:</td><td>&nbsp;$SimularityFileCoverageScoreP</td>
+                                </tr> 
+                                <tr id="ignore">
+                                    <td>Folder Group Coverage:</td><td>&nbsp;$SimularityFolderGroupCoverageScoreP</td>
+                                </tr> 
+                                <tr id="ignore">
+                                    <td>Share Property Coverage:</td><td>&nbsp;$SimularitySharePropCoverageScoreP</td>
+                                </tr> 
+                            </table>
+                            <br> --- <br>  
+                             
+                            <strong>File Name Metrics</strong><Br>
+                            <table class="subtable">
+                                <tr id="ignore">
+                                    <td>1 File FG Coverage  &nbsp;10%:</td><td>&nbsp;$SimularityFileCoverage10</td>
                                 </tr>
                                 <tr id="ignore">
-                                    <td>OwnerFG:</td><td>&nbsp;$SimularityCalcFGOwnerAvg</td>
+                                    <td>1 File FG Coverage  &nbsp;20%:</td><td>&nbsp;$SimularityFileCoverage20</td>
                                 </tr>
                                 <tr id="ignore">
-                                    <td>Owner:</td><td>&nbsp;$SimularityCalcShareOwner</td>
-                                </tr>
-                                 <tr id="ignore">
-                                    <td>80% FN:</td><td>&nbsp;$SameFileNameMeetsThresholds</td>
-                                </tr>                                
-                                <tr id="ignore">
-                                    <td>25% FG:</td><td>&nbsp;$SimularityCalOver30</td>
+                                    <td>1 File FG Coverage  &nbsp;30%:</td><td>&nbsp;$SimularityFileCoverage30</td>
                                 </tr>
                                 <tr id="ignore">
-                                    <td>50% FG:</td><td>&nbsp;$SimularityCalc50P</td>
-                                </tr>                                
-                                <tr id="ignore">
-                                    <td>Created:</td><td>&nbsp;$SimularityCalcCreateDate</td>
+                                    <td>1 File FG Coverage  &nbsp;40%:</td><td>&nbsp;$SimularityFileCoverage40</td>
                                 </tr>
                                 <tr id="ignore">
-                                    <td>LastMod:</td><td>&nbsp;$SimularityCalcLastModDate</td>
+                                    <td>1 File FG Coverage  &nbsp;51%:</td><td>&nbsp;$SimularityFileCoverage50</td>
+                                </tr> 
+                                <tr id="ignore">
+                                    <td>1 File FG Coverage  &nbsp;60%:</td><td>&nbsp;$SimularityFileCoverage60</td>
+                                </tr> 
+                                <tr id="ignore">
+                                    <td>1 File FG Coverage  &nbsp;70%:</td><td>&nbsp;$SimularityFileCoverage70</td>
+                                </tr> 
+                                <tr id="ignore">
+                                    <td>1 File FG Coverage  &nbsp;80%:</td><td>&nbsp;$SimularityFileCoverage80</td>
+                                </tr> 
+                                <tr id="ignore">
+                                    <td>1 File FG Coverage  &nbsp;90%:</td><td>&nbsp;$SimularityFileCoverage90</td>
+                                </tr> 
+                                <tr id="ignore">
+                                    <td>1 File FG Coverage 100%:</td><td>&nbsp;$SimularityFileCoverage100</td>
+                                </tr>                                  
+                            </table>
+
+                            <Br><Br><strong>Folder Group Metrics</strong><Br>
+                            <table class="subtable">
+                                <tr id="ignore">
+                                    <td>1 FG Covers &nbsp;10% of shares:</td><td>&nbsp;$SimularityFolderGroupCoverage10</td>
+                                </tr> 
+                                <tr id="ignore">
+                                    <td>1 FG Covers &nbsp;20% of shares:</td><td>&nbsp;$SimularityFolderGroupCoverage20</td>
+                                </tr> 
+                                <tr id="ignore">
+                                    <td>1 FG Covers &nbsp;30% of shares:</td><td>&nbsp;$SimularityFolderGroupCoverage30</td>
+                                </tr> 
+                                <tr id="ignore">
+                                    <td>1 FG Covers &nbsp;40% of shares:</td><td>&nbsp;$SimularityFolderGroupCoverage40</td>
+                                </tr> 
+                                <tr id="ignore">
+                                    <td>1 FG Covers &nbsp;51% of shares:</td><td>&nbsp;$SimularityFolderGroupCoverage50</td>
+                                </tr> 
+                                <tr id="ignore">
+                                    <td>1 FG Covers &nbsp;60% of shares:</td><td>&nbsp;$SimularityFolderGroupCoverage60</td>
+                                </tr> 
+                                <tr id="ignore">
+                                    <td>1 FG Covers &nbsp;70% of shares:</td><td>&nbsp;$SimularityFolderGroupCoverage70</td>
+                                </tr> 
+                                <tr id="ignore">
+                                    <td>1 FG Covers &nbsp;80% of shares:</td><td>&nbsp;$SimularityFolderGroupCoverage80</td>
+                                </tr> 
+                                <tr id="ignore">
+                                    <td>1 FG Covers &nbsp;90% of shares:</td><td>&nbsp;$SimularityFolderGroupCoverage90</td>
+                                </tr> 
+                                <tr id="ignore">
+                                    <td>1 FG Covers 100% of shares:</td><td>&nbsp;$SimularityFolderGroupCoverage100</td>
                                 </tr>
-                             </table> 
+
+                            </table>
+                            <Br><Br><strong>Share Property Metrics</strong><Br>
+                            <table class="subtable">
+                                <tr id="ignore">
+                                    <td>Same Share Name:</td><td>&nbsp;1</td>
+                                </tr>
+                                <tr id="ignore">
+                                    <td>File Group/Owner Ratio Average:</td><td>&nbsp;$SimularitySharePropFGOwnerAvgT</td>
+                                </tr>
+                                <tr id="ignore">
+                                    <td>Creation Date/Share Ratio:</td><td>&nbsp;$SimularitySharePropCreateDateRatioT</td>
+                                </tr>
+                                <tr id="ignore">
+                                    <td>Last Modification Date/Share Ratio:</td><td>&nbsp;$SimularitySharePropModDateRatioT</td>
+                                </tr>
+                            </table>
+                            <Br><Br><strong>Additional Metrics</strong><Br>
+                            <table class="subtable">
+                                <tr id="ignore">
+                                    <td>Share Owner Ratio:</td><td>&nbsp;$SimularityCalcShareOwner</td>
+                                </tr>
+                                <tr id="ignore">
+                                    <td>File Group/Name Ratio:</td><td>&nbsp;$SimularityCalcShareFg</td>
+                                </tr>
+                                <tr id="ignore">
+                                    <td>All Descriptions Match:</td><td>&nbsp;$SimularityCalcShareDesc</td>
+                                </tr>
+                            </table>
                         </div>
                     </div>	              	 
 	          </td>	
               <td>                  
-                  <button class="collapsible">$ShareFolderGroupCount</button>
+                  <button class="collapsible" style="font-size: 10px;"><strong>$ShareFolderGroupCount</strong></button>
                   <div class="content">
                   <div class="filelistparent" >
                   $ShareFolderGroupList
                   </div>
                   </div> 
-              </td> 
-              <td>
-                  <button class="collapsible">$ShareOwnerListCount</button>
-                  <div class="content">
-                  <div class="filelistparent" style="font-size: 10px;">
-                  $ShareOwnerListHTML
-                  </div>
-                  </div> 
-              </td>	  
+              </td>   
 	          <td style="font-size: 10px;">
-              $ComputerBar
-	          $ShareBar
-              $AclBar  
-	          </td>            	  
+              <button class="collapsible" style="font-size: 10px;"><strong>$SimularityFileCommonListTopNum Files</strong></button>
+              <div class="content">                                         
+                  <div class="filelistparent">
+                  <table class=`"subtable`" style=`"width:80%"`>
+                  $SimularityFileCommonListTop
+                  </table>
+                  </div>
+              </div>
+	          </td> 
+	          <td style="font-size: 10px;">
+
+              <button class="collapsible" style="font-size: 10px;"><strong>$ShareRowInterestingFileTotalCount Files</strong></button>
+                  <div class="content">  
+                    <div class="filelistparent" style="font-size: 10px;">
+
+                          <button class="collapsible"><span style="font-size: 10px;">$ShareRowInterestingFileListSecretsCount Secrets Files</span></button>
+                          <div class="content">                                         
+                              <div class="filelistparent" style="font-size: 10px;">
+                              <table class=`"subtable`" style=`"width:80%"`>
+                              $ShareRowInterestingFileListSecrets
+                              </table>
+                              </div>
+                          </div>
+
+                          <button class="collapsible"><span style="font-size: 10px;">$ShareRowInterestingFileListDataCount Data Files</span></button>
+                          <div class="content">                                         
+                              <div class="filelistparent" style="font-size: 10px;">
+                              <table class=`"subtable`" style=`"width:80%"`>
+                              $ShareRowInterestingFileListData
+                              </table>
+                              </div>
+                          </div>
+                      </div>
+                 </div>           
+	          </td>           	  
 	          </tr>
 "@              
             $ThisRow  
@@ -2279,6 +3210,10 @@ $NewHtmlReport = @"
 		vertical-align:top;
 		border-top:1px solid #eceeef
 	}
+
+    .NamesTh {
+        cursor: pointer;
+    }
 
 	.subtable{
 		all: unset;
@@ -2836,6 +3771,7 @@ $NewHtmlReport = @"
 	line-height:1.15;
 	-webkit-text-size-adjust:100%;
 	-ms-text-size-adjust:100%;
+    z-index: 1;
 }
 
 .sidenav a {
@@ -3095,6 +4031,92 @@ $NewHtmlReport = @"
 	--border-bottom-left-radius: 10px;
 }
 
+.tooltip {
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+}
+
+.tooltip .tooltiptext {
+    visibility: hidden;
+    width: 130px;
+    font-size: 12;
+    font-weight: normal;
+    background-color: #555;
+    color: #fff;
+    text-align: center;
+    vertical-align: middle;
+    border-radius: 5px;
+    padding: 6px 0;
+    margin: 10px;
+    left: -50px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%; /* Position the tooltip above the text */
+    opacity: 0;
+    transition: opacity 0.3s
+}
+
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+}
+
+input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    font-size: 16px;
+    border-radius: 3px;    
+    text-align: center;
+    vertical-align: middle;  
+    -webkit-appearance: none;
+    border: 1px solid #BDBDBD;
+    background-color: white;
+}
+
+input[type="checkbox"]:checked {
+    background-color: #07142A; /* Change this to your desired color */
+    --border-color: #07142A;	
+    border: 1px solid #07142A;
+}
+
+input[type="checkbox"]:checked::before {
+    content: '✔';
+    color: orange;
+    display: block;
+    text-align: center;
+    line-height: 20px;
+    font-size: 16px;
+}
+
+.searchbar {
+	box-shadow: 0 2px 4px 0 #DEDFE1;
+	margin-left:10px;
+	background-color: #ccc;
+	border-radius: 2px; 
+	width:95%; 
+	height: 40px;
+	outline:1px solid #BDBDBD;
+}
+
+.circle {
+    width: 14px;
+    height: 14px;
+    background-color: #f2f4f7;
+	color: #07142A;
+    border: 1.5px solid #07142A; /* 1px border */
+    border-radius: 60%; /* Makes the div a circle */
+    --display: flex;
+    display: inline-block;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px; /* Adjust font size to fit the circle */
+    text-align: center;
+    vertical-align: middle;    
+	opacity:.25; 
+	font-weight: bold;	
+    z-index: 2;
+}
   </style>
 </head>
 <body onload="radiobtn = document.getElementById('home');radiobtn.checked = true;">
@@ -3568,7 +4590,7 @@ Below is a summary of the domain computers that were targeted, connectivity to t
 	  <td><div class="divbarDomain"><div class="divbarDomainInside" style="width: 100%;"></div></div></td>
 	  <td>100.00%</td>
 	  <td>$ComputerCount</td>
-      <td><a href="$SubDir/$DomainComputersFile"><span class="cardsubtitle">CSV</a> | </span><a href="$SubDir/$DomainComputersFileH"><span class="cardsubtitle">HTML</span></a></td>	  
+      <td><a href="$OutputDirectory/$DomainComputersFile"><span class="cardsubtitle">CSV</a> | </span><a href="$OutputDirectory/$DomainComputersFileH"><span class="cardsubtitle">HTML</span></a></td>	  
     </tr>
     <tr>
       <td>PING RESPONSE</td>
@@ -4005,22 +5027,72 @@ Below is a summary of the exposure associated with each of those groups.
 This section contains a list of the most common SMB share names. In some cases, shares with the exact same name may be related to a single application or process.  This information can help identify the root cause associated with the excessive privileges and expedite remediation. 
 </div>
 
-<div style="border-bottom: 1px solid #DEDFE1 ;  background-color:#f0f3f5; height:5px; margin-bottom:10px;"></div>
-<input type="text" id="sharenameinput" onkeyup="filterTable()" placeholder="Search..." style="margin-left:10px;">
-<table id="sharenametable" class="table table-striped table-hover tabledrop">
+<div style="border-bottom: 1px solid #DEDFE1 ;background-color:#f0f3f5; height:5px; margin-bottom:10px;"></div>
+<div class="searchbar">
+        <input type="text" id="filterInput" placeholder=" Search..." style="height: 25px; font-size: 14px;margin-left:10px;padding-left:3px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
+        <strong>&nbsp;&nbsp;Quick Filters</strong>
+        <label><input type="checkbox" class="filter-checkbox" name="h"> Highly Exploitable</label>
+        <label><input type="checkbox" class="filter-checkbox" name="w"> Write</label>
+        <label><input type="checkbox" class="filter-checkbox" name="r"> Read</label>
+        <label><input type="checkbox" class="filter-checkbox" name="i"> Interesting</label>
+        <label><input type="checkbox" class="filter-checkbox" name="e"> Empty</label>
+        <label><input type="checkbox" class="filter-checkbox" name="s"> Stale</label>
+        <label><input type="checkbox" class="filter-checkbox" name="n"> Default</label>
+        <div id="filterCounter" style="margin-top:10px;margin-left:10px;height: 25px;font-size:11">Loading...</div>        
+</div>	
+<br>
+<table id="sharenametable" class="table table-striped table-hover tabledrop" style="width: 95%;">
   <thead>
-    <tr>      
-      <th align="left">Shares</th> 
-      <th align="left">Share Name</th>
-      <th align="left">Similarity</th>
-      <th align="left">Folder Groups</th>
-      <th align="left">Share Owners</th>      
-	  <th align="left">Affected Assets</th>	 	 
+    <tr>
+    <th class="NamesTh"  onclick="sortTable(0)" style="vertical-align: middle;text-align: left;">Share<br>Count&nbsp;&nbsp;<div class="tooltip"><img src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV9TpSJVBzuIOGSoBcEuKuJYqlgEC6Wt0KqDyaVf0KQhSXFxFFwLDn4sVh1cnHV1cBUEwQ8QZwcnRRcp8X9JoUWMB8f9eHfvcfcOEJpVpp
+    o9MUDVLCOdiIu5/KoYeEUAQQxiAhGJmXoys5iF5/i6h4+vd1Ge5X3uzzGgFEwG+ETiGNMNi3iDeHbT0jnvE4dYWVKIz4knDbog8SPXZZffOJccFnhmyMim54lDxGKpi+UuZmVDJZ4hDiuqRvlCzmWF8xZntVpn7XvyFwYL2kqG6zTHkMASkkhBhIw6KqjCQpRWjRQTadqPe/hHHX+KXDK5KmDkWEANK
+    iTHD/4Hv7s1i9NTblIwDvS+2PbHOBDYBVoN2/4+tu3WCeB/Bq60jr/WBOY+SW90tPARMLQNXFx3NHkPuNwBRp50yZAcyU9TKBaB9zP6pjwwfAv0r7m9tfdx+gBkqavlG+DgEIiUKHvd49193b39e6bd3w/VdnLO67/jCAAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0
+    SU1FB+gHDA40BpbiKy8AAAEjSURBVBjTXZAxS4JhFIWfe5XqA6NIBSvK1pak2tqjvb8Q/oUImgPnqL/R7tbYVPCtUb46iKYoSUGK3tvQK0hnu889HO49Uq1eyOXVtRby+Q1VrSBSBpaBMRDMLG2GMLi/uzV5fXvPFIvFHRE5A0qAAVMgCyjQNbN6v99vyfBzVFTVc2ArprWAHrAJbANLQNts9qCqWom
+    JAB/u9uzuPXd/AjqRl1T1QIEyIBGuiuiJiJwCGeArcgHZy8Zn5loHcsBL5IWF3bLGOxf1DUxEZP+feazgAfAF+OOOAGuxDQB396BmloJ3F8w5EXbjOXN1zCzVZggDM68D7dhxEttJ/mZvu1u92QyDzGw25fDoeJQkK0FExiAKTIAhkJrZY2g0urXajf0CiVl4icFa+XEAAAAASUVORK5CYII=" /><span class="tooltiptext"><strong>Share Count</strong><br>is the number of unique shares with<br>the same name.</span></div></th>
+                          
+    <th class="NamesTh" onclick="sortTable(1)" style="vertical-align: middle;text-align: left;">Share<br>Name&nbsp;&nbsp;<div class="tooltip"><img src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV9TpSJVBzuIOGSoBcEuKuJYqlgEC6Wt0KqDyaVf0KQhSXFxFFwLDn4sVh1cnHV1cBUEwQ8QZwcnRRcp8X9JoUWMB8f9eHfvcfcOEJpVpp
+    o9MUDVLCOdiIu5/KoYeEUAQQxiAhGJmXoys5iF5/i6h4+vd1Ge5X3uzzGgFEwG+ETiGNMNi3iDeHbT0jnvE4dYWVKIz4knDbog8SPXZZffOJccFnhmyMim54lDxGKpi+UuZmVDJZ4hDiuqRvlCzmWF8xZntVpn7XvyFwYL2kqG6zTHkMASkkhBhIw6KqjCQpRWjRQTadqPe/hHHX+KXDK5KmDkWEANK
+    iTHD/4Hv7s1i9NTblIwDvS+2PbHOBDYBVoN2/4+tu3WCeB/Bq60jr/WBOY+SW90tPARMLQNXFx3NHkPuNwBRp50yZAcyU9TKBaB9zP6pjwwfAv0r7m9tfdx+gBkqavlG+DgEIiUKHvd49193b39e6bd3w/VdnLO67/jCAAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0
+    SU1FB+gHDA40BpbiKy8AAAEjSURBVBjTXZAxS4JhFIWfe5XqA6NIBSvK1pak2tqjvb8Q/oUImgPnqL/R7tbYVPCtUb46iKYoSUGK3tvQK0hnu889HO49Uq1eyOXVtRby+Q1VrSBSBpaBMRDMLG2GMLi/uzV5fXvPFIvFHRE5A0qAAVMgCyjQNbN6v99vyfBzVFTVc2ArprWAHrAJbANLQNts9qCqWom
+    JAB/u9uzuPXd/AjqRl1T1QIEyIBGuiuiJiJwCGeArcgHZy8Zn5loHcsBL5IWF3bLGOxf1DUxEZP+feazgAfAF+OOOAGuxDQB396BmloJ3F8w5EXbjOXN1zCzVZggDM68D7dhxEttJ/mZvu1u92QyDzGw25fDoeJQkK0FExiAKTIAhkJrZY2g0urXajf0CiVl4icFa+XEAAAAASUVORK5CYII=" /><span class="tooltiptext"><strong>Share Name</strong><br>is the name of a<br>collection of share<br>with the same name.</span></div></th>
+          
+    <th class="NamesTh" onclick="sortTable(2)" style="vertical-align: middle;text-align: left;">Risk<br>Level&nbsp;&nbsp;<div class="tooltip"><img src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV9TpSJVBzuIOGSoBcEuKuJYqlgEC6Wt0KqDyaVf0KQhSXFxFFwLDn4sVh1cnHV1cBUEwQ8QZwcnRRcp8X9JoUWMB8f9eHfvcfcOEJpVpp
+    o9MUDVLCOdiIu5/KoYeEUAQQxiAhGJmXoys5iF5/i6h4+vd1Ge5X3uzzGgFEwG+ETiGNMNi3iDeHbT0jnvE4dYWVKIz4knDbog8SPXZZffOJccFnhmyMim54lDxGKpi+UuZmVDJZ4hDiuqRvlCzmWF8xZntVpn7XvyFwYL2kqG6zTHkMASkkhBhIw6KqjCQpRWjRQTadqPe/hHHX+KXDK5KmDkWEANK
+    iTHD/4Hv7s1i9NTblIwDvS+2PbHOBDYBVoN2/4+tu3WCeB/Bq60jr/WBOY+SW90tPARMLQNXFx3NHkPuNwBRp50yZAcyU9TKBaB9zP6pjwwfAv0r7m9tfdx+gBkqavlG+DgEIiUKHvd49193b39e6bd3w/VdnLO67/jCAAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0
+    SU1FB+gHDA40BpbiKy8AAAEjSURBVBjTXZAxS4JhFIWfe5XqA6NIBSvK1pak2tqjvb8Q/oUImgPnqL/R7tbYVPCtUb46iKYoSUGK3tvQK0hnu889HO49Uq1eyOXVtRby+Q1VrSBSBpaBMRDMLG2GMLi/uzV5fXvPFIvFHRE5A0qAAVMgCyjQNbN6v99vyfBzVFTVc2ArprWAHrAJbANLQNts9qCqWom
+    JAB/u9uzuPXd/AjqRl1T1QIEyIBGuiuiJiJwCGeArcgHZy8Zn5loHcsBL5IWF3bLGOxf1DUxEZP+feazgAfAF+OOOAGuxDQB396BmloJ3F8w5EXbjOXN1zCzVZggDM68D7dhxEttJ/mZvu1u92QyDzGw25fDoeJQkK0FExiAKTIAhkJrZY2g0urXajf0CiVl4icFa+XEAAAAASUVORK5CYII=" /><span class="tooltiptext"><strong>Risk Level</strong><br>relfects the exposure of credentials and sensitive data.</span></div></th>
+                      
+    <th class="NamesTh" onclick="sortTable(3)" style="vertical-align: middle;text-align: left;">Share<br>Similarity&nbsp;&nbsp;<div class="tooltip"><img src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV9TpSJVBzuIOGSoBcEuKuJYqlgEC6Wt0KqDyaVf0KQhSXFxFFwLDn4sVh1cnHV1cBUEwQ8QZwcnRRcp8X9JoUWMB8f9eHfvcfcOEJpVpp
+    o9MUDVLCOdiIu5/KoYeEUAQQxiAhGJmXoys5iF5/i6h4+vd1Ge5X3uzzGgFEwG+ETiGNMNi3iDeHbT0jnvE4dYWVKIz4knDbog8SPXZZffOJccFnhmyMim54lDxGKpi+UuZmVDJZ4hDiuqRvlCzmWF8xZntVpn7XvyFwYL2kqG6zTHkMASkkhBhIw6KqjCQpRWjRQTadqPe/hHHX+KXDK5KmDkWEANK
+    iTHD/4Hv7s1i9NTblIwDvS+2PbHOBDYBVoN2/4+tu3WCeB/Bq60jr/WBOY+SW90tPARMLQNXFx3NHkPuNwBRp50yZAcyU9TKBaB9zP6pjwwfAv0r7m9tfdx+gBkqavlG+DgEIiUKHvd49193b39e6bd3w/VdnLO67/jCAAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0
+    SU1FB+gHDA40BpbiKy8AAAEjSURBVBjTXZAxS4JhFIWfe5XqA6NIBSvK1pak2tqjvb8Q/oUImgPnqL/R7tbYVPCtUb46iKYoSUGK3tvQK0hnu889HO49Uq1eyOXVtRby+Q1VrSBSBpaBMRDMLG2GMLi/uzV5fXvPFIvFHRE5A0qAAVMgCyjQNbN6v99vyfBzVFTVc2ArprWAHrAJbANLQNts9qCqWom
+    JAB/u9uzuPXd/AjqRl1T1QIEyIBGuiuiJiJwCGeArcgHZy8Zn5loHcsBL5IWF3bLGOxf1DUxEZP+feazgAfAF+OOOAGuxDQB396BmloJ3F8w5EXbjOXN1zCzVZggDM68D7dhxEttJ/mZvu1u92QyDzGw25fDoeJQkK0FExiAKTIAhkJrZY2g0urXajf0CiVl4icFa+XEAAAAASUVORK5CYII=" /><span class="tooltiptext"><strong>Share Similarity</strong><br>scores reflect how likely it is that the shares are related to each other.</span></div></th>
+         
+    <th class="NamesTh"  onclick="sortTable(4)" style="vertical-align: middle;text-align: left;">Folder<br>Groups&nbsp;&nbsp;<div class="tooltip"><img src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV9TpSJVBzuIOGSoBcEuKuJYqlgEC6Wt0KqDyaVf0KQhSXFxFFwLDn4sVh1cnHV1cBUEwQ8QZwcnRRcp8X9JoUWMB8f9eHfvcfcOEJpVpp
+    o9MUDVLCOdiIu5/KoYeEUAQQxiAhGJmXoys5iF5/i6h4+vd1Ge5X3uzzGgFEwG+ETiGNMNi3iDeHbT0jnvE4dYWVKIz4knDbog8SPXZZffOJccFnhmyMim54lDxGKpi+UuZmVDJZ4hDiuqRvlCzmWF8xZntVpn7XvyFwYL2kqG6zTHkMASkkhBhIw6KqjCQpRWjRQTadqPe/hHHX+KXDK5KmDkWEANK
+    iTHD/4Hv7s1i9NTblIwDvS+2PbHOBDYBVoN2/4+tu3WCeB/Bq60jr/WBOY+SW90tPARMLQNXFx3NHkPuNwBRp50yZAcyU9TKBaB9zP6pjwwfAv0r7m9tfdx+gBkqavlG+DgEIiUKHvd49193b39e6bd3w/VdnLO67/jCAAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0
+    SU1FB+gHDA40BpbiKy8AAAEjSURBVBjTXZAxS4JhFIWfe5XqA6NIBSvK1pak2tqjvb8Q/oUImgPnqL/R7tbYVPCtUb46iKYoSUGK3tvQK0hnu889HO49Uq1eyOXVtRby+Q1VrSBSBpaBMRDMLG2GMLi/uzV5fXvPFIvFHRE5A0qAAVMgCyjQNbN6v99vyfBzVFTVc2ArprWAHrAJbANLQNts9qCqWom
+    JAB/u9uzuPXd/AjqRl1T1QIEyIBGuiuiJiJwCGeArcgHZy8Zn5loHcsBL5IWF3bLGOxf1DUxEZP+feazgAfAF+OOOAGuxDQB396BmloJ3F8w5EXbjOXN1zCzVZggDM68D7dhxEttJ/mZvu1u92QyDzGw25fDoeJQkK0FExiAKTIAhkJrZY2g0urXajf0CiVl4icFa+XEAAAAASUVORK5CYII=" /><span class="tooltiptext"><strong>Folder Groups</strong><br>are groups of shares<br>that have the same<br>name and file listing.</span></div></th>            
+	  
+    <th class="NamesTh"  onclick="sortTable(5)" style="vertical-align: middle;text-align: left;">Common<br>Files&nbsp;&nbsp;<div class="tooltip"><img src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV9TpSJVBzuIOGSoBcEuKuJYqlgEC6Wt0KqDyaVf0KQhSXFxFFwLDn4sVh1cnHV1cBUEwQ8QZwcnRRcp8X9JoUWMB8f9eHfvcfcOEJpVpp
+    o9MUDVLCOdiIu5/KoYeEUAQQxiAhGJmXoys5iF5/i6h4+vd1Ge5X3uzzGgFEwG+ETiGNMNi3iDeHbT0jnvE4dYWVKIz4knDbog8SPXZZffOJccFnhmyMim54lDxGKpi+UuZmVDJZ4hDiuqRvlCzmWF8xZntVpn7XvyFwYL2kqG6zTHkMASkkhBhIw6KqjCQpRWjRQTadqPe/hHHX+KXDK5KmDkWEANK
+    iTHD/4Hv7s1i9NTblIwDvS+2PbHOBDYBVoN2/4+tu3WCeB/Bq60jr/WBOY+SW90tPARMLQNXFx3NHkPuNwBRp50yZAcyU9TKBaB9zP6pjwwfAv0r7m9tfdx+gBkqavlG+DgEIiUKHvd49193b39e6bd3w/VdnLO67/jCAAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0
+    SU1FB+gHDA40BpbiKy8AAAEjSURBVBjTXZAxS4JhFIWfe5XqA6NIBSvK1pak2tqjvb8Q/oUImgPnqL/R7tbYVPCtUb46iKYoSUGK3tvQK0hnu889HO49Uq1eyOXVtRby+Q1VrSBSBpaBMRDMLG2GMLi/uzV5fXvPFIvFHRE5A0qAAVMgCyjQNbN6v99vyfBzVFTVc2ArprWAHrAJbANLQNts9qCqWom
+    JAB/u9uzuPXd/AjqRl1T1QIEyIBGuiuiJiJwCGeArcgHZy8Zn5loHcsBL5IWF3bLGOxf1DUxEZP+feazgAfAF+OOOAGuxDQB396BmloJ3F8w5EXbjOXN1zCzVZggDM68D7dhxEttJ/mZvu1u92QyDzGw25fDoeJQkK0FExiAKTIAhkJrZY2g0urXajf0CiVl4icFa+XEAAAAASUVORK5CYII=" /><span class="tooltiptext"><strong>Common Files</strong><br>are file names that<br>exist in 10% or more<br>of the file groups.</span></div> </th>	 	 
+	  
+    <th class="NamesTh"  onclick="sortTable(6)" style="vertical-align: middle;text-align: left;">Interesting<br>Files&nbsp;&nbsp;<div class="tooltip"><img src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV9TpSJVBzuIOGSoBcEuKuJYqlgEC6Wt0KqDyaVf0KQhSXFxFFwLDn4sVh1cnHV1cBUEwQ8QZwcnRRcp8X9JoUWMB8f9eHfvcfcOEJpVpp
+    o9MUDVLCOdiIu5/KoYeEUAQQxiAhGJmXoys5iF5/i6h4+vd1Ge5X3uzzGgFEwG+ETiGNMNi3iDeHbT0jnvE4dYWVKIz4knDbog8SPXZZffOJccFnhmyMim54lDxGKpi+UuZmVDJZ4hDiuqRvlCzmWF8xZntVpn7XvyFwYL2kqG6zTHkMASkkhBhIw6KqjCQpRWjRQTadqPe/hHHX+KXDK5KmDkWEANK
+    iTHD/4Hv7s1i9NTblIwDvS+2PbHOBDYBVoN2/4+tu3WCeB/Bq60jr/WBOY+SW90tPARMLQNXFx3NHkPuNwBRp50yZAcyU9TKBaB9zP6pjwwfAv0r7m9tfdx+gBkqavlG+DgEIiUKHvd49193b39e6bd3w/VdnLO67/jCAAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0
+    SU1FB+gHDA40BpbiKy8AAAEjSURBVBjTXZAxS4JhFIWfe5XqA6NIBSvK1pak2tqjvb8Q/oUImgPnqL/R7tbYVPCtUb46iKYoSUGK3tvQK0hnu889HO49Uq1eyOXVtRby+Q1VrSBSBpaBMRDMLG2GMLi/uzV5fXvPFIvFHRE5A0qAAVMgCyjQNbN6v99vyfBzVFTVc2ArprWAHrAJbANLQNts9qCqWom
+    JAB/u9uzuPXd/AjqRl1T1QIEyIBGuiuiJiJwCGeArcgHZy8Zn5loHcsBL5IWF3bLGOxf1DUxEZP+feazgAfAF+OOOAGuxDQB396BmloJ3F8w5EXbjOXN1zCzVZggDM68D7dhxEttJ/mZvu1u92QyDzGw25fDoeJQkK0FExiAKTIAhkJrZY2g0urXajf0CiVl4icFa+XEAAAAASUVORK5CYII=" /><span class="tooltiptext"><strong>Interesting Files</strong><br>are filenames that<br>may be sensitive.</span></div> </th>	 	        
+      
     </tr>
-  </thead>
+    </thead>
+
     <tbody>
-    $CommonShareNamesTopStringT
+    $CommonShareNamesTopStringT    
     </tbody>
+
 </table>
 </div>
 
@@ -4568,29 +5640,112 @@ for (i = 0; i < coll.length; i++) {
   });
 }
 
-        function filterTable() {
-            var filterdata, filter1, filterdata2, filter2, table, tr, td, i, j, txtValue;
-            filterdata = document.getElementById("sharenameinput");
-            filter1 = filterdata.value.toUpperCase();
-            table = document.getElementById("sharenametable");
-            tr = table.getElementsByTagName("tr");
+	let currentSortColumn = -1;
+	let currentSortDir = "asc";
 
-            for (i = 1; i < tr.length; i++) {
-                if(tr[i].id !== "ignore") {
-                    tr[i].style.display = "none";
-                    td = tr[i].getElementsByTagName("td");
-                    for (j = 0; j < td.length; j++) {
-                        if (td[j]) {
-                            txtValue = td[j].textContent || td[j].innerText;
-                            if (td[1].innerText.toUpperCase().indexOf(filter1) > -1) {
-                                tr[i].style.display = "";
-                                break;
-                            }
+	function sortTable(n) {
+		const table = document.getElementById("sharenametable");
+		const rows = Array.from(table.rows).slice(1);
+		const dir = currentSortColumn === n && currentSortDir === "asc" ? "desc" : "asc";
+		currentSortDir = dir;
+		currentSortColumn = n;
+
+		rows.sort((a, b) => {
+			const cellA = a.cells[n].innerText.toLowerCase();
+			const cellB = b.cells[n].innerText.toLowerCase();
+
+			if (n !== 1) { // Sort numerically for all columns except the second one
+				const numA = parseFloat(cellA) || 0;
+				const numB = parseFloat(cellB) || 0;
+				return dir === "asc" ? numA - numB : numB - numA;
+			} else {
+				if (cellA < cellB) return dir === "asc" ? -1 : 1;
+				if (cellA > cellB) return dir === "asc" ? 1 : -1;
+				return 0;
+			}
+		});
+
+		const tbody = table.tBodies[0];
+		rows.forEach(row => tbody.appendChild(row));
+
+		updateSortIndicators(n);
+		updateFilterCounter();
+	}
+
+	function updateSortIndicators(n) {
+		const headers = document.querySelectorAll("th");
+		headers.forEach((th, index) => {
+			th.classList.remove("asc", "desc");
+			if (index === n) {
+				th.classList.add(currentSortDir);
+			}
+		});
+	}
+
+        document.getElementById("filterInput").addEventListener("keyup", function() {
+            applyFilters();
+        });
+
+        // Filter based on checkboxes
+        const checkboxes = document.querySelectorAll('.filter-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                applyFilters();
+            });
+        });
+
+        // Function to apply all filters
+        function applyFilters() {
+            const filterInputValue = document.getElementById("filterInput").value.toLowerCase();
+            const checkedFilters = Array.from(checkboxes)
+                .filter(cb => cb.checked)
+                .map(cb => cb.name);
+
+            const rows = document.getElementById("sharenametable").getElementsByTagName("tr");
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                const cells = row.getElementsByTagName("td");
+                let showRow = true;
+
+                // Check text input filter
+                if (filterInputValue.length > 0) {
+                    let matchesFilterInput = false;
+                    for (let j = 0; j < cells.length; j++) {
+                        if (cells[j].innerHTML.toLowerCase().indexOf(filterInputValue) > -1) {
+                            matchesFilterInput = true;
+                            break;
                         }
                     }
+                    if (!matchesFilterInput) {
+                        showRow = false;
+                    }
+                }
+
+                // Check checkbox filters
+                checkedFilters.forEach(filter => {
+                    if (row.getAttribute(filter) !== "Yes") {
+                        showRow = false;
+                    }
+                });
+
+                if(rows[i].id !== "ignore") { 
+                    row.style.display = showRow ? "" : "none";
                 }
             }
+            updateFilterCounter();
         }
+
+        // Function to update the filter counter
+        function updateFilterCounter() {
+            const visibleRows = Array.from(document.getElementById("sharenametable").rows).slice(1)
+                .filter(row => row.style.display !== "none");
+            const filterCounter = document.getElementById("filterCounter");
+            filterCounter.textContent = ``Showing `${visibleRows.length} row`${visibleRows.length !== 1 ? 's' : ''}``;
+        }
+
+        // Initial call to update filter counter on page load
+        updateFilterCounter();
+  
 </script>
 </div>
 </div>
@@ -4607,7 +5762,11 @@ for (i = 0; i < coll.length; i++) {
 </body>
 </html>
 "@
-$NewHtmlReport | Out-File "$OutputDirectoryBase\Summary-Report.html"
+
+$NewHtmlReport | Out-File "$OutputDirectoryBase\Summary-Report-$TargetDomain.html"
+Write-Output " [*][$Time]   - Done." 
+Write-Output ""
+Write-Output ""  
 # Write-Output " [*] Saving results to $OutputDirectory\_Report-$TargetDomain-Share-Inventory-Summary.html"     
                 
         # ----------------------------------------------------------------------
@@ -5906,14 +7065,7 @@ function Get-GroupNameNoBar
     $UserAclsPercent = [math]::Round($UserAclsCount/$AllAclCount,4)
     $UserAclsPercentString = $UserAclsPercent.tostring("P") -replace(" ","")
     $UserAclsPercentBarVal = ($UserAclsPercent *2).tostring("P") -replace(" %","px")
-    $UserAclsPercentBarCode = @"                    
-                    <button class="collapsible" style="font-size: 10px;"><strong>$UserAclsCount</strong> Acls</button>
-                    <div class="content">
-                        <div class="subexpandnocolor" style="font-size: 10px; background-color: none;" >
-                        $UserAclsCount of $AllAclCount ($UserAclsPercentString)
-                        </div>
-                    </div>
-"@
+    $UserAclsPercentBarCode = "$UserAclsCount of $AllAclCount ($UserAclsPercentString)"
 
     # Get share counts
     $UserShare = $UserAcls | Select-Object SharePath -Unique
@@ -5921,14 +7073,7 @@ function Get-GroupNameNoBar
     $UserSharePercent = [math]::Round($UserShareCount/$AllShareCount,4)
     $UserSharePercentString = $UserSharePercent.tostring("P") -replace(" ","")
     $UserSharePercentBarVal = ($UserSharePercent *2).tostring("P") -replace(" %","px")
-    $UserSharePercentBarCode = @"
-                    <button class="collapsible" style="font-size: 10px;"><strong>$UserShareCount</strong> Shares</button>
-                    <div class="content">
-                        <div class="subexpandnocolor" style="font-size: 10px; background-color: none;" >
-                        $UserShareCount of $AllShareCount ($UserSharePercentString)
-                        </div>
-                    </div>
-"@
+    $UserSharePercentBarCode = "$UserShareCount of $AllShareCount ($UserSharePercentString)"
 
     # Get computer counts
     $UserComputer = $UserAcls | Select-Object ComputerName -Unique
@@ -5936,14 +7081,7 @@ function Get-GroupNameNoBar
     $UserComputerPercent = [math]::Round($UserComputerCount/$AllComputerCount,4)
     $UserComputerPercentString = $UserComputerPercent.tostring("P") -replace(" ","")
     $UserComputerPercentBarVal = ($UserComputerPercent *2).tostring("P") -replace(" %","px")
-    $UserComputerPercentBarCode = @"
-                        <button class="collapsible" style="font-size: 10px;"><strong>$UserComputerCount</strong> Computers</button>
-                    <div class="content">
-                        <div class="subexpandnocolor" style="font-size: 10px; background-color: none;" >
-                        $UserComputerCount of $AllComputerCount ($UserComputerPercentString)
-                        </div>
-                    </div>
-"@
+    $UserComputerPercentBarCode = "$UserComputerCount of $AllComputerCount ($UserComputerPercentString)"
 
     # Return object with all counts
     $TheCounts = new-object psobject            
@@ -6224,7 +7362,7 @@ function Convert-DataTableToHtmlTable
             }
             .pageDescription {
                 padding-left: 0px;
-            }				
+            }	                       			
           </style>
         </head>
         <body>
@@ -15893,4 +17031,20 @@ function NetworkToBinary ($network)
 {
     $a = [uint32[]]$network.split('.')
     return ($a[0] -shl 24) + ($a[1] -shl 16) + ($a[2] -shl 8) + $a[3]
+}
+
+# Function to parse AD domain from FQDN
+function Get-ADDomainFromFQDN {
+    param (
+        [Parameter(Mandatory=$true)]
+        [string]$FQDN
+    )
+
+    # Split the FQDN by '.' and remove the first element (hostname)
+    $parts = $FQDN.Split('.')
+    $domainParts = $parts[1..($parts.Length - 1)]
+
+    # Join the remaining parts to form the domain
+    $domain = ($domainParts -join '.')
+    return $domain
 }
