@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.70
+# Version: v1.71
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -2845,7 +2845,7 @@ function Invoke-HuntSMBShares
                                     <td>Same Share Name:</td><td>&nbsp;1</td>
                                 </tr>
                                 <tr id="ignore">
-                                    <td>File Group/Owner Ratio Average:</td><td>&nbsp;$SimularitySharePropFGOwnerAvgT</td>
+                                    <td>Folder Group/Owner Ratio Average:</td><td>&nbsp;$SimularitySharePropFGOwnerAvgT</td>
                                 </tr>
                                 <tr id="ignore">
                                     <td>Creation Date/Share Ratio:</td><td>&nbsp;$SimularitySharePropCreateDateRatioT</td>
@@ -2854,13 +2854,13 @@ function Invoke-HuntSMBShares
                                     <td>Last Modification Date/Share Ratio:</td><td>&nbsp;$SimularitySharePropModDateRatioT</td>
                                 </tr>
                             </table>
-                            <Br><Br><strong>Additional Metrics</strong><Br>
+                            <Br><Br><strong>Experimental Metrics</strong><Br>
                             <table class="subtable">
                                 <tr id="ignore">
-                                    <td>Share Owner Ratio:</td><td>&nbsp;$SimularityCalcShareOwner</td>
+                                    <td>Share/Owner Ratio:</td><td>&nbsp;$SimularityCalcShareOwner</td>
                                 </tr>
                                 <tr id="ignore">
-                                    <td>File Group/Name Ratio:</td><td>&nbsp;$SimularityCalcShareFg</td>
+                                    <td>Folder Group/Name Ratio:</td><td>&nbsp;$SimularityCalcShareFg</td>
                                 </tr>
                                 <tr id="ignore">
                                     <td>All Descriptions Match:</td><td>&nbsp;$SimularityCalcShareDesc</td>
