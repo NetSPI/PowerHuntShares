@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.75
+# Version: v1.76
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1548,12 +1548,14 @@ function Invoke-HuntSMBShares
         }
         
         # Estimate report generation time
-        If($AllSMBSharesCount -le 500   ) {$ReportGenTimeEstimate = "1 minute or less" }
-        If($AllSMBSharesCount -ge 1000  ) {$ReportGenTimeEstimate = "3 minute or less" }
-        If($AllSMBSharesCount -ge 2000  ) {$ReportGenTimeEstimate = "5 minute or less" }
-        If($AllSMBSharesCount -ge 10000 ) {$ReportGenTimeEstimate = "10 minute or less"}
-        If($AllSMBSharesCount -ge 15000 ) {$ReportGenTimeEstimate = "15 minute or less"}
-        If($AllSMBSharesCount -ge 30000 ) {$ReportGenTimeEstimate = "20 minute or less"}
+        $ReportGenTimeEstimate = "Unknown"
+        If($AllSMBSharesCount -le 500   ) {$ReportGenTimeEstimate = "1 minute or less"   }
+        If($AllSMBSharesCount -gt 500   ) {$ReportGenTimeEstimate = "5 minutes or less"  }
+        If($AllSMBSharesCount -ge 1000  ) {$ReportGenTimeEstimate = "10 minutes or less" }
+        If($AllSMBSharesCount -ge 2000  ) {$ReportGenTimeEstimate = "15 minutes or less" }
+        If($AllSMBSharesCount -ge 10000 ) {$ReportGenTimeEstimate = "20 minutes or less" }
+        If($AllSMBSharesCount -ge 15000 ) {$ReportGenTimeEstimate = "25 minutes or less" }
+        If($AllSMBSharesCount -ge 30000 ) {$ReportGenTimeEstimate = "30 minutes or less" }
 
         Write-Output " [*] -----------------------------------------------" 
         Write-Output " [*][$Time]   - Generating HTML Report"
