@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.76
+# Version: v1.77
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -5183,24 +5183,38 @@ Folder groups are SMB shares that contain the exact same file listing. Each file
 </div>
 
 <div style="border-bottom: 1px solid #DEDFE1 ;  background-color:#f0f3f5; height:5px; margin-bottom:10px;"></div>
-
+<div class="searchbar">
+        <input type="text" id="filterInputTwo" placeholder=" Search..." style="height: 25px; font-size: 14px;margin-top:7px;margin-left:10px;padding-left:3px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
+        <!--
+		<strong>&nbsp;&nbsp;Quick Filters</strong>
+        <label><input type="checkbox" class="filter-checkbox" name="h"> Highly Exploitable</label>
+        <label><input type="checkbox" class="filter-checkbox" name="w"> Write</label>
+        <label><input type="checkbox" class="filter-checkbox" name="r"> Read</label>
+        <label><input type="checkbox" class="filter-checkbox" name="i"> Interesting</label>
+        <label><input type="checkbox" class="filter-checkbox" name="e"> Empty</label>
+        <label><input type="checkbox" class="filter-checkbox" name="s"> Stale</label>
+        <label><input type="checkbox" class="filter-checkbox" name="n"> Default</label>
+		-->
+        <div id="filterCounterTwo" style="margin-top:14px;height: 25px;font-size:11">Loading...</div>        
+</div>	
+<br>
 <table class="table table-striped table-hover tabledrop" id="foldergrouptable">
   <thead>
     <tr>  
-      <th onclick="sortTablefg(0)" align="left">Unique Share Name Count</th>
-      <th onclick="sortTablefg(1)" align="left">Affected Share Count</th>      
-      <th onclick="sortTablefg(2)" align="left">File Group</th>
-      <th onclick="sortTablefg(3)" align="left">File Count</th>
-      <th onclick="sortTablefg(4)" align="left">Affected Computers</th>
-	  <th onclick="sortTablefg(5)" align="left">Affected Shares</th>
-	  <th onclick="sortTablefg(6)" align="left">Affected ACLs</th>	 
+      <th onclick="sortTable('foldergrouptable',0,'number')" align="left">Unique Share Name Count</th>
+      <th onclick="sortTable('foldergrouptable',1,'number')" align="left">Affected Share Count</th>      
+      <th onclick="sortTable('foldergrouptable',2,'alpha')"  align="left">File Group</th>
+      <th onclick="sortTable('foldergrouptable',3,'number')" align="left">File Count</th>
+      <th onclick="sortTable('foldergrouptable',4,'number')" align="left">Affected Computers</th>
+	  <th onclick="sortTable('foldergrouptable',5,'number')" align="left">Affected Shares</th>
+	  <th onclick="sortTable('foldergrouptable',6,'number')" align="left">Affected ACLs</th>	 	 
     </tr>
   </thead>
   <tbody>
   $CommonShareFileGroupTopString	
   </tbody>
 </table>
-
+<div id="paginationfg" style="margin:10px;"></div>
 </div>
 
 <!--  
@@ -5758,7 +5772,7 @@ Invoke-HuntSMBShares -Threads 20 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\
 
     function updateFilterCounter(filterCounterId, visibleRows) {
         const filterCounter = document.getElementById(filterCounterId);
-        filterCounter.textContent = ``Showing `${visibleRows} row${visibleRows !== 1 ? 's' : ''}``;
+        filterCounter.textContent = ```${visibleRows} matches found``;
     }
 
     // Pagination Functions
@@ -5771,7 +5785,7 @@ Invoke-HuntSMBShares -Threads 20 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\
         Array.from(tbody.rows).forEach(row => row.classList.add('hidden'));
         filteredRows.slice(startIndex, endIndex).forEach(row => row.classList.remove('hidden'));
 
-        updatePagination(paginationId, filteredRows.length);
+        updatePagination(tableId, paginationId, filteredRows.length);
         updateFilterCounter(filterCounterId, filteredRows.length);
 
         if (filteredRows.length === 0 || filteredRows.slice(startIndex, endIndex).length === 0) {
@@ -5782,9 +5796,10 @@ Invoke-HuntSMBShares -Threads 20 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\
         }
     }
 
-    function updatePagination(paginationId, totalRows) {
+    function updatePagination(tableId, paginationId, totalRows) {
         const pagination = document.getElementById(paginationId);
         const pageCount = Math.ceil(totalRows / rowsPerPage);
+		const table = document.getElementById(tableId);
         pagination.innerHTML = '';
 
         for (let i = 1; i <= pageCount; i++) {
@@ -5794,19 +5809,20 @@ Invoke-HuntSMBShares -Threads 20 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\
             if (i === currentPage) pageButton.classList.add('active');
             pageButton.addEventListener('click', () => {
                 currentPage = i;
-                applyFiltersAndSort('sharenametable', 'filterInput', 'filterCounter', paginationId);
+                applyFiltersAndSort(tableId, 'filterInput', 'filterCounter', paginationId);
             });
             pagination.appendChild(pageButton);
         }
     }
 
-    // Example Initialization
-    document.getElementById('filterInput').addEventListener("keyup", () => applyFiltersAndSort('sharenametable', 'filterInput', 'filterCounter', 'pagination'));
+    // Initialize share name table 
+    document.getElementById('filterInput').addEventListener("keyup", () => applyFiltersAndSort('sharenametable', 'filterInput', 'filterCounter', 'pagination'));	
     document.querySelectorAll('.filter-checkbox').forEach(checkbox => checkbox.addEventListener('change', () => applyFiltersAndSort('sharenametable', 'filterInput', 'filterCounter', 'pagination')));
-
-    // Initial call to display rows
     applyFiltersAndSort('sharenametable', 'filterInput', 'filterCounter', 'pagination');
-  
+	
+    // Initialize folder group table    
+	document.getElementById('filterInputTwo').addEventListener("keyup", () => applyFiltersAndSort('foldergrouptable', 'filterInputTwo', 'filterCounterTwo', 'paginationfg'));
+    applyFiltersAndSort('foldergrouptable', 'filterInputTwo', 'filterCounterTwo', 'paginationfg');	
 </script>
 </div>
 </div>
