@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.73
+# Version: v1.74
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -2993,9 +2993,32 @@ $NewHtmlReport = @"
 <head>
   <link rel="shortcut icon" src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyhpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuNi1jMTM4IDc5LjE1OTgyNCwgMjAxNi8wOS8xNC0wMTowOTowMSAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENDIDIwMTcgKE1hY2ludG9zaCkiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6QTQxQkNBNzA2OEI1MTFFNzlENkRCMzJFODY4RjgwNDMiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6QTQxQkNBNzE2OEI1MTFFNzlENkRCMzJFODY4RjgwNDMiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDpBNDFCQ0E2RTY4QjUxMUU3OUQ2REIzMkU4NjhGODA0MyIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDpBNDFCQ0E2RjY4QjUxMUU3OUQ2REIzMkU4NjhGODA0MyIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/Ptdv5vcAAAB9SURBVHjaYmTAAS4IajsCqeVQbqTB+6v7saljxKHZCUhtAWJOqNB3IPYBGrKPoAFYNDPgM4SRSM04DWEkQTNWQxhJ1IxhCCM0tLeSoBnZEG+QAS+ADHEG8sBLJgYKAciASKhzGMjwQiTlgUiVaKRKQqJKUqZKZiI1OwMEGAA7FE70gYsL4wAAAABJRU5ErkJggg==" >
   <title>Report</title>
-  <style>    	
+  <style> 
+  
+    .hidden { display: none; }
 
-.1collapsible:after {
+    button.pagination-button {
+        border: none;
+        outline: none;
+        background-color: transparent;
+        cursor: pointer;
+        padding: 5px 10px;
+        margin: 2px;	
+        border-radius:0.20rem 0.20rem 0.20rem 0.20rem;	
+        color: #07142A;			
+    }
+
+    button.pagination-button:hover{
+        background-color: #F56A00 ;
+        color: #07142A;		
+    }
+		
+    button.pagination-button.active {
+        background-color: #07142A;
+        color: white;
+    }     	
+
+    .1collapsible:after {
 	  content: '\0208A';
 	  font-size: 30;
 	  color: gray;
@@ -5042,49 +5065,49 @@ This section contains a list of the most common SMB share names. In some cases, 
         <label><input type="checkbox" class="filter-checkbox" name="e"> Empty</label>
         <label><input type="checkbox" class="filter-checkbox" name="s"> Stale</label>
         <label><input type="checkbox" class="filter-checkbox" name="n"> Default</label>
-        <div id="filterCounter" style="margin-top:10px;margin-left:10px;height: 25px;font-size:11">Loading...</div>        
+        <div id="filterCounter" style="margin-top:10px;height: 25px;font-size:11">Loading...</div>        
 </div>	
 <br>
 <table id="sharenametable" class="table table-striped table-hover tabledrop" style="width: 95%;">
   <thead>
     <tr>
-    <th class="NamesTh"  onclick="sortTable(0)" style="vertical-align: middle;text-align: left;">Share<br>Count&nbsp;&nbsp;<div class="tooltip"><img src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV9TpSJVBzuIOGSoBcEuKuJYqlgEC6Wt0KqDyaVf0KQhSXFxFFwLDn4sVh1cnHV1cBUEwQ8QZwcnRRcp8X9JoUWMB8f9eHfvcfcOEJpVpp
+    <th class="NamesTh"  onclick="sortTable(0,'number')" style="vertical-align: middle;text-align: left;">Share<br>Count&nbsp;&nbsp;<div class="tooltip"><img src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV9TpSJVBzuIOGSoBcEuKuJYqlgEC6Wt0KqDyaVf0KQhSXFxFFwLDn4sVh1cnHV1cBUEwQ8QZwcnRRcp8X9JoUWMB8f9eHfvcfcOEJpVpp
     o9MUDVLCOdiIu5/KoYeEUAQQxiAhGJmXoys5iF5/i6h4+vd1Ge5X3uzzGgFEwG+ETiGNMNi3iDeHbT0jnvE4dYWVKIz4knDbog8SPXZZffOJccFnhmyMim54lDxGKpi+UuZmVDJZ4hDiuqRvlCzmWF8xZntVpn7XvyFwYL2kqG6zTHkMASkkhBhIw6KqjCQpRWjRQTadqPe/hHHX+KXDK5KmDkWEANK
     iTHD/4Hv7s1i9NTblIwDvS+2PbHOBDYBVoN2/4+tu3WCeB/Bq60jr/WBOY+SW90tPARMLQNXFx3NHkPuNwBRp50yZAcyU9TKBaB9zP6pjwwfAv0r7m9tfdx+gBkqavlG+DgEIiUKHvd49193b39e6bd3w/VdnLO67/jCAAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0
     SU1FB+gHDA40BpbiKy8AAAEjSURBVBjTXZAxS4JhFIWfe5XqA6NIBSvK1pak2tqjvb8Q/oUImgPnqL/R7tbYVPCtUb46iKYoSUGK3tvQK0hnu889HO49Uq1eyOXVtRby+Q1VrSBSBpaBMRDMLG2GMLi/uzV5fXvPFIvFHRE5A0qAAVMgCyjQNbN6v99vyfBzVFTVc2ArprWAHrAJbANLQNts9qCqWom
     JAB/u9uzuPXd/AjqRl1T1QIEyIBGuiuiJiJwCGeArcgHZy8Zn5loHcsBL5IWF3bLGOxf1DUxEZP+feazgAfAF+OOOAGuxDQB396BmloJ3F8w5EXbjOXN1zCzVZggDM68D7dhxEttJ/mZvu1u92QyDzGw25fDoeJQkK0FExiAKTIAhkJrZY2g0urXajf0CiVl4icFa+XEAAAAASUVORK5CYII=" /><span class="tooltiptext"><strong>Share Count</strong><br>is the number of unique shares with<br>the same name.</span></div></th>
                           
-    <th class="NamesTh" onclick="sortTable(1)" style="vertical-align: middle;text-align: left;">Share<br>Name&nbsp;&nbsp;<div class="tooltip"><img src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV9TpSJVBzuIOGSoBcEuKuJYqlgEC6Wt0KqDyaVf0KQhSXFxFFwLDn4sVh1cnHV1cBUEwQ8QZwcnRRcp8X9JoUWMB8f9eHfvcfcOEJpVpp
+    <th class="NamesTh" onclick="sortTable(1,'alpha')" style="vertical-align: middle;text-align: left;">Share<br>Name&nbsp;&nbsp;<div class="tooltip"><img src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV9TpSJVBzuIOGSoBcEuKuJYqlgEC6Wt0KqDyaVf0KQhSXFxFFwLDn4sVh1cnHV1cBUEwQ8QZwcnRRcp8X9JoUWMB8f9eHfvcfcOEJpVpp
     o9MUDVLCOdiIu5/KoYeEUAQQxiAhGJmXoys5iF5/i6h4+vd1Ge5X3uzzGgFEwG+ETiGNMNi3iDeHbT0jnvE4dYWVKIz4knDbog8SPXZZffOJccFnhmyMim54lDxGKpi+UuZmVDJZ4hDiuqRvlCzmWF8xZntVpn7XvyFwYL2kqG6zTHkMASkkhBhIw6KqjCQpRWjRQTadqPe/hHHX+KXDK5KmDkWEANK
     iTHD/4Hv7s1i9NTblIwDvS+2PbHOBDYBVoN2/4+tu3WCeB/Bq60jr/WBOY+SW90tPARMLQNXFx3NHkPuNwBRp50yZAcyU9TKBaB9zP6pjwwfAv0r7m9tfdx+gBkqavlG+DgEIiUKHvd49193b39e6bd3w/VdnLO67/jCAAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0
     SU1FB+gHDA40BpbiKy8AAAEjSURBVBjTXZAxS4JhFIWfe5XqA6NIBSvK1pak2tqjvb8Q/oUImgPnqL/R7tbYVPCtUb46iKYoSUGK3tvQK0hnu889HO49Uq1eyOXVtRby+Q1VrSBSBpaBMRDMLG2GMLi/uzV5fXvPFIvFHRE5A0qAAVMgCyjQNbN6v99vyfBzVFTVc2ArprWAHrAJbANLQNts9qCqWom
     JAB/u9uzuPXd/AjqRl1T1QIEyIBGuiuiJiJwCGeArcgHZy8Zn5loHcsBL5IWF3bLGOxf1DUxEZP+feazgAfAF+OOOAGuxDQB396BmloJ3F8w5EXbjOXN1zCzVZggDM68D7dhxEttJ/mZvu1u92QyDzGw25fDoeJQkK0FExiAKTIAhkJrZY2g0urXajf0CiVl4icFa+XEAAAAASUVORK5CYII=" /><span class="tooltiptext"><strong>Share Name</strong><br>is the name of a<br>collection of share<br>with the same name.</span></div></th>
           
-    <th class="NamesTh" onclick="sortTable(2)" style="vertical-align: middle;text-align: left;">Risk<br>Level&nbsp;&nbsp;<div class="tooltip"><img src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV9TpSJVBzuIOGSoBcEuKuJYqlgEC6Wt0KqDyaVf0KQhSXFxFFwLDn4sVh1cnHV1cBUEwQ8QZwcnRRcp8X9JoUWMB8f9eHfvcfcOEJpVpp
+    <th class="NamesTh" onclick="sortTable(2,'number')" style="vertical-align: middle;text-align: left;">Risk<br>Level&nbsp;&nbsp;<div class="tooltip"><img src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV9TpSJVBzuIOGSoBcEuKuJYqlgEC6Wt0KqDyaVf0KQhSXFxFFwLDn4sVh1cnHV1cBUEwQ8QZwcnRRcp8X9JoUWMB8f9eHfvcfcOEJpVpp
     o9MUDVLCOdiIu5/KoYeEUAQQxiAhGJmXoys5iF5/i6h4+vd1Ge5X3uzzGgFEwG+ETiGNMNi3iDeHbT0jnvE4dYWVKIz4knDbog8SPXZZffOJccFnhmyMim54lDxGKpi+UuZmVDJZ4hDiuqRvlCzmWF8xZntVpn7XvyFwYL2kqG6zTHkMASkkhBhIw6KqjCQpRWjRQTadqPe/hHHX+KXDK5KmDkWEANK
     iTHD/4Hv7s1i9NTblIwDvS+2PbHOBDYBVoN2/4+tu3WCeB/Bq60jr/WBOY+SW90tPARMLQNXFx3NHkPuNwBRp50yZAcyU9TKBaB9zP6pjwwfAv0r7m9tfdx+gBkqavlG+DgEIiUKHvd49193b39e6bd3w/VdnLO67/jCAAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0
     SU1FB+gHDA40BpbiKy8AAAEjSURBVBjTXZAxS4JhFIWfe5XqA6NIBSvK1pak2tqjvb8Q/oUImgPnqL/R7tbYVPCtUb46iKYoSUGK3tvQK0hnu889HO49Uq1eyOXVtRby+Q1VrSBSBpaBMRDMLG2GMLi/uzV5fXvPFIvFHRE5A0qAAVMgCyjQNbN6v99vyfBzVFTVc2ArprWAHrAJbANLQNts9qCqWom
     JAB/u9uzuPXd/AjqRl1T1QIEyIBGuiuiJiJwCGeArcgHZy8Zn5loHcsBL5IWF3bLGOxf1DUxEZP+feazgAfAF+OOOAGuxDQB396BmloJ3F8w5EXbjOXN1zCzVZggDM68D7dhxEttJ/mZvu1u92QyDzGw25fDoeJQkK0FExiAKTIAhkJrZY2g0urXajf0CiVl4icFa+XEAAAAASUVORK5CYII=" /><span class="tooltiptext"><strong>Risk Level</strong><br>relfects the exposure of credentials and sensitive data.</span></div></th>
                       
-    <th class="NamesTh" onclick="sortTable(3)" style="vertical-align: middle;text-align: left;">Share<br>Similarity&nbsp;&nbsp;<div class="tooltip"><img src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV9TpSJVBzuIOGSoBcEuKuJYqlgEC6Wt0KqDyaVf0KQhSXFxFFwLDn4sVh1cnHV1cBUEwQ8QZwcnRRcp8X9JoUWMB8f9eHfvcfcOEJpVpp
+    <th class="NamesTh" onclick="sortTable(3,'number')" style="vertical-align: middle;text-align: left;">Share<br>Similarity&nbsp;&nbsp;<div class="tooltip"><img src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV9TpSJVBzuIOGSoBcEuKuJYqlgEC6Wt0KqDyaVf0KQhSXFxFFwLDn4sVh1cnHV1cBUEwQ8QZwcnRRcp8X9JoUWMB8f9eHfvcfcOEJpVpp
     o9MUDVLCOdiIu5/KoYeEUAQQxiAhGJmXoys5iF5/i6h4+vd1Ge5X3uzzGgFEwG+ETiGNMNi3iDeHbT0jnvE4dYWVKIz4knDbog8SPXZZffOJccFnhmyMim54lDxGKpi+UuZmVDJZ4hDiuqRvlCzmWF8xZntVpn7XvyFwYL2kqG6zTHkMASkkhBhIw6KqjCQpRWjRQTadqPe/hHHX+KXDK5KmDkWEANK
     iTHD/4Hv7s1i9NTblIwDvS+2PbHOBDYBVoN2/4+tu3WCeB/Bq60jr/WBOY+SW90tPARMLQNXFx3NHkPuNwBRp50yZAcyU9TKBaB9zP6pjwwfAv0r7m9tfdx+gBkqavlG+DgEIiUKHvd49193b39e6bd3w/VdnLO67/jCAAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0
     SU1FB+gHDA40BpbiKy8AAAEjSURBVBjTXZAxS4JhFIWfe5XqA6NIBSvK1pak2tqjvb8Q/oUImgPnqL/R7tbYVPCtUb46iKYoSUGK3tvQK0hnu889HO49Uq1eyOXVtRby+Q1VrSBSBpaBMRDMLG2GMLi/uzV5fXvPFIvFHRE5A0qAAVMgCyjQNbN6v99vyfBzVFTVc2ArprWAHrAJbANLQNts9qCqWom
     JAB/u9uzuPXd/AjqRl1T1QIEyIBGuiuiJiJwCGeArcgHZy8Zn5loHcsBL5IWF3bLGOxf1DUxEZP+feazgAfAF+OOOAGuxDQB396BmloJ3F8w5EXbjOXN1zCzVZggDM68D7dhxEttJ/mZvu1u92QyDzGw25fDoeJQkK0FExiAKTIAhkJrZY2g0urXajf0CiVl4icFa+XEAAAAASUVORK5CYII=" /><span class="tooltiptext"><strong>Share Similarity</strong><br>scores reflect how likely it is that the shares are related to each other.</span></div></th>
          
-    <th class="NamesTh"  onclick="sortTable(4)" style="vertical-align: middle;text-align: left;">Folder<br>Groups&nbsp;&nbsp;<div class="tooltip"><img src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV9TpSJVBzuIOGSoBcEuKuJYqlgEC6Wt0KqDyaVf0KQhSXFxFFwLDn4sVh1cnHV1cBUEwQ8QZwcnRRcp8X9JoUWMB8f9eHfvcfcOEJpVpp
+    <th class="NamesTh"  onclick="sortTable(4,'number')" style="vertical-align: middle;text-align: left;">Folder<br>Groups&nbsp;&nbsp;<div class="tooltip"><img src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV9TpSJVBzuIOGSoBcEuKuJYqlgEC6Wt0KqDyaVf0KQhSXFxFFwLDn4sVh1cnHV1cBUEwQ8QZwcnRRcp8X9JoUWMB8f9eHfvcfcOEJpVpp
     o9MUDVLCOdiIu5/KoYeEUAQQxiAhGJmXoys5iF5/i6h4+vd1Ge5X3uzzGgFEwG+ETiGNMNi3iDeHbT0jnvE4dYWVKIz4knDbog8SPXZZffOJccFnhmyMim54lDxGKpi+UuZmVDJZ4hDiuqRvlCzmWF8xZntVpn7XvyFwYL2kqG6zTHkMASkkhBhIw6KqjCQpRWjRQTadqPe/hHHX+KXDK5KmDkWEANK
     iTHD/4Hv7s1i9NTblIwDvS+2PbHOBDYBVoN2/4+tu3WCeB/Bq60jr/WBOY+SW90tPARMLQNXFx3NHkPuNwBRp50yZAcyU9TKBaB9zP6pjwwfAv0r7m9tfdx+gBkqavlG+DgEIiUKHvd49193b39e6bd3w/VdnLO67/jCAAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0
     SU1FB+gHDA40BpbiKy8AAAEjSURBVBjTXZAxS4JhFIWfe5XqA6NIBSvK1pak2tqjvb8Q/oUImgPnqL/R7tbYVPCtUb46iKYoSUGK3tvQK0hnu889HO49Uq1eyOXVtRby+Q1VrSBSBpaBMRDMLG2GMLi/uzV5fXvPFIvFHRE5A0qAAVMgCyjQNbN6v99vyfBzVFTVc2ArprWAHrAJbANLQNts9qCqWom
     JAB/u9uzuPXd/AjqRl1T1QIEyIBGuiuiJiJwCGeArcgHZy8Zn5loHcsBL5IWF3bLGOxf1DUxEZP+feazgAfAF+OOOAGuxDQB396BmloJ3F8w5EXbjOXN1zCzVZggDM68D7dhxEttJ/mZvu1u92QyDzGw25fDoeJQkK0FExiAKTIAhkJrZY2g0urXajf0CiVl4icFa+XEAAAAASUVORK5CYII=" /><span class="tooltiptext"><strong>Folder Groups</strong><br>are groups of shares<br>that have the same<br>name and file listing.</span></div></th>            
 	  
-    <th class="NamesTh"  onclick="sortTable(5)" style="vertical-align: middle;text-align: left;">Common<br>Files&nbsp;&nbsp;<div class="tooltip"><img src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV9TpSJVBzuIOGSoBcEuKuJYqlgEC6Wt0KqDyaVf0KQhSXFxFFwLDn4sVh1cnHV1cBUEwQ8QZwcnRRcp8X9JoUWMB8f9eHfvcfcOEJpVpp
+    <th class="NamesTh"  onclick="sortTable(5,'number')" style="vertical-align: middle;text-align: left;">Common<br>Files&nbsp;&nbsp;<div class="tooltip"><img src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV9TpSJVBzuIOGSoBcEuKuJYqlgEC6Wt0KqDyaVf0KQhSXFxFFwLDn4sVh1cnHV1cBUEwQ8QZwcnRRcp8X9JoUWMB8f9eHfvcfcOEJpVpp
     o9MUDVLCOdiIu5/KoYeEUAQQxiAhGJmXoys5iF5/i6h4+vd1Ge5X3uzzGgFEwG+ETiGNMNi3iDeHbT0jnvE4dYWVKIz4knDbog8SPXZZffOJccFnhmyMim54lDxGKpi+UuZmVDJZ4hDiuqRvlCzmWF8xZntVpn7XvyFwYL2kqG6zTHkMASkkhBhIw6KqjCQpRWjRQTadqPe/hHHX+KXDK5KmDkWEANK
     iTHD/4Hv7s1i9NTblIwDvS+2PbHOBDYBVoN2/4+tu3WCeB/Bq60jr/WBOY+SW90tPARMLQNXFx3NHkPuNwBRp50yZAcyU9TKBaB9zP6pjwwfAv0r7m9tfdx+gBkqavlG+DgEIiUKHvd49193b39e6bd3w/VdnLO67/jCAAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0
     SU1FB+gHDA40BpbiKy8AAAEjSURBVBjTXZAxS4JhFIWfe5XqA6NIBSvK1pak2tqjvb8Q/oUImgPnqL/R7tbYVPCtUb46iKYoSUGK3tvQK0hnu889HO49Uq1eyOXVtRby+Q1VrSBSBpaBMRDMLG2GMLi/uzV5fXvPFIvFHRE5A0qAAVMgCyjQNbN6v99vyfBzVFTVc2ArprWAHrAJbANLQNts9qCqWom
     JAB/u9uzuPXd/AjqRl1T1QIEyIBGuiuiJiJwCGeArcgHZy8Zn5loHcsBL5IWF3bLGOxf1DUxEZP+feazgAfAF+OOOAGuxDQB396BmloJ3F8w5EXbjOXN1zCzVZggDM68D7dhxEttJ/mZvu1u92QyDzGw25fDoeJQkK0FExiAKTIAhkJrZY2g0urXajf0CiVl4icFa+XEAAAAASUVORK5CYII=" /><span class="tooltiptext"><strong>Common Files</strong><br>are file names that<br>exist in 10% or more<br>of the file groups.</span></div> </th>	 	 
 	  
-    <th class="NamesTh"  onclick="sortTable(6)" style="vertical-align: middle;text-align: left;">Interesting<br>Files&nbsp;&nbsp;<div class="tooltip"><img src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV9TpSJVBzuIOGSoBcEuKuJYqlgEC6Wt0KqDyaVf0KQhSXFxFFwLDn4sVh1cnHV1cBUEwQ8QZwcnRRcp8X9JoUWMB8f9eHfvcfcOEJpVpp
+    <th class="NamesTh"  onclick="sortTable(6,'number')" style="vertical-align: middle;text-align: left;">Interesting<br>Files&nbsp;&nbsp;<div class="tooltip"><img src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV9TpSJVBzuIOGSoBcEuKuJYqlgEC6Wt0KqDyaVf0KQhSXFxFFwLDn4sVh1cnHV1cBUEwQ8QZwcnRRcp8X9JoUWMB8f9eHfvcfcOEJpVpp
     o9MUDVLCOdiIu5/KoYeEUAQQxiAhGJmXoys5iF5/i6h4+vd1Ge5X3uzzGgFEwG+ETiGNMNi3iDeHbT0jnvE4dYWVKIz4knDbog8SPXZZffOJccFnhmyMim54lDxGKpi+UuZmVDJZ4hDiuqRvlCzmWF8xZntVpn7XvyFwYL2kqG6zTHkMASkkhBhIw6KqjCQpRWjRQTadqPe/hHHX+KXDK5KmDkWEANK
     iTHD/4Hv7s1i9NTblIwDvS+2PbHOBDYBVoN2/4+tu3WCeB/Bq60jr/WBOY+SW90tPARMLQNXFx3NHkPuNwBRp50yZAcyU9TKBaB9zP6pjwwfAv0r7m9tfdx+gBkqavlG+DgEIiUKHvd49193b39e6bd3w/VdnLO67/jCAAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0
     SU1FB+gHDA40BpbiKy8AAAEjSURBVBjTXZAxS4JhFIWfe5XqA6NIBSvK1pak2tqjvb8Q/oUImgPnqL/R7tbYVPCtUb46iKYoSUGK3tvQK0hnu889HO49Uq1eyOXVtRby+Q1VrSBSBpaBMRDMLG2GMLi/uzV5fXvPFIvFHRE5A0qAAVMgCyjQNbN6v99vyfBzVFTVc2ArprWAHrAJbANLQNts9qCqWom
@@ -5096,8 +5119,8 @@ This section contains a list of the most common SMB share names. In some cases, 
     <tbody>
     $CommonShareNamesTopStringT    
     </tbody>
-
 </table>
+<div id="pagination" style="margin:10px;"></div>
 </div>
 
 <!--  
@@ -5645,144 +5668,135 @@ Invoke-HuntSMBShares -Threads 20 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\
             } 
           });
         }
-
-        
-	    let currentSortColumn = -1;
-	    let currentSortDir = "asc";
-
-        // Function to support sorting in tables - folder group table
-	    function sortTablefg(n) {
-		    const table = document.getElementById("foldergrouptable");
-		    const rows = Array.from(table.rows).slice(1);
-		    const dir = currentSortColumn === n && currentSortDir === "asc" ? "desc" : "asc";
-		    currentSortDir = dir;
-		    currentSortColumn = n;
-
-		    rows.sort((a, b) => {
-			    const cellA = a.cells[n].innerText.toLowerCase();
-			    const cellB = b.cells[n].innerText.toLowerCase();
-
-			    if (n !== 1) { // Sort numerically for all columns except the second one
-				    const numA = parseFloat(cellA) || 0;
-				    const numB = parseFloat(cellB) || 0;
-				    return dir === "asc" ? numA - numB : numB - numA;
-			    } else {
-				    if (cellA < cellB) return dir === "asc" ? -1 : 1;
-				    if (cellA > cellB) return dir === "asc" ? 1 : -1;
-				    return 0;
-			    }
-		    });
-
-		    const tbody = table.tBodies[0];
-		    rows.forEach(row => tbody.appendChild(row));
-
-		    updateSortIndicators(n);
-		    updateFilterCounter();
-	    }
-
-        // Function to support sorting in tables - share name table
-	    function sortTable(n) {
-		    const table = document.getElementById("sharenametable");
-		    const rows = Array.from(table.rows).slice(1);
-		    const dir = currentSortColumn === n && currentSortDir === "asc" ? "desc" : "asc";
-		    currentSortDir = dir;
-		    currentSortColumn = n;
-
-		    rows.sort((a, b) => {
-			    const cellA = a.cells[n].innerText.toLowerCase();
-			    const cellB = b.cells[n].innerText.toLowerCase();
-
-			    if (n !== 1) { // Sort numerically for all columns except the second one
-				    const numA = parseFloat(cellA) || 0;
-				    const numB = parseFloat(cellB) || 0;
-				    return dir === "asc" ? numA - numB : numB - numA;
-			    } else {
-				    if (cellA < cellB) return dir === "asc" ? -1 : 1;
-				    if (cellA > cellB) return dir === "asc" ? 1 : -1;
-				    return 0;
-			    }
-		    });
-
-		    const tbody = table.tBodies[0];
-		    rows.forEach(row => tbody.appendChild(row));
-
-		    updateSortIndicators(n);
-		    updateFilterCounter();
-	    }
-
-	    function updateSortIndicators(n) {
-		    const headers = document.querySelectorAll("th");
-		    headers.forEach((th, index) => {
-			    th.classList.remove("asc", "desc");
-			    if (index === n) {
-				    th.classList.add(currentSortDir);
-			    }
-		    });
-	    }
-
-        document.getElementById("filterInput").addEventListener("keyup", function() {
-            applyFilters();
-        });
-
-        // Filter based on checkboxes
+ 
+        const rowsPerPage = 10;
+        let currentPage = 1;
+        let currentSortColumn = -1;
+        let currentSortDir = "asc";
+        const table = document.getElementById('sharenametable');
+        const tbody = table.querySelector('tbody');
+        const rows = Array.from(tbody.rows);
+        const pagination = document.getElementById('pagination');
+        const searchInput = document.getElementById('filterInput');
+        const filterCounter = document.getElementById('filterCounter');
         const checkboxes = document.querySelectorAll('.filter-checkbox');
-        checkboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                applyFilters();
-            });
-        });
 
-        // Function to apply all filters
-        function applyFilters() {
-            const filterInputValue = document.getElementById("filterInput").value.toLowerCase();
-            const checkedFilters = Array.from(checkboxes)
-                .filter(cb => cb.checked)
-                .map(cb => cb.name);
+        // Pagination
+        function displayRows(filteredRows) {
+            const startIndex = (currentPage - 1) * rowsPerPage;
+            const endIndex = currentPage * rowsPerPage;
 
-            const rows = document.getElementById("sharenametable").getElementsByTagName("tr");
-            for (let i = 1; i < rows.length; i++) {
-                const row = rows[i];
-                const cells = row.getElementsByTagName("td");
-                let showRow = true;
+            rows.forEach(row => row.classList.add('hidden'));
+            filteredRows.slice(startIndex, endIndex).forEach(row => row.classList.remove('hidden'));
 
-                // Check text input filter
-                if (filterInputValue.length > 0) {
-                    let matchesFilterInput = false;
-                    for (let j = 0; j < cells.length; j++) {
-                        if (cells[j].innerHTML.toLowerCase().indexOf(filterInputValue) > -1) {
-                            matchesFilterInput = true;
-                            break;
-                        }
-                    }
-                    if (!matchesFilterInput) {
-                        showRow = false;
-                    }
-                }
+            updatePagination(filteredRows.length);
+            updateFilterCounter(filteredRows.length);
 
-                // Check checkbox filters
-                checkedFilters.forEach(filter => {
-                    if (row.getAttribute(filter) !== "Yes") {
-                        showRow = false;
-                    }
-                });
-
-                if(rows[i].id !== "ignore") { 
-                    row.style.display = showRow ? "" : "none";
+            // If the current page has no rows, adjust the current page
+            if (filteredRows.length === 0 || filteredRows.slice(startIndex, endIndex).length === 0) {
+                if (currentPage > 1) {
+                    currentPage--;
+                    displayRows(filteredRows);
                 }
             }
-            updateFilterCounter();
         }
 
-        // Function to update the filter counter
-        function updateFilterCounter() {
-            const visibleRows = Array.from(document.getElementById("sharenametable").rows).slice(1)
-                .filter(row => row.style.display !== "none");
-            const filterCounter = document.getElementById("filterCounter");
-            filterCounter.textContent = ``Showing `${visibleRows.length} row`${visibleRows.length !== 1 ? 's' : ''}``;
+        function updatePagination(totalRows) {
+            const pageCount = Math.ceil(totalRows / rowsPerPage);
+            pagination.innerHTML = '';
+
+            for (let i = 1; i <= pageCount; i++) {
+                const pageButton = document.createElement('button');
+                pageButton.textContent = i;
+                pageButton.classList.add('pagination-button');
+                if (i === currentPage) pageButton.classList.add('active');
+                pageButton.addEventListener('click', () => {
+                    currentPage = i;
+                    applyFiltersAndSort();
+                });
+                pagination.appendChild(pageButton);
+            }
         }
 
-        // Initial call to update filter counter on page load
-        updateFilterCounter();
+        // Sorting
+        function sortTable(n, type = 'number') {
+            const dir = currentSortColumn === n && currentSortDir === "asc" ? "desc" : "asc";
+            currentSortDir = dir;
+            currentSortColumn = n;
+
+            rows.sort((a, b) => {
+                const cellA = a.cells[n].innerText.toLowerCase();
+                const cellB = b.cells[n].innerText.toLowerCase();
+
+                if (type === 'number') {
+					if (!isNaN(parseFloat(cellA)) && !isNaN(parseFloat(cellB))) {
+						return dir === "asc" ? parseFloat(cellA) - parseFloat(cellB) : parseFloat(cellB) - parseFloat(cellA);
+					} else if (cellA.includes('%') && cellB.includes('%')) {
+						const numA = parseFloat(cellA.replace('%', ''));
+						const numB = parseFloat(cellB.replace('%', ''));
+						return dir === "asc" ? numA - numB : numB - numA;
+					} else {
+						if (cellA < cellB) return dir === "asc" ? -1 : 1;
+						if (cellA > cellB) return dir === "asc" ? 1 : -1;
+						return 0;
+					}
+                } else {
+                    if (cellA < cellB) return dir === "asc" ? -1 : 1;
+                    if (cellA > cellB) return dir === "asc" ? 1 : -1;
+                    return 0;
+                }
+            });
+
+            const tbody = table.tBodies[0];
+            rows.forEach(row => tbody.appendChild(row));
+
+            updateSortIndicators(n);
+            applyFiltersAndSort();
+        }
+
+        function updateSortIndicators(n) {
+            const headers = document.querySelectorAll("th");
+            headers.forEach((th, index) => {
+                th.classList.remove("asc", "desc");
+                if (index === n) {
+                    th.classList.add(currentSortDir);
+                }
+            });
+        }
+
+        // Filtering
+        searchInput.addEventListener("keyup", applyFiltersAndSort);
+        checkboxes.forEach(checkbox => checkbox.addEventListener('change', applyFiltersAndSort));
+
+		function applyFiltersAndSort() {
+			const filterInputValue = searchInput.value.toLowerCase();
+			const checkedFilters = Array.from(checkboxes)
+				.filter(cb => cb.checked)
+				.map(cb => cb.name);
+
+			const filteredRows = rows.filter(row => {
+				const cells = Array.from(row.cells);
+				const matchesTextFilter = cells.some(cell => cell.innerText.toLowerCase().includes(filterInputValue));
+				const matchesCheckboxFilter = checkedFilters.every(filter => row.getAttribute(filter) === "Yes");
+
+				return matchesTextFilter && matchesCheckboxFilter;
+			});
+
+			// Adjust currentPage if necessary to ensure it is not greater than the number of available pages
+			let maxPage = Math.ceil(filteredRows.length / rowsPerPage) || 1;
+			if (currentPage > maxPage) {
+				currentPage = maxPage;  // Set to max page if current is too high
+			}
+
+			displayRows(filteredRows);
+		}
+
+        function updateFilterCounter(visibleRows) {
+            filterCounter.textContent = ```${visibleRows} matches found``;
+        }
+
+        // Initial call to display rows
+        applyFiltersAndSort();
   
 </script>
 </div>
