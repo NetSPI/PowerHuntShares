@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.72
+# Version: v1.73
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -5146,7 +5146,7 @@ This section lists the most common share owners.
 </div>
 
 <!--  
-|||||||||| PAGE: SHARE FOLDERS
+|||||||||| PAGE: FOLDER GROUPS
 -->
 
 <input class="tabInput"  name="tabs" type="radio" id="ShareFolders"/> 
@@ -5159,16 +5159,16 @@ Folder groups are SMB shares that contain the exact same file listing. Each file
 
 <div style="border-bottom: 1px solid #DEDFE1 ;  background-color:#f0f3f5; height:5px; margin-bottom:10px;"></div>
 
-<table class="table table-striped table-hover tabledrop">
+<table class="table table-striped table-hover tabledrop" id="foldergrouptable">
   <thead>
     <tr>  
-      <th align="left">Unique Share Name Count</th>
-      <th align="left">Affected Share Count</th>      
-      <th align="left">File Group</th>
-      <th align="left">File Count</th>
-      <th align="left">Affected Computers</th>
-	  <th align="left">Affected Shares</th>	 	
-      <th align="left">Affected ACLs</th>	 
+      <th onclick="sortTablefg(0)" align="left">Unique Share Name Count</th>
+      <th onclick="sortTablefg(1)" align="left">Affected Share Count</th>      
+      <th onclick="sortTablefg(2)" align="left">File Group</th>
+      <th onclick="sortTablefg(3)" align="left">File Count</th>
+      <th onclick="sortTablefg(4)" align="left">Affected Computers</th>
+	  <th onclick="sortTablefg(5)" align="left">Affected Shares</th>
+	  <th onclick="sortTablefg(6)" align="left">Affected ACLs</th>	 
     </tr>
   </thead>
   <tbody>
@@ -5629,63 +5629,96 @@ Invoke-HuntSMBShares -Threads 20 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\
 <br>
 </div>
 <script>
-var coll = document.getElementsByClassName("collapsible");
-var i;
+        // Function to support collapsing and expanding sections
+        var coll = document.getElementsByClassName("collapsible");
+        var i;
 
-for (i = 0; i < coll.length; i++) {
-  coll[i].addEventListener("click", function() {
-    this.classList.toggle("active");
-    var content = this.nextElementSibling;
-    if (content.style.maxHeight){
-      content.style.maxHeight = null;
-    } else {
-      content.style.Height = content.scrollHeight + "px";
-      content.style.maxHeight = "100%";
-    } 
-  });
-}
+        for (i = 0; i < coll.length; i++) {
+          coll[i].addEventListener("click", function() {
+            this.classList.toggle("active");
+            var content = this.nextElementSibling;
+            if (content.style.maxHeight){
+              content.style.maxHeight = null;
+            } else {
+              content.style.Height = content.scrollHeight + "px";
+              content.style.maxHeight = "100%";
+            } 
+          });
+        }
 
-	let currentSortColumn = -1;
-	let currentSortDir = "asc";
+        
+	    let currentSortColumn = -1;
+	    let currentSortDir = "asc";
 
-	function sortTable(n) {
-		const table = document.getElementById("sharenametable");
-		const rows = Array.from(table.rows).slice(1);
-		const dir = currentSortColumn === n && currentSortDir === "asc" ? "desc" : "asc";
-		currentSortDir = dir;
-		currentSortColumn = n;
+        // Function to support sorting in tables - folder group table
+	    function sortTablefg(n) {
+		    const table = document.getElementById("foldergrouptable");
+		    const rows = Array.from(table.rows).slice(1);
+		    const dir = currentSortColumn === n && currentSortDir === "asc" ? "desc" : "asc";
+		    currentSortDir = dir;
+		    currentSortColumn = n;
 
-		rows.sort((a, b) => {
-			const cellA = a.cells[n].innerText.toLowerCase();
-			const cellB = b.cells[n].innerText.toLowerCase();
+		    rows.sort((a, b) => {
+			    const cellA = a.cells[n].innerText.toLowerCase();
+			    const cellB = b.cells[n].innerText.toLowerCase();
 
-			if (n !== 1) { // Sort numerically for all columns except the second one
-				const numA = parseFloat(cellA) || 0;
-				const numB = parseFloat(cellB) || 0;
-				return dir === "asc" ? numA - numB : numB - numA;
-			} else {
-				if (cellA < cellB) return dir === "asc" ? -1 : 1;
-				if (cellA > cellB) return dir === "asc" ? 1 : -1;
-				return 0;
-			}
-		});
+			    if (n !== 1) { // Sort numerically for all columns except the second one
+				    const numA = parseFloat(cellA) || 0;
+				    const numB = parseFloat(cellB) || 0;
+				    return dir === "asc" ? numA - numB : numB - numA;
+			    } else {
+				    if (cellA < cellB) return dir === "asc" ? -1 : 1;
+				    if (cellA > cellB) return dir === "asc" ? 1 : -1;
+				    return 0;
+			    }
+		    });
 
-		const tbody = table.tBodies[0];
-		rows.forEach(row => tbody.appendChild(row));
+		    const tbody = table.tBodies[0];
+		    rows.forEach(row => tbody.appendChild(row));
 
-		updateSortIndicators(n);
-		updateFilterCounter();
-	}
+		    updateSortIndicators(n);
+		    updateFilterCounter();
+	    }
 
-	function updateSortIndicators(n) {
-		const headers = document.querySelectorAll("th");
-		headers.forEach((th, index) => {
-			th.classList.remove("asc", "desc");
-			if (index === n) {
-				th.classList.add(currentSortDir);
-			}
-		});
-	}
+        // Function to support sorting in tables - share name table
+	    function sortTable(n) {
+		    const table = document.getElementById("sharenametable");
+		    const rows = Array.from(table.rows).slice(1);
+		    const dir = currentSortColumn === n && currentSortDir === "asc" ? "desc" : "asc";
+		    currentSortDir = dir;
+		    currentSortColumn = n;
+
+		    rows.sort((a, b) => {
+			    const cellA = a.cells[n].innerText.toLowerCase();
+			    const cellB = b.cells[n].innerText.toLowerCase();
+
+			    if (n !== 1) { // Sort numerically for all columns except the second one
+				    const numA = parseFloat(cellA) || 0;
+				    const numB = parseFloat(cellB) || 0;
+				    return dir === "asc" ? numA - numB : numB - numA;
+			    } else {
+				    if (cellA < cellB) return dir === "asc" ? -1 : 1;
+				    if (cellA > cellB) return dir === "asc" ? 1 : -1;
+				    return 0;
+			    }
+		    });
+
+		    const tbody = table.tBodies[0];
+		    rows.forEach(row => tbody.appendChild(row));
+
+		    updateSortIndicators(n);
+		    updateFilterCounter();
+	    }
+
+	    function updateSortIndicators(n) {
+		    const headers = document.querySelectorAll("th");
+		    headers.forEach((th, index) => {
+			    th.classList.remove("asc", "desc");
+			    if (index === n) {
+				    th.classList.add(currentSortDir);
+			    }
+		    });
+	    }
 
         document.getElementById("filterInput").addEventListener("keyup", function() {
             applyFilters();
