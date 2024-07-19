@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.79
+# Version: v1.80
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -2425,13 +2425,15 @@ function Invoke-HuntSMBShares
                 "my.*",
                 "mysql.user*",
                 "nginx.conf*",
+                "*ntds.dit*",
                 "pg_hba.conf*",
                 "php.ini*",
                 "putty.reg*",
                 "postgresql.conf*",
-                "SAM",
+                "SAM",               
                 "SAM-*",
                 "SAM_*",
+                "SYSTEM",
                 "server.xml*",
                 "shadow*",
                 "standalone.xml*",
