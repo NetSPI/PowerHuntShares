@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.78
+# Version: v1.79
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -4198,9 +4198,10 @@ input[type="checkbox"]:checked::before {
 		<h2>Excessive Share Privileges Summary</h2>			
         <div style="border-bottom: 1px solid #DEDFE1 ;  background-color:#f0f3f5; height:5px; margin-bottom:10px;"></div>
         <h4 style="color: gray">Affected Assets</h4> 
-        <div style="width:49%;">
-		Below is a summary of the computers, shares, and ACLs associated with shares configured with excessive privileges.<br> 	
+        <div style="width:70%;">
+		Below is a summary of the computers, shares, and ACLs associated with shares configured with excessive privileges.
         $ExcessiveSharePrivsCount ACL entries, on $ExcessiveSharesCount shares, hosted by $ComputerWithExcessive computers were found configured with excessive privilegs on the $TargetDomain domain.	
+        <br><br> 	
         </div>	
 		</div> 	
 
