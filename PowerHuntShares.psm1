@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.77
+# Version: v1.78
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -3670,7 +3670,7 @@ $NewHtmlReport = @"
 
 	.cardtitle{	
 		padding:5px;	
-		padding-left: 20px;
+		--padding-left: 20px;
 		font-size: 20;
 		color: white;
 		font-weight:bold;
@@ -4148,7 +4148,7 @@ input[type="checkbox"]:checked::before {
 }
   </style>
 </head>
-<body onload="radiobtn = document.getElementById('home');radiobtn.checked = true;">
+<body onload="radiobtn = document.getElementById('dashboard');radiobtn.checked = true;">
 
 <!--  
 |||||||||| SIDE MENU
@@ -4166,8 +4166,7 @@ input[type="checkbox"]:checked::before {
 		<div  style="font-size: 15;font-weight:bolder;color:white;margin-bottom:10px; margin-top:10px;text-align:center;">$TargetDomain</div>			
 	</div>	
 
-	<div id="tabs" class="tabs" data-tabs-ignore-url="false">
-		<label href="#" class="stuff" style="width:100%;margin-top:15px" onClick="radiobtn = document.getElementById('home');radiobtn.checked = true;">Home</label>		
+	<div id="tabs" class="tabs" data-tabs-ignore-url="false">			
 		<label class="tabLabel" style="width:100%;color:#07142A;background-color:#F56A00;border-top:1px solid white;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:2px;font-weight:bolder"><Strong>Reports</Strong></label>	
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('dashboard');radiobtn.checked = true;">Dashboard</label>		
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('computersummary');radiobtn.checked = true;">Computer Summary</label>		
@@ -4182,7 +4181,8 @@ input[type="checkbox"]:checked::before {
 		<label class="tabLabel" style="width:100%;color:#07142A;background-color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:2px;margin-bottom:2px;"><strong>Recommendations</strong></label>
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Attacks');radiobtn.checked = true;">Exploit Share Access</label>		
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Detections');radiobtn.checked = true;">Detect Share Scans</label>
-		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Remediation');radiobtn.checked = true;">Prioritize Remediation</label>		
+		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Remediation');radiobtn.checked = true;">Prioritize Remediation</label>	
+        <label href="#" class="stuff" style="width:100%;margin-top:15px" onClick="radiobtn = document.getElementById('home');radiobtn.checked = true;">HELP!</label>		
 	</div>
 </div>
 <div id="main">
@@ -4195,398 +4195,214 @@ input[type="checkbox"]:checked::before {
 		<div id="tabPanel" class="tabPanel">
 		<div style="min-height: 450px;margin-top:11px;">		
 		<div style="margin-left:10px;margin-top:3px">
-		<h2>Dashboard Charts</h2>			
-		Below is a summary of the shares configured with excessive privileges on accessible domain computers.
-		<a href="$SubDir/$ShareACLsExFile">Download Details</a>			
+		<h2>Excessive Share Privileges Summary</h2>			
+        <div style="border-bottom: 1px solid #DEDFE1 ;  background-color:#f0f3f5; height:5px; margin-bottom:10px;"></div>
+        <h4 style="color: gray">Affected Assets</h4> 
+        <div style="width:49%;">
+		Below is a summary of the computers, shares, and ACLs associated with shares configured with excessive privileges.<br> 	
+        $ExcessiveSharePrivsCount ACL entries, on $ExcessiveSharesCount shares, hosted by $ComputerWithExcessive computers were found configured with excessive privilegs on the $TargetDomain domain.	
+        </div>	
 		</div> 	
-		<div style="border-bottom: 1px solid #DEDFE1 ;  background-color:#f0f3f5; height:5px; margin-bottom:10px;"></div>	
 
 <!--  
 |||||||||| CARD: COMPUTER SUMMARY
 -->
 
-<div style="margin-left: 10px;">$ExcessiveSharePrivsCount ACL entries, on $ExcessiveSharesCount shares, hosted by $ComputerWithExcessive computers were found configured with excessive privilegs on the $TargetDomain domain.</div>
-
-<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('computersummary');radiobtn.checked = true;">
  <div class="card">	
-	<div class="cardtitle">
-		Computers<br>
-		<span class="cardsubtitle2">host shares with excessive privileges</span>
+	<div class="cardtitle" style="text-align:center;">
+		<a href="#" id="DashLink" style="text-decoration:none;color:white;font-size:18px;" onClick="radiobtn = document.getElementById('computersummary');radiobtn.checked = true;">Computers</a>
 	</div>
 	<div class="cardcontainer" align="center" style="padding-bottom: 22px;">	
-			<span class="piechartComputers">
-				<span class="percentagetext">
-					<div class="percentagetextBuff"></div>
-                    <img style ="padding-top:20px; padding-bottom:5px;border-bottom:1px solid #ccc; padding-left:10px; padding-right:10px;"   src="data:image/png;base64, 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Oi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvbW0vIgogICAgeG1sbnM6c3RFdnQ9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZUV2ZW50IyIKICAgIHhtbG5zOmRjPSJodHRwOi8vcHVybC5vcmcvZGMvZWxlbWVudHMvMS4xLyIKICAgIHhtbG5zOkdJTVA9Imh0dHA6Ly93d3cuZ2ltcC5vcmcveG1wLyIKICAgIHhtbG5zOnRpZmY9Imh0dHA6Ly9ucy5hZG9iZS5jb20vdGlmZi8xLjAvIgogICAgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIgogICB4bXBNTTpEb2N1bWVudElEPSJnaW1wOmRvY2lkOmdpbXA6NjBhMGY0NjUtNjJmYS00ZmVlLTk5NGUtNmYwYzc5ZmIwODhkIgogICB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOmM2NmZkYzhhLTgxMjMtNDBiYS1iYTNiLTg2YTIwNDE2MGIxMSIKICAgeG1wTU06T3JpZ2luYWxEb2N1bWVudElEPSJ4bXAuZGlkOmE1MjRlOTA5LWU1MjEtNGZiMC05MmMyLTExMzZjOWU1NjE1ZCIKICAgZGM6Rm9ybWF0PSJpbWFnZS9wbmciCiAgIEdJTVA6QVBJPSIyLjAiCiAgIEdJTVA6UGxhdGZvcm09IldpbmRvd3MiCiAgIEdJTVA6VGltZVN0YW1wPSIxNjQzMjM3NzY2Mjc4NDAwIgogICBHSU1QOlZlcnNpb249IjIuMTAuMjgiCiAgIHRpZmY6T3JpZW50YXRpb249IjEiCiAgIHhtcDpDcmVhdG9yVG9vbD0iR0lNUCAyLjEwIj4KICAgPHhtcE1NOkhpc3Rvcnk+CiAgICA8cmRmOlNlcT4KICAgICA8cmRmOmxpCiAgICAgIHN0RXZ0OmFjdGlvbj0ic2F2ZWQiCiAgICAgIHN0RXZ0OmNoYW5nZWQ9Ii8iCiAgICAgIHN0RXZ0Omluc3RhbmNlSUQ9InhtcC5paWQ6OTFjYWZiZWEtOTFiZi00YzEwLTliMzMtM2I0MWYyZmQ4NTE3IgogICAgICBzdEV2dDpzb2Z0d2FyZUFnZW50PSJHaW1wIDIuMTAgKFdpbmRvd3MpIgogICAgICBzdEV2dDp3aGVuPSIyMDIyLTAxLTI2VDE2OjU2OjA2Ii8+CiAgICA8L3JkZjpTZXE+CiAgIDwveG1wTU06SGlzdG9yeT4KICA8L3JkZjpEZXNjcmlwdGlvbj4KIDwvcmRmOlJERj4KPC94OnhtcG1ldGE+CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAKPD94cGFja2V0IGVuZD0idyI/PiNxLrcAAAAJcEhZcwAACxMAAAsTAQCanBgAAAAHdElNRQfmARoWOAboWgp4AAADyklEQVRIx61WX2hbZRT/ne+7N1mWtUnadLrYdquxoHQES1qx0251DJniH8YUfRN8ENGXPU4QwRcffHIviogvCiKCA1FhwjbBB6FL7FilnYRRS6hNejfnTdLb/L3f8aE39SZL0lvwwIXLd757fuec3/l936VTp+YI/5n7vWncy18uV2AYBgUCAT54cIg7fA8NvY27OVZWVmU2u5awbfs0gBEARSHo11AodDmRmLA0bSc0kasS2gWAAICZsbBwo980Cx8w82sAfACU6/uUrutvzcw89rvPpwMAhOP0BAAAmcwt3TQLF5j5DQAZInpT0+RTQoizAC4CmK7X69/Mz6cPM2+HoUgk1G9Z5fsApu1YDMcHInLwCERQUkqrUqkmlVLfElE6ENh3Npl8dMPv94OZsbz8hy+fN95l5neI6PPx8fjbo6PDigD8DCDplNyVGyJaBHAFQJyZXxVCPHfixJNXpBQtVafTCyHTLF4DEAqHQw9PTU0WNACTRPSRlOIHZjBtp99pAFgIYdRqta8BVA8cCF5rBwBA0eigVSiU0sx8xrKsGABTc9qyMjc3m+oxqgwAi4tLPsO4XQcgbNv2ddpv24qYeZ+zXG8SjyZBu01ZNDrQIKLrAPzlcuVZy7Ja9jIzcrmN+wEcA/BXONy/vgPi6lDPKYvFDikpxZcAtpRS76dS16ez2TXJzDDNAs3Pp6PVauUCgCEi+ioWO1QGQBLAeSK6NDZ2eNGjEDdMs1BlxotKqVfu3v3nodXVbHx9Pf98rVb7EMATTvKiWCxdGh6ObbpBbnhRejgcZqVUulgs/cnMUwCOM/PTAGYA6ET0I4AHAIw3Go3pfN74iQCYQohzJ08e/2I3ADdvpVIJmcytvmJxM8msRgAqCEGmbasXiCillPoYQAjAZc3rWdXOWV9fH5LJyZKjMwDA1au/vM7MLw8MRN4zTbNq2+pTABGxB4CO2mlbEwAgpeBE4uh3fr9vav/+wGnNY0Daq39wcEDNzh7L7hz1zCyXlm7qO+kIAaUUhBCQUnYMopTi5l6XSbfPfZ8IZj6Xy228tGs51FlKLi2POKfBPZcWATjqPL1JYE/U5doTEQBs/L9m67rWgqIR0SfM/EwPcvcydUxE3weDwWpLm8fGRrVSaVPTdb0F5M6dvycaDftMcyzbeZdSXhwaGly2bQWlbAYAXdcpGAzWjxwZbemOFo8/aLtaRi5hPc7M57uBKKXWJiYeWfAy/lq3WReC0sz0WTcQIeg3r/pq/q3cw8fWVhmGcZu2SaQWeogIkUhYBQIB9iBQ/hfq8Z63CHuDFwAAAABJRU5ErkJggg==" />
-					$PercentComputerExPrivP
-					<span class="percentagetext2" style="margin-top:0px;display: block;">
-                    <span style="color:#9B3722;font-size:12;">$ComputerWithExcessive</span>
-                     of $ComputerCount
-                    </span>
-				</span>
-			</span>			
-	<table>
-		 <tr>
-			<td class="cardsubtitle" style="vertical-align: top; width:78px;">
-            Read Access
-            $CheckStatusComputerR
-            </td>
-			<td align="right">				
-				<div class="cardbarouter">
-					<div class="cardbarinside" style="width: $PercentComputerReadP;"></div>
-				</div>	
-				<span class="cardbartext">$PercentComputerReadP <br> $ComputerWithReadCount of $ComputerCount</span>				
-			</td>
-		 </tr>
-		 <tr>
-			<td class="cardsubtitle" style="vertical-align:top">
-            Write Access
-            $CheckStatusComputerW
-            </td>
-			<td align="right">				
-				<div class="cardbarouter">
-					<div class="cardbarinside" style="width: $PercentComputerWriteP;"></div>
-				</div>
-				<span class="cardbartext">$PercentComputerWriteP <br> $ComputerWithWriteCount of $ComputerCount</span>
-			</td>
-		 </tr>
-		 <tr>
-			<td class="cardsubtitle" style="vertical-align:top">
-            High&nbsp;Risk
-            $CheckStatusComputerH
-            </td>
-			<td align="right">
-				<div class="cardbarouter">
-					<div class="cardbarinside" style="width: $PercentComputerHighRiskP;"></div>
-				</div>
-				<span class="cardbartext">$PercentComputerHighRiskP <br> $ComputerwithHighRisk of $ComputerCount</span>				
-			</td>
-		 </tr>		 
-		</table> 		  
+				<span class="percentagetext">                    
+					$ComputerWithExcessive                    
+				</span>	
+			<Br>
+			<button class="collapsible" style="text-align:left;font-size:10px;">Exposure Summary</button>
+			<div class="content">
+			<div class="filelistparent" style="font-size: 10px;">		  
+			<div>
+                <span style="color:#9B3722;font-size:12;">$ComputerWithExcessive</span> of $ComputerCount ($PercentComputerExPrivP)<br><br>
+	            <table>
+		             <tr>
+			            <td class="cardsubtitle" style="vertical-align: top; width:78px;">
+                        Read
+                        </td>
+			            <td align="right">				
+				            <div class="cardbarouter">
+					            <div class="cardbarinside" style="width: $PercentComputerReadP;"></div>
+				            </div>	
+				            <span class="cardbartext">$ComputerWithReadCount of $ComputerCount ($PercentComputerReadP)</span>				
+			            </td>
+		             </tr>
+		             <tr>
+			            <td class="cardsubtitle" style="vertical-align:top">
+                        Write
+                        </td>
+			            <td align="right">				
+				            <div class="cardbarouter">
+					            <div class="cardbarinside" style="width: $PercentComputerWriteP;"></div>
+				            </div>
+				            <span class="cardbartext">$ComputerWithWriteCount of $ComputerCount ($PercentComputerWriteP)</span>
+			            </td>
+		             </tr>
+		             <tr>
+			            <td class="cardsubtitle" style="vertical-align:top">
+                        High Risk
+                        </td>
+			            <td align="right">
+				            <div class="cardbarouter">
+					            <div class="cardbarinside" style="width: $PercentComputerHighRiskP;"></div>
+				            </div>
+				            <span class="cardbartext">$ComputerwithHighRisk of $ComputerCount ($PercentComputerHighRiskP)</span>				
+			            </td>
+		             </tr>		 
+		            </table> 
+                </div>	   
+			</div>
+			</div> 			  
 	</div>
  </div>
-</a>
 
 <!--  
 |||||||||| CARD: SHARE SUMMARY
 -->
 
-<a href="#" id="ShareLink" onClick="radiobtn = document.getElementById('sharesum');radiobtn.checked = true;">
- <div class="card">	
-	<div class="cardtitle">
-		Shares<br>
-		<span class="cardsubtitle2">configured with excessive privileges</span>
+<div class="card">	
+	<div class="cardtitle" style="text-align:center;">
+		<a href="#" id="DashLink" style="text-decoration:none;color:white;font-size:18px;" onClick="radiobtn = document.getElementById('sharesum');radiobtn.checked = true;">Shares</a>
 	</div>
 	<div class="cardcontainer" align="center" style="padding-bottom: 22px;">	
-			<span class="piechartShares">
-				<span class="percentagetext">
-					<div class="percentagetextBuff"></div>
-                    <img style ="padding-top:20px; padding-bottom:5px;border-bottom:1px solid #ccc;padding-left:10px; padding-right:10px;"   src="data:image/png;base64, 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Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZUV2ZW50IyIKICAgIHhtbG5zOmRjPSJodHRwOi8vcHVybC5vcmcvZGMvZWxlbWVudHMvMS4xLyIKICAgIHhtbG5zOkdJTVA9Imh0dHA6Ly93d3cuZ2ltcC5vcmcveG1wLyIKICAgIHhtbG5zOnRpZmY9Imh0dHA6Ly9ucy5hZG9iZS5jb20vdGlmZi8xLjAvIgogICAgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIgogICB4bXBNTTpEb2N1bWVudElEPSJnaW1wOmRvY2lkOmdpbXA6YzczMGM1Y2ItYjRjMi00YmRhLThlMDAtMWI3MDI1NjMwMDBiIgogICB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOmEzNGQyZDc5LTMxZjMtNDYwYy1hM2M2LTFiNjFiNjljZTMzMyIKICAgeG1wTU06T3JpZ2luYWxEb2N1bWVudElEPSJ4bXAuZGlkOjNiZmI0Y2M5LWE0YWQtNDNjMy04ZTkwLTE1MDljNzkxNmU2NCIKICAgZGM6Rm9ybWF0PSJpbWFnZS9wbmciCiAgIEdJTVA6QVBJPSIyLjAiCiAgIEdJTVA6UGxhdGZvcm09IldpbmRvd3MiCiAgIEdJTVA6VGltZVN0YW1wPSIxNjQzMjM1NjI3NzQ0MTc0IgogICBHSU1QOlZlcnNpb249IjIuMTAuMjgiCiAgIHRpZmY6T3JpZW50YXRpb249IjEiCiAgIHhtcDpDcmVhdG9yVG9vbD0iR0lNUCAyLjEwIj4KICAgPHhtcE1NOkhpc3Rvcnk+CiAgICA8cmRmOlNlcT4KICAgICA8cmRmOmxpCiAgICAgIHN0RXZ0OmFjdGlvbj0ic2F2ZWQiCiAgICAgIHN0RXZ0OmNoYW5nZWQ9Ii8iCiAgICAgIHN0RXZ0Omluc3RhbmNlSUQ9InhtcC5paWQ6NjNjM2VmYTAtNmI3Yi00NGZhLWFlZjctY2EzMjJlYzA2OGRjIgogICAgICBzdEV2dDpzb2Z0d2FyZUFnZW50PSJHaW1wIDIuMTAgKFdpbmRvd3MpIgogICAgICBzdEV2dDp3aGVuPSIyMDIyLTAxLTI2VDE2OjIwOjI3Ii8+CiAgICA8L3JkZjpTZXE+CiAgIDwveG1wTU06SGlzdG9yeT4KICA8L3JkZjpEZXNjcmlwdGlvbj4KIDwvcmRmOlJERj4KPC94OnhtcG1ldGE+CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAKPD94cGFja2V0IGVuZD0idyI/PrSHjn8AAAAGYktHRADoAPQASsUjROMAAAAJcEhZcwAACxMAAAsTAQCanBgAAAAHdElNRQfmARoWFBuybQ0PAAABi0lEQVRIx+2Tv0vDQBTH3zVpKsUghCb2x2C4lBq4paClSwfBzCVDQVBxDO3m6tBJl+zdBHERlwz9E1ycrHSyOkibDo6FDqaLtudiixcVpd4i9MF3eXfw4XPvHsCiFvXvy5Fl+R4AWuEoitLBGDcqlcrqnwjJZLLjuu7Sd+e5XG5fkqTbUql0nMlk4vNyWj9d8DxPIIQcmqb5+JXxNNls9sayrO25IL+ter2updPpu3AfvUM2pw3Lspbb7fZJEARxWZZRNBoFSikAAFBKmYzHY5hMJrNQSmE0GtmSJDUFQYBYLAbFYvHhk0mhUDgCAMozkbDaYDDY4/l1CSFXDMS2bdLtdglPSCqVOmcgvV5vlydAUZRnURQ9Zia6rvs8Z4ExPgMAmJnk8/kN3/fXeJqYpnnJ7IlhGC5PC8MwnqaAmQlC6ICnRb/fP2U2vlwub/HejVqtts5AMMYNngBd168/AiIIIRgOhzs8n0pV1YtwL+BpIYpi4DjOCkPQNK2qadoLD4Cqqq+JRKIatngD35X+UDOXLeMAAAAASUVORK5CYII=" />
-					$PercentSharesExPrivP
-					<span class="percentagetext2" style="margin-top:1px;display: block;">
-                        <span style="color:#9B3722;font-size:12;">$ExcessiveSharesCount</span>
-                     of $AllSMBSharesCount
-                    </span>
-				</span>
-			</span>					
-	<table>
-		 <tr>
-			<td class="cardsubtitle" style="vertical-align: top; width:78px;">
-            Read Access
-            $CheckStatusShareR
-            </td>
-			<td align="right">				
-				<div class="cardbarouter">
-					<div class="cardbarinside" style="width: $PercentSharesReadP;"></div>
-				</div>	
-				<span class="cardbartext">$PercentSharesReadP <br> $SharesWithReadCount of $AllSMBSharesCount</span>				
-			</td>
-		 </tr>
-		 <tr>
-			<td class="cardsubtitle" style="vertical-align:top">
-            Write Access
-            $CheckStatusShareW
-            </td>
-			<td align="right">				
-				<div class="cardbarouter">
-					<div class="cardbarinside" style="width: $PercentSharesWriteP;"></div>
-				</div>
-				<span class="cardbartext">$PercentSharesWriteP <br> $SharesWithWriteCount of $AllSMBSharesCount</span>
-			</td>
-		 </tr>
-		 <tr>
-			<td class="cardsubtitle" style="vertical-align:top">
-            High&nbsp;Risk
-            $CheckStatusShareH
-            </td>
-			<td align="right">
-				<div class="cardbarouter">
-					<div class="cardbarinside" style="width: $PercentSharesHighRiskP;"></div>
-				</div>
-				<span class="cardbartext">$PercentSharesHighRiskP <br> $SharesHighRiskCount of $AllSMBSharesCount</span>				
-			</td>
-		 </tr>		 
-		</table> 		  
+				<span class="percentagetext">                    
+					$ExcessiveSharesCount                    
+				</span>	
+			<Br>
+			<button class="collapsible" style="text-align:left;font-size:10px;">Exposure Summary</button>
+			<div class="content">
+			<div class="filelistparent" style="font-size: 10px;">		  
+			<div>
+                <span style="color:#9B3722;font-size:12;">$ExcessiveSharesCount</span> of $AllSMBSharesCount ($PercentSharesExPrivP)<br><br>
+	            <table>
+		             <tr>
+			            <td class="cardsubtitle" style="vertical-align: top; width:78px;">
+                        Read
+                        </td>
+			            <td align="right">				
+				            <div class="cardbarouter">
+					            <div class="cardbarinside" style="width: $PercentSharesReadP;"></div>
+				            </div>	
+				            <span class="cardbartext">$SharesWithReadCount of $AllSMBSharesCount ($PercentSharesReadP;)</span>				
+			            </td>
+		             </tr>
+		             <tr>
+			            <td class="cardsubtitle" style="vertical-align:top">
+                        Write
+                        </td>
+			            <td align="right">				
+				            <div class="cardbarouter">
+					            <div class="cardbarinside" style="width: $PercentSharesWriteP;"></div>
+				            </div>
+				            <span class="cardbartext">$SharesWithWriteCount of $AllSMBSharesCount ($PercentSharesWriteP)</span>
+			            </td>
+		             </tr>
+		             <tr>
+			            <td class="cardsubtitle" style="vertical-align:top">
+                        High Risk
+                        </td>
+			            <td align="right">
+				            <div class="cardbarouter">
+					            <div class="cardbarinside" style="width: $PercentSharesHighRiskP;"></div>
+				            </div>
+				            <span class="cardbartext">$SharesHighRiskCount of $AllSMBSharesCount ($PercentSharesHighRiskP)</span>				
+			            </td>
+		             </tr>		 
+		            </table> 
+                </div>	   
+			</div>
+			</div> 			  
 	</div>
  </div>
-</a>
 
 <!--  
 |||||||||| CARD: ACL SUMMARY
 -->
 
-<a href="#" id="AclLink" onClick="radiobtn = document.getElementById('ACLsum');radiobtn.checked = true;">
- <div class="card">	
-	<div class="cardtitle">
-		Share ACLs<br>
-		<span class="cardsubtitle2">configured with excessive privileges</span>
+<div class="card">	
+	<div class="cardtitle" style="text-align:center;">
+		<a href="#" id="DashLink" style="text-decoration:none;color:white;font-size:18px;" onClick="radiobtn = document.getElementById('ACLsum');radiobtn.checked = true;">ACLs</a>
 	</div>
 	<div class="cardcontainer" align="center" style="padding-bottom: 22px;">	
-			<span class="piechartAcls">
-				<span class="percentagetext">
-					<div class="percentagetextBuff"></div>
-                    <img style ="padding-top:20px; padding-bottom:5px;border-bottom:1px solid #ccc; padding-left:10px; padding-right:10px;"  src="data:image/png;base64, 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MC00M2FhLTk3MmEtMzM2MDEyNzQzY2RjIgogICB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOjU4MTg5M2UwLWFmZTktNDhkNi1hN2VlLThhMTU3MjA2MGQzMiIKICAgeG1wTU06T3JpZ2luYWxEb2N1bWVudElEPSJ4bXAuZGlkOjBlMjA5NmU2LTNmYWYtNGEzOS1hMjQyLWMxNDFmMWU4MDQzYiIKICAgZGM6Rm9ybWF0PSJpbWFnZS9wbmciCiAgIEdJTVA6QVBJPSIyLjAiCiAgIEdJTVA6UGxhdGZvcm09IldpbmRvd3MiCiAgIEdJTVA6VGltZVN0YW1wPSIxNjQzMjM2OTc2MzY1NjM0IgogICBHSU1QOlZlcnNpb249IjIuMTAuMjgiCiAgIHRpZmY6T3JpZW50YXRpb249IjEiCiAgIHhtcDpDcmVhdG9yVG9vbD0iR0lNUCAyLjEwIj4KICAgPHhtcE1NOkhpc3Rvcnk+CiAgICA8cmRmOlNlcT4KICAgICA8cmRmOmxpCiAgICAgIHN0RXZ0OmFjdGlvbj0ic2F2ZWQiCiAgICAgIHN0RXZ0OmNoYW5nZWQ9Ii8iCiAgICAgIHN0RXZ0Omluc3RhbmNlSUQ9InhtcC5paWQ6MDYwMjZhYTEtZWQyYy00NDU2LWExZTAtYzdlZWVjZThiNDY1IgogICAgICBzdEV2dDpzb2Z0d2FyZUFnZW50PSJHaW1wIDIuMTAgKFdpbmRvd3MpIgogICAgICBzdEV2dDp3aGVuPSIyMDIyLTAxLTI2VDE2OjQyOjU2Ii8+CiAgICA8L3JkZjpTZXE+CiAgIDwveG1wTU06SGlzdG9yeT4KICA8L3JkZjpEZXNjcmlwdGlvbj4KIDwvcmRmOlJERj4KPC94OnhtcG1ldGE+CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAKPD94cGFja2V0IGVuZD0idyI/PvHyhAIAAAAJcEhZcwAACxMAAAsTAQCanBgAAAAHdElNRQfmARoWKjhRz2cAAAAA8klEQVRIx+3WMUoDQRTG8d9m13SpLMQLWNiqbTB4CAs7EcFKEI8hKdIpKfUWQhCxUtRK9AAWsbMRBMnabMBiSLLrrI15MDB8fDP/ebw3zDCPEpHgAEfIp3jfsI3XKqAXNGfwbeIRy1UgTyW8HdxjqQwgK3mgAY5xjY8JvrzwHCJPikxWsYiViLU+wSnOx5A2rnATubFaSMc12UKvpg5+bhSTFKOaIKPGX1zGOeSfQrJfrt/AekC/w20syFcxQnq0TNawF7qAeIgFucBlQB/GzGQH+wH9DP1YkP7PzSa1cIaFGd74KtFEmqCLXXzivYaPSvcbYO4pyzEBUV8AAAAASUVORK5CYII=" />
-					$PercentAclExPrivP
-					<span class="percentagetext2" style="margin-top:1px;display: block;">
-                        <span style="color:#9B3722;font-size:12;">$ExcessiveSharePrivsCount</span>
-                         of $ShareACLsCount
-                        </span>
-				</span>
-			</span>		
-	<table>
-		 <tr>
-			<td class="cardsubtitle" style="vertical-align: top; width:78px;">
-            Read Access
-            $CheckStatusAclR
-            </td>
-			<td align="right">				
-				<div class="cardbarouter">
-					<div class="cardbarinside" style="width: $PercentAclReadP;"></div>
-				</div>	
-				<span class="cardbartext">$PercentAclReadP <br> $AclWithReadCount of $ShareACLsCount</span>				
-			</td>
-		 </tr>
-		 <tr>
-			<td class="cardsubtitle" style="vertical-align:top">
-            Write Access
-            $CheckStatusAclw 
-            </td>
-			<td align="right">				
-				<div class="cardbarouter">
-					<div class="cardbarinside" style="width: $PercentAclWriteP;"></div>
-				</div>
-				<span class="cardbartext">$PercentAclWriteP <br> $AclWithWriteCount of $ShareACLsCount</span>
-			</td>
-		 </tr>
-		 <tr>
-			<td class="cardsubtitle" style="vertical-align:top">
-            High&nbsp;Risk
-            $CheckStatusAclH 
-            </td>
-			<td align="right">
-				<div class="cardbarouter">
-					<div class="cardbarinside" style="width: $PercentAclHighRiskP;"></div>
-				</div>
-				<span class="cardbartext">$PercentAclHighRiskP <br> $AclHighRiskCount of $ShareACLsCount</span>				
-			</td>
-		 </tr>		 
-		</table> 		  
+				<span class="percentagetext">                    
+					$ExcessiveSharePrivsCount                    
+				</span>	
+			<Br>
+			<button class="collapsible" style="text-align:left;font-size:10px;">Exposure Summary</button>
+			<div class="content">
+			<div class="filelistparent" style="font-size: 10px;">		  
+			<div>
+                <span style="color:#9B3722;font-size:12;">$ExcessiveSharePrivsCount</span> of $ShareACLsCount ($PercentAclExPrivP)<br><br>
+	            <table>
+		             <tr>
+			            <td class="cardsubtitle" style="vertical-align: top; width:78px;">
+                        Read
+                        </td>
+			            <td align="right">				
+				            <div class="cardbarouter">
+					            <div class="cardbarinside" style="width: $PercentAclReadP;"></div>
+				            </div>	
+				            <span class="cardbartext">$AclWithReadCount of $ShareACLsCount ($PercentAclReadP)</span>				
+			            </td>
+		             </tr>
+		             <tr>
+			            <td class="cardsubtitle" style="vertical-align:top">
+                        Write
+                        </td>
+			            <td align="right">				
+				            <div class="cardbarouter">
+					            <div class="cardbarinside" style="width: $PercentAclWriteP;"></div>
+				            </div>
+				            <span class="cardbartext">$AclWithWriteCount of $ShareACLsCount ($PercentAclWriteP)</span>
+			            </td>
+		             </tr>
+		             <tr>
+			            <td class="cardsubtitle" style="vertical-align:top">
+                        High Risk
+                        </td>
+			            <td align="right">
+				            <div class="cardbarouter">
+					            <div class="cardbarinside" style="width:  $PercentAclHighRiskP;"></div>
+				            </div>
+				            <span class="cardbartext">$AclHighRiskCount of $ShareACLsCount ($PercentAclHighRiskP)</span>				
+			            </td>
+		             </tr>		 
+		            </table> 
+                </div>	   
+			</div>
+			</div> 			  
 	</div>
  </div>
- </a>
 
  <!--  
-|||||||||| CARD: Top 5 Names
+|||||||||| CARD: Identities Place Holder
 -->
 
-<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;">
- <div class="card">	
-	<div class="cardtitle">
-		Top Share Names<br>
-		<span class="cardsubtitle2">configured with excessive privileges</span>
-	</div>
-	<div class="cardcontainer" align="center">	
-			<span class="piechartComputers">
-				<span class="percentagetext">
-					<div class="percentagetextBuff"></div>
-                    <img style ="padding-top:20px; padding-bottom:5px;border-bottom:1px solid #ccc; padding-left:10px; padding-right:10px;"  src="data:image/png;base64, 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LTRhMGEtOWY2Yi01MjZlNjNjNzJmYWYiCiAgIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6MDY0N2QwMjQtN2Y0ZC00MzU0LThkZDYtMjA0ODY3ZGFiMjczIgogICB4bXBNTTpPcmlnaW5hbERvY3VtZW50SUQ9InhtcC5kaWQ6OGI5OWVjZmMtYmI4NC00YWYwLTg2NGEtZTVmM2E0NGRkYzVlIgogICBkYzpGb3JtYXQ9ImltYWdlL3BuZyIKICAgR0lNUDpBUEk9IjIuMCIKICAgR0lNUDpQbGF0Zm9ybT0iV2luZG93cyIKICAgR0lNUDpUaW1lU3RhbXA9IjE2NDQ0MjAyOTYyMDQ4NjMiCiAgIEdJTVA6VmVyc2lvbj0iMi4xMC4yOCIKICAgdGlmZjpPcmllbnRhdGlvbj0iMSIKICAgeG1wOkNyZWF0b3JUb29sPSJHSU1QIDIuMTAiPgogICA8eG1wTU06SGlzdG9yeT4KICAgIDxyZGY6U2VxPgogICAgIDxyZGY6bGkKICAgICAgc3RFdnQ6YWN0aW9uPSJzYXZlZCIKICAgICAgc3RFdnQ6Y2hhbmdlZD0iLyIKICAgICAgc3RFdnQ6aW5zdGFuY2VJRD0ieG1wLmlpZDo2YWViZTRjNy05YjU1LTQ4NGQtOTUzZS0xMWViODgxYWM4YWUiCiAgICAgIHN0RXZ0OnNvZnR3YXJlQWdlbnQ9IkdpbXAgMi4xMCAoV2luZG93cykiCiAgICAgIHN0RXZ0OndoZW49IjIwMjItMDItMDlUMDk6MjQ6NTYiLz4KICAgIDwvcmRmOlNlcT4KICAgPC94bXBNTTpIaXN0b3J5PgogIDwvcmRmOkRlc2NyaXB0aW9uPgogPC9yZGY6UkRGPgo8L3g6eG1wbWV0YT4KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgIAo8P3hwYWNrZXQgZW5kPSJ3Ij8+VWGc2AAAAAZiS0dEAOgA9ABKxSNE4wAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB+YCCQ8YOKpEKS8AAAGFSURBVEjH3dYxSJVRFAfw3+u9HNQwjJe4CUGEIIqOQSg1ZKGLSEPbo8UpqJzcdFFQh5bQURRpaSkdiyhti1yktpaWSEkIQRRfy3nwcNDv6bWhb7lw7jnf/97z/59zLv/Ll8MInqB8gu9PPMCP0wB9Q10Gv158QetpQDZr8O3DZ7TUAlCo8UDv8AwfsHuMXzl8HqOci5u04wquJ+R6GnNYrIDcwnusJRbWJeQrnNzG83NS8NcKJ3kcZgi4h7vYwyt8yhBzeKGGEy3Fj6+hG+uYyBKYFeQRBjCJG2jGOMZwM5WEh7CMUdSHrRErsbeW4iaXg4f6KlsRv9GQKl1vcQcLVbZ53MfHVOmawUN0hNRzGA75L6cC2cZTDKIf+1jFSxykAingRfSk2WiQpVBWVypOBoLoqzEavqMJnehJBVKK9RfeRGHuH9k7U7oaQ0HrkaYDbOF11EkxhFA+C8gfTEWNtFXZx7GRta0UcDHDjN89MkWzANQhnwu1lKKid87hoTL7T55EfwHPxkx+CTMteQAAAABJRU5ErkJggg==" />
-					$CommonShareNamesTotalP 
-					<span class="percentagetext2" style="margin-top:0px;display: block;">
-                    <span style="color:#9B3722;font-size:12;">$CommonShareNamesRollingCount</span>
-                     of $AllSMBSharesCount
-                    </span>
-				</span>
-			</span>			
-	    <table>
-		 $CommonShareNamesTopStringTCard 		 
-		</table> 		  
-	</div>
- </div>
 <div style="height:.5px;width:100%;position:relative;float:left;"></div>
-
-
-<!--  
-|||||||||| CARD: Share Creation Summary
--->
-
-<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('DashBoard');radiobtn.checked = true;">
- <div class="card">	
-	<div class="cardtitle">
-		Shares Created<br>
-		<span class="cardsubtitle2">in last $ShareCreationDays days</span>
-	</div>
-	<div class="cardcontainer" align="center">	
-			<span class="piechartComputers">
-				<span class="percentagetext">
-					<div class="percentagetextBuff"></div>
-                    <img style ="padding-top:20px; padding-bottom:5px;border-bottom:1px solid #ccc; padding-left:10px; padding-right:10px;"  src="data:image/png;base64, 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LTQzZjQtYTU2OC1hZTNiZGUyODZhOTUiCiAgIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6YTQwMDdjMDktZjM2YS00ZjEzLTg0MTEtMDg0YzY1ZWIyMmQyIgogICB4bXBNTTpPcmlnaW5hbERvY3VtZW50SUQ9InhtcC5kaWQ6MmE5NmQwYmItODFhMS00N2VmLTlhZmMtMzRmNzBhODM0YTMxIgogICBkYzpGb3JtYXQ9ImltYWdlL3BuZyIKICAgR0lNUDpBUEk9IjIuMCIKICAgR0lNUDpQbGF0Zm9ybT0iV2luZG93cyIKICAgR0lNUDpUaW1lU3RhbXA9IjE2NDQ0MjA0ODgyMjk0ODYiCiAgIEdJTVA6VmVyc2lvbj0iMi4xMC4yOCIKICAgdGlmZjpPcmllbnRhdGlvbj0iMSIKICAgeG1wOkNyZWF0b3JUb29sPSJHSU1QIDIuMTAiPgogICA8eG1wTU06SGlzdG9yeT4KICAgIDxyZGY6U2VxPgogICAgIDxyZGY6bGkKICAgICAgc3RFdnQ6YWN0aW9uPSJzYXZlZCIKICAgICAgc3RFdnQ6Y2hhbmdlZD0iLyIKICAgICAgc3RFdnQ6aW5zdGFuY2VJRD0ieG1wLmlpZDo4ZTdiNmU2ZS05NzhjLTQ3ZDMtYmIwZS0yZTc1OGExMDJjOWUiCiAgICAgIHN0RXZ0OnNvZnR3YXJlQWdlbnQ9IkdpbXAgMi4xMCAoV2luZG93cykiCiAgICAgIHN0RXZ0OndoZW49IjIwMjItMDItMDlUMDk6MTU6NTIiLz4KICAgICA8cmRmOmxpCiAgICAgIHN0RXZ0OmFjdGlvbj0ic2F2ZWQiCiAgICAgIHN0RXZ0OmNoYW5nZWQ9Ii8iCiAgICAgIHN0RXZ0Omluc3RhbmNlSUQ9InhtcC5paWQ6YmFlNTE3ZWEtMGU5Ni00NzZjLThkYWUtNDMyMGE4OWQwOGZlIgogICAgICBzdEV2dDpzb2Z0d2FyZUFnZW50PSJHaW1wIDIuMTAgKFdpbmRvd3MpIgogICAgICBzdEV2dDp3aGVuPSIyMDIyLTAyLTA5VDA5OjI4OjA4Ii8+CiAgICA8L3JkZjpTZXE+CiAgIDwveG1wTU06SGlzdG9yeT4KICA8L3JkZjpEZXNjcmlwdGlvbj4KIDwvcmRmOlJERj4KPC94OnhtcG1ldGE+CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAKPD94cGFja2V0IGVuZD0idyI/PvnuaGIAAAAGYktHRADoAPQASsUjROMAAAAJcEhZcwAACxMAAAsTAQCanBgAAAAHdElNRQfmAgkPHAjo8dyHAAAA5ElEQVRIx+3VvUoDURCG4WfzIwlEG7G0sUxja2OdKoU3I96ClTaWegFprL2EqNiKrV1IShGFuGszCxJw48Ix1X7wdcO8Z344wwaUYR9j9CviCrzgDsu6kDYmeMUC77/4Ayc4wD3yuqDHNVWUGuAaZ+jWbdcDjuO1fwFdROxzRVweeZ9QtFZa11vjJU4xxVaFB7jEEFknAH2c4zDhUu3hBlcl5CjoY3wlBO3itoRsY4a3WNdUyldn8m9qIA2kgTSQxOoEqPfjnqT8IHfQyuLSjSL5PHERbUyyqKYbpzi1CnxuYiS+AUTqLN3dBmCqAAAAAElFTkSuQmCC" />
-					$ExpPrivCreationLastP
-					<span class="percentagetext2" style="margin-top:0px;display: block;">
-                    <span style="color:#9B3722;font-size:12;">$ExPrivCreationLastnShareCount</span>
-                     of $AllSMBSharesCount
-                    </span>
-				</span>
-			</span>			
-	<table>
-		 <tr>
-			<td class="cardsubtitle" style="vertical-align: top; width:78px;">Computers</td>
-			<td align="right">				
-				$ExPrivCreationLastComputerB				
-			</td>
-		 </tr>
-		 <tr>
-			<td class="cardsubtitle" style="vertical-align:top">Shares</td>
-			<td align="right">				
-				$ExPrivCreationLastShareB
-			</td>
-		 </tr>
-		 <tr>
-			<td class="cardsubtitle" style="vertical-align:top">ACLs</td>
-			<td align="right">
-				$ExPrivCreationLastShareAclB 			
-			</td>
-		 </tr>		 
-		</table> 		  
-	</div>
- </div>
-</a>
 
 <!--  
 |||||||||| CARD: Share Creation Timeline
 -->
-<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('DashBoard');radiobtn.checked = true;">
 $CardCreationTimeLine
-</a>
 <div style="height:.5px;width:100%;position:relative;float:left;"></div>
  
 <!--  
-|||||||||| CARD: Last Access Summary
--->
-
-<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('DashBoard');radiobtn.checked = true;">
- <div class="card">	
-	<div class="cardtitle">
-		Shares Accessed<br>
-		<span class="cardsubtitle2">in last $LastAccessDays days</span>
-	</div>
-	<div class="cardcontainer" align="center">	
-			<span class="piechartComputers">
-				<span class="percentagetext">
-					<div class="percentagetextBuff"></div>
-                    <img style ="padding-top:20px; padding-bottom:5px;border-bottom:1px solid #ccc; padding-left:10px; padding-right:10px;"  src="data:image/png;base64, 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NGI4NS04M2NhLTRmYThhYTFhODAyYSIKICAgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDpiZjU2YjU0YS1lNjNiLTRlNjktYjIwMS02YTE1OTZiMjBjMzUiCiAgIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDpmNDNiOWQ5YS00ZDJhLTRjYmItOTYxYS03YjBmMmQ2YjU2NWMiCiAgIGRjOkZvcm1hdD0iaW1hZ2UvcG5nIgogICBHSU1QOkFQST0iMi4wIgogICBHSU1QOlBsYXRmb3JtPSJXaW5kb3dzIgogICBHSU1QOlRpbWVTdGFtcD0iMTY0NDQyMDQzNzQ3MDU5OSIKICAgR0lNUDpWZXJzaW9uPSIyLjEwLjI4IgogICB0aWZmOk9yaWVudGF0aW9uPSIxIgogICB4bXA6Q3JlYXRvclRvb2w9IkdJTVAgMi4xMCI+CiAgIDx4bXBNTTpIaXN0b3J5PgogICAgPHJkZjpTZXE+CiAgICAgPHJkZjpsaQogICAgICBzdEV2dDphY3Rpb249InNhdmVkIgogICAgICBzdEV2dDpjaGFuZ2VkPSIvIgogICAgICBzdEV2dDppbnN0YW5jZUlEPSJ4bXAuaWlkOjBjZjc0ZTQ5LTM4MGEtNGQ0Zi04NzQ0LWJkNjFmYzYzMzc3ZiIKICAgICAgc3RFdnQ6c29mdHdhcmVBZ2VudD0iR2ltcCAyLjEwIChXaW5kb3dzKSIKICAgICAgc3RFdnQ6d2hlbj0iMjAyMi0wMi0wOVQwOToyNzoxNyIvPgogICAgPC9yZGY6U2VxPgogICA8L3htcE1NOkhpc3Rvcnk+CiAgPC9yZGY6RGVzY3JpcHRpb24+CiA8L3JkZjpSREY+CjwveDp4bXBtZXRhPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgCjw/eHBhY2tldCBlbmQ9InciPz4HW/wsAAAABmJLR0QA6AD0AErFI0TjAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH5gIJDxsRw9vigAAAAcZJREFUSMfd1U+IzVEUB/CPZwZlKNmNUkYkG8xYaEyajSxEWcziTZFQUmPBgoWk/CkbywklOxtKEfmz0AylZsKGnZKFP2VhSuYpyrM5r65rfu+PN6s5dfrde/7c7z1/7vkxl2gYn/FjBv6KwXYB5uEjzmNiBv0AzmEr3rQDUsE2vAjZaaxLbLbjF8ZaPPsSXkFHphjFfnTiaMie/sflj6G3BiIi2Ywz+IYTUY926AkO1TalRNGLLlyMRqilbmesb2IVFmM8ZH24FusDEcE/lKfrCK5GTTahH4vwKeo2kKw3xrc/bAfjAmNYgpVYg7dpuu7gMG6hit+zwFVcySNZi11YHm+kXerDRA5SxoMCgE5sSPbvmrjIFjzP01XFUIFDd+hrXG4iknGM5JF8x/1ZGlcrYlIMlTLFvYgspYV4jIeZ/AJeYnUBSDney5c0Xe+xu8BhX5aqGl+uE8kkDqYvfgRTWFDH6VEG8AFLC2x7Yt4tS0Ge4XqDHPdgOgHZU8f2FO6mgko47WiimCfD9nYDu9d591WiOKUmQOZHW3bXsVkfZ3blIKMttGZHA/3ZGE1/OUzhZ0zhdqmEvTjeyj++VZ7GjUjrHKQ/8x6Qeu2jMHoAAAAASUVORK5CYII=" />
-					$ExpPrivAccessLastP
-					<span class="percentagetext2" style="margin-top:0px;display: block;">
-                    <span style="color:#9B3722;font-size:12;">$ExPrivAccessLastnShareCount</span>
-                     of $AllSMBSharesCount
-                    </span>
-				</span>
-			</span>			
-	<table>
-		 <tr>
-			<td class="cardsubtitle" style="vertical-align: top; width:78px;">Computers</td>
-			<td align="right">				
-				$ExPrivAccesLastComputerB				
-			</td>
-		 </tr>
-		 <tr>
-			<td class="cardsubtitle" style="vertical-align:top">Shares</td>
-			<td align="right">				
-				$ExPrivAccesLastShareB
-			</td>
-		 </tr>
-		 <tr>
-			<td class="cardsubtitle" style="vertical-align:top">ACLs</td>
-			<td align="right">
-				$ExPrivAccesLastShareAclB 			
-			</td>
-		 </tr>		 
-		</table> 		  
-	</div>
- </div>
-</a>
-
-<!--  
 |||||||||| CARD: LastAccessDate Timeline
 -->
-<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('DashBoard');radiobtn.checked = true;">
 $CardLastAccessTimeLine
-</a>
 <div style="height:.5px;width:100%;position:relative;float:left;"></div>
-
-
-<!--  
-|||||||||| CARD: Last Modified Summary
--->
-
-<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('DashBoard');radiobtn.checked = true;">
- <div class="card">	
-	<div class="cardtitle">
-		Shares Modified<br>
-		<span class="cardsubtitle2">in last $LastModDays days</span>
-	</div>
-	<div class="cardcontainer" align="center">	
-			<span class="piechartComputers">
-				<span class="percentagetext">
-					<div class="percentagetextBuff"></div>
-                    <img style ="padding-top:20px; padding-bottom:5px;border-bottom:1px solid #ccc; padding-left:10px; padding-right:10px;"  src="data:image/png;base64, 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NDAxZC1iYjY4LTJjNzgyNzA3ZDRmZiIKICAgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDo1NzE0ZjExMy01NWY2LTRiYzEtYjE4NS02YWQ2NjFjMzgyZjYiCiAgIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDpiODBlNGVmYi0zNTM5LTQ5MTUtOGQzZS0yMjU4OTMyMjZiMGMiCiAgIGRjOkZvcm1hdD0iaW1hZ2UvcG5nIgogICBHSU1QOkFQST0iMi4wIgogICBHSU1QOlBsYXRmb3JtPSJXaW5kb3dzIgogICBHSU1QOlRpbWVTdGFtcD0iMTY0NDQyMDM5MjMxODQ4NiIKICAgR0lNUDpWZXJzaW9uPSIyLjEwLjI4IgogICB0aWZmOk9yaWVudGF0aW9uPSIxIgogICB4bXA6Q3JlYXRvclRvb2w9IkdJTVAgMi4xMCI+CiAgIDx4bXBNTTpIaXN0b3J5PgogICAgPHJkZjpTZXE+CiAgICAgPHJkZjpsaQogICAgICBzdEV2dDphY3Rpb249InNhdmVkIgogICAgICBzdEV2dDpjaGFuZ2VkPSIvIgogICAgICBzdEV2dDppbnN0YW5jZUlEPSJ4bXAuaWlkOmFhZWFkNDk3LTkxZmItNGRlNS1iYjQzLWQ4OWZjODI1ZTQzMyIKICAgICAgc3RFdnQ6c29mdHdhcmVBZ2VudD0iR2ltcCAyLjEwIChXaW5kb3dzKSIKICAgICAgc3RFdnQ6d2hlbj0iMjAyMi0wMi0wOVQwOToyNjozMiIvPgogICAgPC9yZGY6U2VxPgogICA8L3htcE1NOkhpc3Rvcnk+CiAgPC9yZGY6RGVzY3JpcHRpb24+CiA8L3JkZjpSREY+CjwveDp4bXBtZXRhPgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgCjw/eHBhY2tldCBlbmQ9InciPz6Pz8otAAAABmJLR0QA6AD0AErFI0TjAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH5gIJDxogix7T+wAAActJREFUSMfd1U2ITmEUB/DfvIbko0hNRFOIZCFmLDQmzUYWYodGKflIaixY2EkZCykrTY2yZWEWk6hZKA0LNZINNmxsfEQRMvSS1+a8eua673u97qzmX6f73POcc//P/zzneS4zCfvxBt9y7AP6yhK04RXOYyJnvheD2IqnZUgmsQ2PwncG65KY7fiB8Ra/fQmPoT0zMYSDmI0T4bv/H4s/ia46iVCyGWfxGadjP8rgLo7UXyrJRBcW4EI0Qr10O2N8AysxH/fC142rMT4UCv5CtlzHcSX2ZBN6MBevY996k/HGePZEbF8sYBwL0Yk1eJGW6yaOYQQ1/JoGq2E4q2QtdmFJnJGy6MZEJePsx1gTgjasaIFkCx5kSZbhepOkAVxrgWRvNMyUPfmCeQ0SOmO+hqP/QLAcP9GRVXI7SPNwOVocLmJpAUl/nJd3qZKX2N0gYU8oSG2kgOQhDqcnfgAfMScneBHe5pDUohPzsCruu8Xpid+HUVQbdMgoniW+TxjGhialGouF/1FSw44C+UOJgucFsU+CaMq18h53ChKrSVN8bxK3HqtxK3VOxiqnC+eyTdEedavGLVwWFRzAqVb+8a3a17gRZpmR+A0U8pApMCYr0AAAAABJRU5ErkJggg==" />
-					$ExpPrivModifiedLastP
-					<span class="percentagetext2" style="margin-top:0px;display: block;">
-                    <span style="color:#9B3722;font-size:12;">$ExPrivModifiedLastnShareCount</span>
-                     of $AllSMBSharesCount
-                    </span>
-				</span>
-			</span>			
-	<table>
-		 <tr>
-			<td class="cardsubtitle" style="vertical-align: top; width:78px;">Computers</td>
-			<td align="right">				
-				$ExPrivModifiedLastComputerB				
-			</td>
-		 </tr>
-		 <tr>
-			<td class="cardsubtitle" style="vertical-align:top">Shares</td>
-			<td align="right">				
-				$ExPrivModifiedLastShareB
-			</td>
-		 </tr>
-		 <tr>
-			<td class="cardsubtitle" style="vertical-align:top">ACLs</td>
-			<td align="right">
-				$ExPrivModifiedLastShareAclB			
-			</td>
-		 </tr>		 
-		</table> 		  
-	</div>
- </div>
-</a>
 
 <!--  
 |||||||||| CARD: LastModifiedDate Timeline
 -->
-<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('DashBoard');radiobtn.checked = true;">
 $CardLastModifiedTimeLine
-</a>
-
 </div>
 </div>
 
@@ -5421,7 +5237,7 @@ Below are some tips for getting started on prioritizing the remediation of share
 <div id="tabPanel" class="tabPanel">	
 <div style="min-height: 670px">	 
 	  <div style="margin-left:10px;margin-top:3px">
-	  <h2>SMB Share <span style="color:#CE112D;">Excessive Privilege Report</span></h2>
+	  <h2><span style="color:#CE112D;">HELP!</span></h2>
 	  This report summarizes the shares identified as being configured with excessive privileges.
 	  </div>	
 	  <div style="border-bottom: 1px solid #DEDFE1 ;  background-color:#f0f3f5; height:5px"></div>
