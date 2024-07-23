@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.85
+# Version: v1.86
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -156,8 +156,12 @@ function Invoke-HuntSMBShares
         [string]$OutputDirectory,
 
         [Parameter(Mandatory = $false,
-        HelpMessage = 'Creat exported csv for import into other tools.')]
+        HelpMessage = 'Export to CSV file format to support importing into other tools.')]
         [switch]$ExportFindings,
+
+        [Parameter(Mandatory = $false,
+        HelpMessage = 'Convert the export to the NOVA file format.')]
+        [switch]$ExportNova,
 
         [Parameter(Mandatory = $false,
         HelpMessage = 'This is the path to a host list. One per line.')]
@@ -239,6 +243,18 @@ function Invoke-HuntSMBShares
         $StopWatch =  [system.diagnostics.stopwatch]::StartNew()
         $Time =  Get-Date -UFormat "%m/%d/%Y %R"
         Write-Output " [*][$Time] Scan Start"
+
+        # Nova format
+        If ($Nova) {
+            Write-Verbose " [*][$Time] The results will be export to the NOVA format as well."
+            $rMasterFindingId = "FindingTemplateSourceIdentifier"
+            $rFindingName = "FindingName"
+            $rAssetName = "AssetName" # This could eventually be updated to reflect a different Nova asset, e.g. 'AD Domain'.
+        }else{
+            $rMasterFindingId = "MasterFindingSourceIdentifier"
+            $rFindingName = "InstanceName"
+            $rAssetName = "AssetName" # R7 only has one option. 
+        }  
         
 
         # ----------------------------------------------------------------------
@@ -6447,10 +6463,10 @@ Write-Output ""
 
                 # Create new finding object
                 $object = New-Object psobject
-                $object | add-member noteproperty MasterFindingSourceIdentifier $ExcessivePrivID
-                $object | add-member noteproperty InstanceName            "Excessive Share ACL"
-                $object | add-member noteproperty AssetName               $ComputerName       
-                $object | add-member noteproperty IssueFirstFoundDate     $EndTime
+                $object | add-member noteproperty $rMasterFindingId $ExcessivePrivID
+                $object | add-member noteproperty $rFindingName            "Excessive Share ACL"
+                $object | add-member noteproperty $rAssetName               $ComputerName       
+                if(-not $Nova){$object | add-member noteproperty IssueFirstFoundDate     $EndTime}
                 $object | add-member noteproperty VerificationCaption01   "$IdentityReference has $FileSystemRights privileges on $SharePath." 
                 $ShareDetails = @"
 Computer Name: $ComputerName
@@ -6470,14 +6486,18 @@ File Count: $FileCount
 File List Sample: 
 $FileList 
 "@                
-                $object | add-member noteproperty VerificationText01      $ShareDetails
+                if($Nova){
+                    $object | add-member noteproperty VerificationText01 "<pre><code>$ShareDetails</code></pre>"
+                }else{
+                    $object | add-member noteproperty VerificationText01 $ShareDetails
+                }   
                 $object | add-member noteproperty VerificationCaption02   "caption 2"
-                $object | add-member noteproperty VerificationText02      "text 2"
+                $object | add-member noteproperty VerificationText02      ""
                 $object | add-member noteproperty VerificationCaption03   "caption 3"
-                $object | add-member noteproperty VerificationText03      "text 3"
+                $object | add-member noteproperty VerificationText03      ""
                 $object | add-member noteproperty VerificationCaption04   "caption 4"
-                $object | add-member noteproperty VerificationText04      "text 4"
-                $object
+                $object | add-member noteproperty VerificationText04      ""
+                $object 
             }
 
             # Write export file            
@@ -6485,13 +6505,19 @@ $FileList
 
             # Create record containing verification summary for domain
             $object = New-Object psobject
-            $object | add-member noteproperty MasterFindingSourceIdentifier $ExcessivePrivID
-            $object | add-member noteproperty InstanceName            "Domain ACL Summary"
-            $object | add-member noteproperty AssetName               $TargetDomain       
-            $object | add-member noteproperty IssueFirstFoundDate     $EndTime            
+            $object | add-member noteproperty $rMasterFindingId       $ExcessivePrivID
+            $object | add-member noteproperty $rFindingName           "Domain ACL Summary"
+            $object | add-member noteproperty $rAssetName             $TargetDomain                  
+            if(-not $Nova){
+                $object | add-member noteproperty IssueFirstFoundDate     $EndTime
+            }         
             $object | add-member noteproperty VerificationCaption01   "$ExcessiveSharesCount shares across $ComputerWithExcessive systems are configured with $ExcessiveSharePrivsCount potentially excessive ACLs." 
             $ShareDetails = $ExcessiveSharePrivs | Select-Object SharePath -Unique -ExpandProperty SharePath | Out-String            
-            $object | add-member noteproperty VerificationText01      $ShareDetails
+            if($Nova){
+                $object | add-member noteproperty VerificationText01      "<pre><code>$ShareDetails</code></pre>"
+            }else{
+                $object | add-member noteproperty VerificationText01      $ShareDetails
+            }
             $object | add-member noteproperty VerificationCaption02   "$TargetDomain SMB Share Scan Summary"
             $Summary1 = @"
 Target Domain: $TargetDomain
@@ -6509,7 +6535,7 @@ $Computers445OpenCount domain computers had TCP port 445 accessible
 Share Summary
 $AllSMBSharesCount shares were found.
 $ExcessiveSharesCount shares across $ComputerWithExcessive systems are configured with $ExcessiveSharePrivsCount potentially excessive ACLs.
-$SharesWithWriteCount shares across $ComputerWithWriteCount systems can be written to.</li>
+$SharesWithWriteCount shares across $ComputerWithWriteCount systems can be written to.
 $SharesHighRiskCount shares across $ComputerwithHighRisk systems are considered high risk.
 $Top5ShareCountTotal of $AllAccessibleSharesCount ($DupPercent) shares are associated with the top 5 share names.
 
@@ -6526,11 +6552,15 @@ The 5 most common share names are:
 
             $SummaryFinal = $Summary1 + $Summary2
 
-            $object | add-member noteproperty VerificationText02      "$SummaryFinal"
+            if($Nova){
+                $object | add-member noteproperty VerificationText02      "<pre><code>$SummaryFinal</code></pre>"
+            }else{
+                $object | add-member noteproperty VerificationText02      $SummaryFinal
+            }
             $object | add-member noteproperty VerificationCaption03   "caption 3"
-            $object | add-member noteproperty VerificationText03      "text 3"
+            $object | add-member noteproperty VerificationText03      ""
             $object | add-member noteproperty VerificationCaption04   "caption 4"
-            $object | add-member noteproperty VerificationText04      "text 4"
+            $object | add-member noteproperty VerificationText04      ""
             
             # Write record to file
             $object | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Excessive-Privileges-EXPORT.csv" -Append
@@ -6574,10 +6604,12 @@ The 5 most common share names are:
 
                 # Create new finding object
                 $object = New-Object psobject
-                $object | add-member noteproperty MasterFindingSourceIdentifier $ExcessivehighRiskID
-                $object | add-member noteproperty InstanceName            "Excessive Share ACL"
-                $object | add-member noteproperty AssetName               $ComputerName       
-                $object | add-member noteproperty IssueFirstFoundDate     $EndTime
+                $object | add-member noteproperty $rMasterFindingId $ExcessivehighRiskID
+                $object | add-member noteproperty $rFindingName            "Excessive Share ACL"
+                $object | add-member noteproperty $rAssetName               $ComputerName       
+                if(-not $Nova){
+                    $object | add-member noteproperty IssueFirstFoundDate     $EndTime
+                }
                 $object | add-member noteproperty VerificationCaption01   "$IdentityReference has $FileSystemRights privileges on $SharePath." 
                 $ShareDetails = @"
 Computer Name: $ComputerName
@@ -6613,13 +6645,19 @@ $FileList
 
             # Create record containing verification summary for domain
             $object = New-Object psobject
-            $object | add-member noteproperty MasterFindingSourceIdentifier $ExcessivehighRiskID
-            $object | add-member noteproperty InstanceName            "Domain ACL Summary"
-            $object | add-member noteproperty AssetName               $TargetDomain       
-            $object | add-member noteproperty IssueFirstFoundDate     $EndTime            
+            $object | add-member noteproperty $rMasterFindingId $ExcessivehighRiskID
+            $object | add-member noteproperty $rFindingName            "Domain ACL Summary"
+            $object | add-member noteproperty $rAssetName               $TargetDomain       
+            if(-not $Nova){
+                $object | add-member noteproperty IssueFirstFoundDate     $EndTime
+            }          
             $object | add-member noteproperty VerificationCaption01   "$SharesHighRiskCount shares across $ComputerwithHighRisk systems are considered high risk." 
             $ShareDetails = $SharesHighRisk | Select-Object SharePath -Unique -ExpandProperty SharePath | Out-String            
-            $object | add-member noteproperty VerificationText01      $ShareDetails
+            if($Nova){
+                $object | add-member noteproperty VerificationText01      "<pre><code>$ShareDetails</code></pre>"
+            }else{
+                $object | add-member noteproperty VerificationText01      $ShareDetails
+            }
             $object | add-member noteproperty VerificationCaption02   "$TargetDomain SMB Share Scan Summary"
             $Summary1 = @"
 Target Domain: $TargetDomain
@@ -6654,11 +6692,15 @@ The 5 most common share names are:
 
             $SummaryFinal = $Summary1 + $Summary2
 
-            $object | add-member noteproperty VerificationText02      "$SummaryFinal"
+            if($Nova){
+                $object | add-member noteproperty VerificationText02      "<pre><code>$SummaryFinal</code></pre>"
+            }else{
+                $object | add-member noteproperty VerificationText02      $SummaryFinal
+            }
             $object | add-member noteproperty VerificationCaption03   "caption 3"
-            $object | add-member noteproperty VerificationText03      "text 3"
+            $object | add-member noteproperty VerificationText03      ""
             $object | add-member noteproperty VerificationCaption04   "caption 4"
-            $object | add-member noteproperty VerificationText04      "text 4"
+            $object | add-member noteproperty VerificationText04      ""
             
             # Write record to file
             $object | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Excessive-Privileges-EXPORT.csv" -Append
