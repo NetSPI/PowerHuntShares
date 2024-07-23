@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.80
+# Version: v1.85
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -165,7 +165,7 @@ function Invoke-HuntSMBShares
 
         [Parameter(Mandatory = $false,
         HelpMessage = 'Number of items to sample for summary report.')]
-        [int]$SampleSum = 5,
+        [int]$SampleSum = 200,
 
         [Parameter(Mandatory = $false,
         HelpMessage = 'Runspace time out.')]
@@ -196,12 +196,8 @@ function Invoke-HuntSMBShares
         [int] $DirLevel = 3,
 
         [Parameter(Mandatory = $false,
-        HelpMessage = 'Search for common files containing passwords on the c$ shares.')]
-        [switch] $FindFiles,
-
-        [Parameter(Mandatory = $false,
-        HelpMessage = 'Path to file of file paths to search for. One path per line.')]
-        [string] $FindFilesList,
+        HelpMessage = 'Path to interesting files template to import file keywords to search for.')]
+        [string] $FileKeywordsPath,
 
         [Parameter(Mandatory = $false,
         HelpMessage = 'Do not perform ping scan.')]
@@ -265,6 +261,18 @@ function Invoke-HuntSMBShares
             Write-Output " [x][$Time] The $OutputDirectory was not writable."
             Write-Output " [!][$Time] Aborting operation."
             break
+        }
+
+        # Check for keyword file path 
+        If($FileKeywordsPath){
+
+            if(Test-Path $FileKeywordsPath){ 
+                #Write-Output " [x]The target directory exists."
+            }else{
+                Write-Output " [x] The $FileKeywordsPath did not exist."
+                Write-Output " [!] Aborting operation."
+                break
+            }
         }
 
         # ----------------------------------------------------------------------
@@ -1445,7 +1453,395 @@ function Invoke-HuntSMBShares
         #Write-Output " [*][$Time] - Summary report data generated."                     
         #Write-Output " [*][$Time] - $Top5ShareCountTotal of $AllAccessibleSharesCount ($DupPercent) shares are associated with the top 5 share names."
 
+        # ----------------------------------------------------------------------
+        # Create Interesting Files Table
+        # ---------------------------------------------------------------------- 
 
+        Write-Output " [*][$Time] Finding interesting files..."
+               
+        # Define common image and other formats to filter out later
+        $ImageFormats = @("*.jpg", "*.jpeg", "*.png", "*.gif", "*.bmp", "*.ico", "*.svg", "*.webp", "*.mif", "*.heic", "*.msi")
+
+        # Create data table to hold interesting file keywords
+        $FileNamePatternsAll =  New-Object system.data.datatable 
+        $FileNamePatternsAll.Columns.Add("Keyword")      | Out-Null # Keyword
+        $FileNamePatternsAll.Columns.Add("Description")  | Out-Null # Summary of keyword.
+        $FileNamePatternsAll.Columns.Add("Instructions") | Out-Null # Used to instruct testing how to attack match.
+        $FileNamePatternsAll.Columns.Add("Category")     | Out-Null # File name category: Secret (password), sensitive (data), binaries, script, backup, database
+        $FileNamePatternsAll.Columns.Add("SampleRegex")  | Out-Null # Used to parse sample data from file matches.
+
+        # Add rows to data table - Sensitive data
+        $FileNamePatternsAll.Rows.Add("*credit*","Credit card number and/or PII.","None.","Sensitive","")    | Out-Null
+        $FileNamePatternsAll.Rows.Add("*pci*","","None.","Sensitive","")                                     | Out-Null
+        $FileNamePatternsAll.Rows.Add("*social*","","None.","Sensitive","")                                  | Out-Null
+        $FileNamePatternsAll.Rows.Add("*ssn*","","None.","Sensitive","")                                     | Out-Null
+        $FileNamePatternsAll.Rows.Add("human*","","None.","Sensitive","")                                    | Out-Null
+        $FileNamePatternsAll.Rows.Add("finance*","","None.","Sensitive","")                                  | Out-Null
+        $FileNamePatternsAll.Rows.Add("Health*","","None.","Sensitive","")                                   | Out-Null
+        $FileNamePatternsAll.Rows.Add("Billing*","","None.","Sensitive","")                                  | Out-Null
+        $FileNamePatternsAll.Rows.Add("patient*","","None.","Sensitive","")                                  | Out-Null
+        $FileNamePatternsAll.Rows.Add("HR*","","None.","Sensitive","")                                       | Out-Null        
+        $FileNamePatternsAll.Rows.Add("*ftp*","","None.","Sensitive","")                                     | Out-Null
+        $FileNamePatternsAll.Rows.Add("*Program Files*","","None.","Sensitive","") | Out-Null
+
+        # Add rows to data table - Files containing passwords
+        $FileNamePatternsAll.Rows.Add("context.xml*","","None.","Secret","")                                 | Out-Null
+        $FileNamePatternsAll.Rows.Add("db2cli.ini*","","None.","Secret","")                                  | Out-Null
+        $FileNamePatternsAll.Rows.Add("ftpd.*","","None.","Secret","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("ftpusers*","","None.","Secret","")                                    | Out-Null
+        $FileNamePatternsAll.Rows.Add("httpd.conf*","","None.","Secret","")                                  | Out-Null
+        $FileNamePatternsAll.Rows.Add("hudson.security.HudsonPrivateSecurityRealm.*","","None.","Secret","") | Out-Null
+        $FileNamePatternsAll.Rows.Add("jboss-cli.xml*","","None.","Secret","")                               | Out-Null
+        $FileNamePatternsAll.Rows.Add("jboss-logmanager.properties*","","None.","Secret","")                 | Out-Null
+        $FileNamePatternsAll.Rows.Add("jenkins.model.JenkinsLocationConfiguration.*","","None.","Secret","") | Out-Null
+        $FileNamePatternsAll.Rows.Add("machine.config*","","None.","Secret","")                              | Out-Null
+        $FileNamePatternsAll.Rows.Add("my.*","","None.","Secret","")                                         | Out-Null
+        $FileNamePatternsAll.Rows.Add("mysql.user*","","None.","Secret","")                                  | Out-Null
+        $FileNamePatternsAll.Rows.Add("nginx.conf*","","None.","Secret","")                                  | Out-Null
+        $FileNamePatternsAll.Rows.Add("*ntds.dit*","","None.","Secret","")                                   | Out-Null
+        $FileNamePatternsAll.Rows.Add("pg_hba.conf*","","None.","Secret","")                                 | Out-Null
+        $FileNamePatternsAll.Rows.Add("php.ini*","","None.","Secret","")                                     | Out-Null
+        $FileNamePatternsAll.Rows.Add("putty.reg*","","None.","Secret","")                                   | Out-Null
+        $FileNamePatternsAll.Rows.Add("postgresql.conf*","","None.","Secret","")                             | Out-Null
+        $FileNamePatternsAll.Rows.Add("SAM","","None.","Secret","")                                          | Out-Null
+        $FileNamePatternsAll.Rows.Add("SAM-*","","None.","Secret","")                                        | Out-Null
+        $FileNamePatternsAll.Rows.Add("SAM_*","","None.","Secret","")                                        | Out-Null
+        $FileNamePatternsAll.Rows.Add("SYSTEM","","None.","Secret","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("server.xml*","","None.","Secret","")                                  | Out-Null
+        $FileNamePatternsAll.Rows.Add("shadow*","","None.","Secret","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("standalone.xml*","","None.","Secret","")                              | Out-Null
+        $FileNamePatternsAll.Rows.Add("tnsnames.ora*","","None.","Secret","")                                | Out-Null
+        $FileNamePatternsAll.Rows.Add("tomcat-users.xml*","","None.","Secret","")                            | Out-Null
+        $FileNamePatternsAll.Rows.Add("sitemanager.xml*","","None.","Secret","")                             | Out-Null
+        $FileNamePatternsAll.Rows.Add("users.*","","None.","Secret","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vmx*","","None.","Secret","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vmdk*","","None.","Secret","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.nvram*","","None.","Secret","")                                     | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vmsd*","","None.","Secret","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vmsn*","","None.","Secret","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vmss*","","None.","Secret","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vmem*","","None.","Secret","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vhd*","","None.","Secret","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vhdx*","","None.","Secret","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.avhd*","","None.","Secret","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.avhdx*","","None.","Secret","")                                     | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vsv*","","None.","Secret","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vbox*","","None.","Secret","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vbox-prev*","","None.","Secret","")                                 | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vdi*","","None.","Secret","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.hdd*","","None.","Secret","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.sav*","","None.","Secret","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.pvm*","","None.","Secret","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.pvs*","","None.","Secret","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.qcow*","","None.","Secret","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.qcow2*","","None.","Secret","")                                     | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.img*","","None.","Secret","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*vcenter*","","None.","Secret","")                                    | Out-Null
+        $FileNamePatternsAll.Rows.Add("*vault*","","None.","Secret","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*DefaultAppPool*","","None.","Secret","")                             | Out-Null
+        $FileNamePatternsAll.Rows.Add("*WinSCP.ini*","","None.","Secret","")                                 | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.kdbx","","None.","Secret","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("wp-config.php*","","None.","Secret","")                               | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.config","","None.","Secret","")                                     | Out-Null
+
+        # Add rows to data table - Database files  
+        $FileNamePatternsAll.Rows.Add("*database*","","None.","Database","")                                 | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.sql*","","None.","Database","")                                     | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.sqlite*","","None.","Database","")                                  | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.idf*","","None.","Database","")                                     | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.mdf*","","None.","Database","")                                     | Out-Null
+
+        # Add rows to data table - Backup files
+        $FileNamePatternsAll.Rows.Add("*.bak*","","None.","Backup","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.bkf*","","None.","Backup","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*backup*","","None.","Backup","")                                     | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.tar*","","None.","Backup","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.zip*","","None.","Backup","")                                       | Out-Null
+
+        # Add rows to data table - Scripts
+        $FileNamePatternsAll.Rows.Add("*.ps1*","","None.","Script","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.psm1*","","None.","Script","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.bat*","","None.","Script","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.sh*","","None.","Script","")                                        | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vbs*","","None.","Script","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.cmd*","","None.","Script","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.wsh*","","None.","Script","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.wsf*","","None.","Script","")                                       | Out-Null
+
+        # Add rows to data table - Binaries
+        $FileNamePatternsAll.Rows.Add("*.dll","","None.","Binaries","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.exe","","None.","Binaries","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.msi","","None.","Binaries","")                                      | Out-Null
+
+        # Use keyword from define file instead
+        if($FileKeywordsPath){
+            $FileNamePatternsAllTest = import-csv "$FileKeywordsPath"
+            $CheckFieldKeyword  =  $FileNamePatternsAllTest | gm | where name -like "keyword" | select name -ExpandProperty name
+            $CheckFieldCategory =  $FileNamePatternsAllTest | gm | where name -like "category" | select name -ExpandProperty name
+            if($CheckFieldKeyword -and $CheckFieldCategory){
+                # File found and columns exist 
+                $FileNamePatternsAll = $FileNamePatternsAllTest
+            }else{
+                # File columns do not exist
+                # Do nothing and fail back to hard coded list
+            }
+        }
+
+        # Get unqiue categories
+        $FileNamePatternCategories      = $FileNamePatternsAll | select Category -Unique
+        $FileNamePatternCategoriesCount = $FileNamePatternsAll | select Category -Unique | measure | select count -ExpandProperty count          
+
+        # Generate chart categories - Individual rows
+        # for each category - "var MyScriptsCount = countStringInDisplayedRows('Scripts');" 
+        $ChartCategoryCatVars = $FileNamePatternCategories |
+        foreach{
+            $ChartCatGenCat = $_.category
+            $ChartCatGenVar = "My"+ $ChartCatGenCat + "Count"
+            "var $ChartCatGenVar = countStringInDisplayedRows('$ChartCatGenCat');"
+        } 
+        $ChartCategoryCatVarsFlat = $ChartCategoryCatVars -join "`n"
+
+        # Generate chart categories - Category list
+        # once -  categories: ['Sensitive', 'Secrets', 'Scripts'],
+        $ChartCategoryCommas = ($FileNamePatternCategories | Select-Object -ExpandProperty category | ForEach-Object { "'$_'" }) -join ", "
+        $ChartCategoryCat    = "categories: [$ChartCategoryCommas],"   
+               
+        # Generate chart categories -
+        # once -  data: [MySensitiveCount, MySecretCount, MyScriptsCount] 
+        $ChartCategoryCountFormat = ($FileNamePatternCategories | Select-Object -ExpandProperty category | ForEach-Object {"My"+ $_ + "Count"}) -join ", "
+        $ChartCategoryDat         = "data: [$ChartCategoryCountFormat]"
+
+        # Get a list of file names from each folder group for the target share name
+        $InterestingFilesAllFileNames = $ExcessiveSharePrivs | select FileList -Unique | foreach {$_.FileList -split "`r`n"} | Where-Object {$_ -ne ''} | foreach {$_.ToLower()}|  select -Unique
+                        
+        # Identify keyword matches in filenames
+        $InterestingFilesAllMatches =  New-Object system.data.datatable 
+        $InterestingFilesAllMatches.Columns.Add("FileName")  | Out-Null
+        $InterestingFilesAllMatches.Columns.Add("Category")  | Out-Null 
+        $FileNamePatternsAll | 
+        foreach {
+            $TargetKeywordValue       = $_.Keyword
+            $TargetKeywordCategory    = $_.Category
+            $InterestingFilesAllFileNames | 
+            foreach {
+
+                    if($_ -like "$TargetKeywordValue"){
+
+                        # check if file has already been labeled
+                        $CheckForFile = $InterestingFilesAllMatches | where Filename -like "$_" 
+                        if(-not $CheckForFile){ 
+
+                            # Add file
+                           $InterestingFilesAllMatches.Rows.Add("$_","$TargetKeywordCategory")| Out-Null
+                        }                 
+                    }
+            }
+        }   
+        
+        # Query for a list of information for each file name match
+        $InterestingFilesAllObjects =  $InterestingFilesAllMatches | 
+        foreach{
+
+            # Set variables
+            $TargetFileNameValue           = $_.FileName
+            $TargetCategoryValue           = $_.Category
+
+            # Filter for records with the target file
+            $TargetKeywordMatches = $ExcessiveSharePrivs | where FileList -like "*$TargetFileNameValue*" | select ComputerName,ShareName,SharePath -Unique
+
+            # Extend object to include a unc path to file
+            $TargetKeywordMatches | 
+            foreach {
+
+                # Select the propertity and make new ones
+                $TargetKeywordComputer  = $_.ComputerName   
+                $TargetKeywordShareName = $_.ShareName 
+                $TargetKeywordSharePath = $_.SharePath
+                $TargetKeywordUNCPath   = "$TargetKeywordSharePath\$TargetFileNameValue"
+                $TargetKeywordCategory  = $TargetCategoryValue 
+
+                # Create updated object
+                $object = New-Object psobject
+                $object | add-member noteproperty ComputerName            $TargetKeywordComputer
+                $object | add-member noteproperty ShareName               $TargetKeywordShareName
+                $object | add-member noteproperty SharePath               $TargetKeywordSharePath   
+                $object | add-member noteproperty UncPath                 $TargetKeywordUNCPath
+                $object | add-member noteproperty FileName                $TargetFileNameValue
+                $object | add-member noteproperty Category                $TargetKeywordCategory
+
+                # Return object
+                $object 
+            }
+        } | select ComputerName,ShareName,SharePath,UncPath,FileName,Category -Unique  
+
+        <#
+
+		# Define list of words associated with sensitive data	
+        $FileNamePatternsSecrets = $FileNamePatternsAll | where category -like "*Secret*" | select Keyword -ExpandProperty keyword 
+		
+        # Define list of words associated with password files
+        $FileNamePatternsData    = $FileNamePatternsAll | where category -like "*Sensitive*" | select Keyword -ExpandProperty keyword
+
+        # Get a list of file names from each folder group for the target share name
+        $InterestingFilesAllFileNames = $ExcessiveSharePrivs | select FileList -Unique | foreach {$_.FileList -split "`r`n"} | Where-Object {$_ -ne ''} | foreach {$_.ToLower()}|  select -Unique                                       
+
+        # Identify Secrets
+        $InterestingFilesAllSecrets = $FileNamePatternsSecrets | 
+        foreach {
+                $TargetSecret = $_
+                $InterestingFilesAllFileNames | 
+                foreach {
+                    if($_ -like "$TargetSecret"){
+
+                        # return file name match
+                        $_
+                    }
+                }
+        }
+
+        # Create new secret files objects
+        $InterestingFilesAllSecretsObjects = $InterestingFilesAllSecrets | 
+        foreach{
+
+            # Set target file
+            $TargetSecretFile    = $_
+
+            # Filter for record with the target file
+            $TargetSecretMatches = $ExcessiveSharePrivs | where FileList -like "*$TargetSecretFile*" | select ComputerName,ShareName,SharePath -Unique
+            $TargetSecretMatches | 
+            foreach {
+
+                # Select the propertity and make new ones
+                $TargetSecretComputer  = $_.ComputerName   
+                $TargetSecretShareName = $_.ShareName 
+                $TargetSecretSharePath = $_.SharePath
+                $TargetSecretUNCPath   = "$TargetSecretSharePath\$TargetSecretFile"
+                $TargetSecretType      = "Secrets"  
+
+                # Create updated object
+                $object = New-Object psobject
+                $object | add-member noteproperty ComputerName            $TargetSecretComputer
+                $object | add-member noteproperty ShareName               $TargetSecretShareName
+                $object | add-member noteproperty SharePath               $TargetSecretSharePath   
+                $object | add-member noteproperty UncPath                 $TargetSecretUNCPath
+                $object | add-member noteproperty FileName                $TargetSecretFile
+                $object | add-member noteproperty DataType                $TargetSecretType 
+
+                # Return object
+                $object 
+            }
+        } | select ComputerName,ShareName,SharePath,UncPath,FileName,DataType -Unique 
+
+        # Identify Data
+        $InterestingFilesAllData = $FileNamePatternsData | 
+        foreach {
+                $TargetSecret = $_
+                $InterestingFilesAllFileNames | 
+                foreach {
+                    if($_ -like "$TargetSecret"){
+
+                        # return file name match
+                        $_
+                    }
+                }
+        }
+
+        # Create new data files objects
+        $InterestingFilesAllDataObjects = $InterestingFilesAllData | 
+        foreach{
+
+            # Set target file
+            $TargetSecretFile    = $_
+
+            # Filter for record with the target file
+            $TargetSecretMatches = $ExcessiveSharePrivs | where FileList -like "*$TargetSecretFile*" | select ComputerName,ShareName,SharePath -Unique
+            $TargetSecretMatches | 
+            foreach {
+
+                # Select the propertity and make new ones
+                $TargetSecretComputer  = $_.ComputerName   
+                $TargetSecretShareName = $_.ShareName 
+                $TargetSecretSharePath = $_.SharePath
+                $TargetSecretUNCPath   = "$TargetSecretSharePath\$TargetSecretFile"
+                $TargetSecretType      = "Sensitive"  
+
+                # Create updated object
+                $object = New-Object psobject
+                $object | add-member noteproperty ComputerName            $TargetSecretComputer
+                $object | add-member noteproperty ShareName               $TargetSecretShareName
+                $object | add-member noteproperty SharePath               $TargetSecretSharePath   
+                $object | add-member noteproperty UncPath                 $TargetSecretUNCPath
+                $object | add-member noteproperty FileName                $TargetSecretFile
+                $object | add-member noteproperty DataType                $TargetSecretType 
+
+                # Return object
+                $object 
+            }
+        } | select ComputerName,ShareName,SharePath,UncPath,FileName,DataType -Unique 
+
+        # Combine objects
+        $InterestingFilesAllObjects = $InterestingFilesAllSecretsObjects + $InterestingFilesAllDataObjects 
+        
+
+        # Count objects
+        $InterestingFilesAllSecretsFullCount   = $InterestingFilesAllSecretsObjects | measure | select count -ExpandProperty count 
+        $InterestingFilesAllSecretsFullCountU  = $InterestingFilesAllSecretsObjects | select FileName -Unique | measure | select count -ExpandProperty count 
+        $InterestingFilesAllDataFullcount      = $InterestingFilesAllDataObjects    | measure | select count -ExpandProperty count 
+        $InterestingFilesAllDataFullcountU     = $InterestingFilesAllDataObjects    | select FileName -Unique | measure | select count -ExpandProperty count 
+        #>
+
+        # Outbout objects to file
+        $InterestingFilesAllObjects | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Interesting-Files.csv"     
+
+        # Get order list of interesting file names by count
+        $InterestingFilesAllFilesCount    = $InterestingFilesAllObjects | measure | select count -ExpandProperty count 
+        $InterestingFilesAllFilesCountU   = $InterestingFilesAllObjects | select filename -Unique | measure | select count -ExpandProperty count 
+        $InterestingFilesAllFilesGrouped  = $InterestingFilesAllObjects | group filename | select count,name | sort count -Descending
+
+        # Generate a row for each one
+        # Headers are Instance Count, FileName, Type, File Paths,Affected Computers, Affected Shares
+        $InterestingFilesAllFilesRows = $InterestingFilesAllFilesGrouped | 
+        foreach{
+            
+            # Get count
+            $IfFinalCount = $_.count
+
+            # Get File Name
+            $IfFinalName = $_.name
+
+            # Category 
+            $IfFinalType = $InterestingFilesAllObjects | Where-Object { $_.FileName -like "$IfFinalName" } | select Category -First 1 -ExpandProperty Category
+
+            # Get File Paths
+            $IfFinalPaths = $InterestingFilesAllObjects | Where-Object { $_.FileName -like "$IfFinalName" } | ForEach-Object { $ASDF = $_.UncPath; "$ASDF<br>" } | Out-String
+
+            # Get Share Count for Name
+            # <td>$IfFinalShareCount</td>
+            $IfFinalShareCount =  $InterestingFilesAllObjects   | Where-Object { $_.FileName -like "$IfFinalName" } | select SharePath -Unique  | measure | select count -ExpandProperty count
+
+            # Get Computer Count for Name
+            # <td>$IfFinalcomputerCount</td>
+            $IfFinalcomputerCount = $InterestingFilesAllObjects | Where-Object { $_.FileName -like "$IfFinalName" } | select ComputerName -Unique   | measure | select count -ExpandProperty count
+                
+            # Create Row  
+             
+            $IfRow = @"
+            <tr>
+                <td>$IfFinalCount</td>
+                <td>$IfFinalName</td>
+                <td>$IfFinalType</td>
+                <td>
+                    <button class="collapsible">$IfFinalCount Files</button>
+                    <div class="content">
+                    $IfFinalPaths
+                    </div>
+                </td>
+            </tr>
+"@
+
+            # Return row
+            $IfRow 
+        }       
         
 
         # ----------------------------------------------------------------------
@@ -2996,8 +3392,21 @@ $NewHtmlReport = @"
 <html>
 <head>
   <link rel="shortcut icon" src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyhpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuNi1jMTM4IDc5LjE1OTgyNCwgMjAxNi8wOS8xNC0wMTowOTowMSAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENDIDIwMTcgKE1hY2ludG9zaCkiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6QTQxQkNBNzA2OEI1MTFFNzlENkRCMzJFODY4RjgwNDMiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6QTQxQkNBNzE2OEI1MTFFNzlENkRCMzJFODY4RjgwNDMiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDpBNDFCQ0E2RTY4QjUxMUU3OUQ2REIzMkU4NjhGODA0MyIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDpBNDFCQ0E2RjY4QjUxMUU3OUQ2REIzMkU4NjhGODA0MyIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/Ptdv5vcAAAB9SURBVHjaYmTAAS4IajsCqeVQbqTB+6v7saljxKHZCUhtAWJOqNB3IPYBGrKPoAFYNDPgM4SRSM04DWEkQTNWQxhJ1IxhCCM0tLeSoBnZEG+QAS+ADHEG8sBLJgYKAciASKhzGMjwQiTlgUiVaKRKQqJKUqZKZiI1OwMEGAA7FE70gYsL4wAAAABJRU5ErkJggg==" >
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
   <title>Report</title>
   <style> 
+
+        .toggle-content {
+            display: block; /* Set to block to be expanded by default */	
+        }
+
+        .toggle-button {
+            cursor: pointer;
+			border: none;
+            outline: none;
+            background-color: transparent;	
+			color: white;
+        } 	
   
     .hidden { display: none; }
 
@@ -3194,10 +3603,18 @@ $NewHtmlReport = @"
 		border-collapse:collapse;		
 	}
 	
+    table th:first-child {
+        --border-top-left-radius: 3px;
+    }
+
+    table th:last-child {
+        --border-top-right-radius: 3px;
+    }
+		
 	.tabledrop {
-		border-right:1px solid #BEDFE1;
-		border-left:1px solid #BEDFE1;
-		border-bottom:1px solid #BEDFE1;
+		outline-right:.5px solid #BEDFE1;
+		outline-left:.5px solid #BEDFE1;
+		outline-bottom:.5px solid #BEDFE1;
 		--border:1px solid #757575;
 		--border-top:1.5px solid #757575;
 		--box-shadow: 0 0 0 0;
@@ -3956,6 +4373,8 @@ $NewHtmlReport = @"
 	bottom: 0;
 	left: 0;		  
 	opacity: .5;
+    border-top: 1px solid #F2F3F4;
+    border-bottom: 1px solid #F2F3F4;
 }	
 
 .TimelinePopup {
@@ -4017,7 +4436,7 @@ $NewHtmlReport = @"
 	width: 788px;
 	box-shadow: 0 2px 4px 0 #DEDFE1;	
 	transition:0.3s;
-	background-color: #07142A;
+	--background-color: #07142A;
 	font-family:"Open Sans", sans-serif;
 	font-size: 12;
 	font-weight: 2;
@@ -4026,11 +4445,11 @@ $NewHtmlReport = @"
 	display:block;
 	margin:10px;
 	margin-bottom:20px;
-	--border-radius: 10px;
+	border-radius: 3px;   
 }
 
 .LargeCard:hover{	
-	box-shadow: 0 8px 16px 0;	
+	box-shadow: 0 2px 16px 0;	
 }	
 
 .LargeCardtitle{	
@@ -4042,6 +4461,8 @@ $NewHtmlReport = @"
 	font-family:"Open Sans", sans-serif;
 	border-bottom:1.5px solid transparent;
 	border-bottom-color:#757575;
+	border-top-right-radius: 3px;  
+	border-top-left-radius: 3px;   
 }
 
 .LargeCardSubtitle2 {
@@ -4058,8 +4479,7 @@ $NewHtmlReport = @"
 	border-right:1px solid #ccc;
 	border-left:1px solid #ccc;
 	border-bottom:1px solid #ccc;	
-	--border-bottom-right-radius: 10px;
-	--border-bottom-left-radius: 10px;
+	border-radius: 3px; 
 }
 
 .tooltip {
@@ -4175,11 +4595,12 @@ input[type="checkbox"]:checked::before {
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('sharesum');radiobtn.checked = true;">Share Summary</label>		
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ACLsum');radiobtn.checked = true;">ACL Summary</label>		
 		<label class="tabLabel" style="width:100%;color:#07142A;background-color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:2px;margin-bottom:2px;"><Strong>Data Insights</Strong></label>	  	  	
-		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('accounts');radiobtn.checked = true;">Group Stats</label>		
-		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;">Top Share Names</label>		
-		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareOwner');radiobtn.checked = true;">Top Share Owners</label>		
+		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;">Interesting Files</label>		
+		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;">Top Share Names</label>					
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareFolders');radiobtn.checked = true;">Top Folder Groups</label>		
         <label href="#" class="stuff" style="width:100%;" onclick="radiobtn = document.getElementById('SubNets');radiobtn.checked = true;">Affected Subnets</label>	
+		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('accounts');radiobtn.checked = true;">Group Stats</label>	
+		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareOwner');radiobtn.checked = true;">Top Share Owners</label>	
 		<label class="tabLabel" style="width:100%;color:#07142A;background-color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:2px;margin-bottom:2px;"><strong>Recommendations</strong></label>
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Attacks');radiobtn.checked = true;">Exploit Share Access</label>		
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Detections');radiobtn.checked = true;">Detect Share Scans</label>
@@ -4188,6 +4609,101 @@ input[type="checkbox"]:checked::before {
 	</div>
 </div>
 <div id="main">
+
+<!--  
+|||||||||| PAGE: Interesting Files 
+-->
+		<input class="tabInput"  name="tabs" type="radio" id="InterestingFiles"/>
+		<label class="tabLabel" onClick="updateTab('InterestingFiles',false)" for="InterestingFiles"></label>
+		<div id="tabPanel" class="tabPanel">					
+            <div style="margin-top:3px">					
+				<div style="width:100%;">
+
+                    <div style="margin-left:10px;">
+                    <h2>Interesting Files</h2>
+                    Interesting files may contain passwords or sensitive data. They have been grouped by name in the table below, and summaryized by the $FileNamePatternCategoriesCount categories below.
+                    </div>
+
+                    <div style="border-bottom: 1px solid #DEDFE1 ;  background-color:#f0f3f5; height:5px; margin-bottom:10px;"></div>
+
+			        <!-- /////////////// Interesting Files - Total -->					
+					<div class="LargeCard" style="width:25%; ">	
+						
+							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
+								<button class="toggle-button" onclick="toggleDiv('FileTotal')" style="width: 100%;font-size: 15px; "><strong>Interesting Files Found</strong></button> 
+							</div>
+						
+						<div id="FileTotal" class="toggle-content">
+							<div class="LargeCardContainer" style="height:165px;text-align:center;vertical-align: middle;">	
+									<br><br>						
+								   <span class="percentagetext" style = "font-size: 50px;color:#f08c41;">                    
+									$InterestingFilesAllFilesCount                        
+									</span>	
+									<br>
+									($InterestingFilesAllFilesCountU unique file names)										
+							</div>
+						 </div>
+					</div>	
+
+
+					<!-- /////////////// Interesting Files - Chart -->
+					<div class="LargeCard" style="width:68.5%">	
+						
+							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
+								<button class="toggle-button" onclick="toggleDiv('ChartContent')" style="width: 100%;font-size: 15px; ">
+									<strong>Category Distribution</strong>
+								</button> 
+							</div>
+						
+						<div id="ChartContent" class="toggle-content">
+							<div class="LargeCardContainer" align="center">											
+									<div class="chart-container">
+									<div id="chart"></div>
+										<div class="chart-controls"></div>
+									</div>								  							
+							</div>
+						 </div>
+					</div>	
+									
+
+					<!-- /////////////// Table  -->
+                    <div style="height: 125px;text-align: left;"></div>
+
+                    <div class="searchbar" style="text-align: left; display:flex;flex-direction:left;">
+                        <input type="text" id="filterInputIF" placeholder=" Search..." style="height: 25px; font-size: 14px;margin-top:7px;margin-left:10px;padding-left:3px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
+                        <!--
+		                <strong>&nbsp;&nbsp;Quick Filters</strong>
+                        <label><input type="checkbox" class="filter-checkbox" name="h"> Highly Exploitable</label>
+                        <label><input type="checkbox" class="filter-checkbox" name="w"> Write</label>
+                        <label><input type="checkbox" class="filter-checkbox" name="r"> Read</label>
+                        <label><input type="checkbox" class="filter-checkbox" name="i"> Interesting</label>
+                        <label><input type="checkbox" class="filter-checkbox" name="e"> Empty</label>
+                        <label><input type="checkbox" class="filter-checkbox" name="s"> Stale</label>
+                        <label><input type="checkbox" class="filter-checkbox" name="n"> Default</label>
+		                -->
+                        <div id="filterCounterIF" style="margin-top:46px;height: 25px;font-size:11;text-align: left; margin-left: -186px;">Loading...</div>   
+                        <div style="margin-top:46px;height: 25px;font-size:11;text-align: left; margin-left: 10px;"><a style="margin-top:46px;height: 25px;font-size:11;" href="#" onclick="extractAndDownloadCSV('InterestingFileTable', 3)">Export</a></div>						      
+                    </div>
+                    <br>
+                    <table id="InterestingFileTable" class="table table-striped table-hover tabledrop" style="width: 95%;">
+                      <thead>
+                        <tr>
+
+                        <th class="NamesTh"  onclick="sortTable('InterestingFileTable',0,'number')" style="vertical-align: middle;text-align: left;">File Count</th>       
+                        <th class="NamesTh"  onclick="sortTable('InterestingFileTable',1,'alpha')" style="vertical-align: middle;text-align: left;">File Name</th>
+                        <th class="NamesTh"  onclick="sortTable('InterestingFileTable',2,'alpha')" style="vertical-align: middle;text-align: left;">Category</th>
+                        <th class="NamesTh"  onclick="sortTable('InterestingFileTable',3,'alpha')" style="vertical-align: middle;text-align: left;">File Paths</th>	 	 	  
+                        </tr>
+                        </thead>
+
+                        <tbody>
+                        $InterestingFilesAllFilesRows   
+                        </tbody>
+                    </table>
+                    <div id="paginationIF" style="margin:10px;"></div>
+                </div>
+            </div>                    	
+		</div>	
 
 <!--  
 |||||||||| PAGE: Dashboard
@@ -4199,7 +4715,6 @@ input[type="checkbox"]:checked::before {
 		<div style="margin-left:10px;margin-top:3px">
 		<h2>Excessive Share Privileges Summary</h2>			
         <div style="border-bottom: 1px solid #DEDFE1 ;  background-color:#f0f3f5; height:5px; margin-bottom:10px;"></div>
-        <h4 style="color: gray">Affected Assets</h4> 
         <div style="width:70%;">
 		Below is a summary of the computers, shares, and ACLs associated with shares configured with excessive privileges.
         $ExcessiveSharePrivsCount ACL entries, on $ExcessiveSharesCount shares, hosted by $ComputerWithExcessive computers were found configured with excessive privilegs on the $TargetDomain domain.	
@@ -5315,6 +5830,74 @@ Below are some tips for getting started on prioritizing the remediation of share
 <!-- home text -->
 <div style="margin-left:300px;"> 
 <br>
+<div style="float:left;display:block;position:relative;">
+<h4>How do I use this report?</h4>
+Follow the guidance below to get the most out of this report.
+<br><br>
+<button class="collapsible"><span style="color:#CE112D;">1</span> | Review Reports and Insights</button>
+<div class="content">
+<div class="landingtext" >
+Review the reports and data insights to get a quick feel for the level of SMB share exposure in your environment.
+<br><br>
+<strong style="color:#333">Reports</strong><br>
+The <em>Scan, Computer, Share, and ACL</em> summary sections will provide a  summary of the results.  
+<br>
+<br>
+<strong style="color:#333">Data Insights</strong><br>
+The <em>Data Insights</em> sections are intented to highlight natural data groupings that can help centralize and expedite remediation on scale in Active Directory environments.
+<br>
+</div>
+</div>
+<button class="collapsible"><span style="color:#CE112D;">2</span> | Review Detailed CSV Files</button>
+<div class="content">
+<div class="landingtext">
+Review potentially excessive share ACL entry details in the associated HTML and CSV files.
+</div>
+</div>
+
+<button class="collapsible"><span style="color:#CE112D;">3</span> | Review Definitions</button>
+<div class="content">
+<div class="landingtext">
+Review the definitions below to ensure you understand what was targeted and how privileges have been qualified as excessive.
+<br><br>
+<strong style="color:#333">Excessive Privileges</strong><br>
+In the context of this report, excessive read and write share permissions have been defined as any network share ACL containing an explicit entry for the <em>"Everyone", "Authenticated Users", "BUILTIN\Users", "Domain Users", or "Domain Computers"</em> groups. 
+All provide domain users access to the affected shares due to privilege inheritance. 
+<Br><br>
+Please note that share permissions can be overruled by NTFS permissions. Also, be aware that testing excluded share names containing the following keywords: <em>"print$", "prnproc$", "printer", "netlogon",and "sysvol"</em>.
+<br><br>
+<strong style="color:#333">High Risk Shares</strong>
+<br>
+In the context of this report, high risk shares have been defined as shares that provide unauthorized remote access to a system or application. By default, that includes <em>wwwroot, inetpub, c$, and admin$</em> shares.  However, additional exposures may exist that are not called out beyond that.
+<br>
+</div>
+</div>
+
+<button class="collapsible"><span style="color:#CE112D;">4</span> | Verify and Remediate Issues</button>
+<div class="content">
+<div class="landingtext" >
+Follow the guidance in the Exploit Share Access, Detect Share Access, and Prioritize Remediation sections.</div>
+</div>
+
+<button class="collapsible"><span style="color:#CE112D;">5</span> | Run Scan Again</button>
+<div class="content">
+<div class="landingtext" style="">
+Collect SMB Share data and generate this HTML report by running <a href="https://github.com/NetSPI/PowerShell/blob/master/Invoke-HuntSMBShares.ps1">Invoke-HuntSMBShares.ps1</a> audit script.<br>
+The command examples below can be used to identify potentially malicious share permissions. 
+<br><br>
+<strong style="color:#333">From Domain System</strong>
+<div style="border: 2px solid #CCC;margin-top:5px;padding: 5px;padding-left: 15px;width:95%;background-color:white;color:#757575;font-family:Lucida, Grande, sans-serif;">
+Invoke-HuntSMBShares -Threads 20 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\ 
+</div>
+<br>
+<strong style="color:#333">From Non-Domain System</strong>
+<div style="border: 2px solid #CCC;margin-top:5px;padding: 5px;padding-left: 15px;width:95%;background-color:white;color:#757575;font-family:Lucida, Grande, sans-serif;">
+runas /netonly /user:domain\user PowerShell.exe<Br>
+Import-Module Invoke-HuntSMBShares.ps1<br>
+Invoke-HuntSMBShares -Threads 20 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\ -DomainController 10.1.1.1 -Username domain\user -Password password 
+</div>
+</div>
+</div>
 <h4>Collection Approach</h4>
 <div>
 The <a  style="color:#333" href="https://github.com/NetSPI/PowerHuntShares/blob/main/PowerHuntShares.psm1">PowerHuntShares</a> audit script was run against the netspi.local domain to collect SMB Share data, generate this HTML summary report, and generate the associated csv files that detail potentially excessive share configurations.
@@ -5414,234 +5997,396 @@ The left menu can be used to find summary data, the scan summary is in the table
  </div>
 </div>
 </div>
-
-<div style="float:left;display:block;position:relative;">
-<h4>How do I use this report?</h4>
-Follow the guidance below to get the most out of this report.
-<br><br>
-<button class="collapsible"><span style="color:#CE112D;">1</span> | Review Reports and Insights</button>
-<div class="content">
-<div class="landingtext" >
-Review the reports and data insights to get a quick feel for the level of SMB share exposure in your environment.
-<br><br>
-<strong style="color:#333">Reports</strong><br>
-The <em>Scan, Computer, Share, and ACL</em> summary sections will provide a  summary of the results.  
-<br>
-<br>
-<strong style="color:#333">Data Insights</strong><br>
-The <em>Data Insights</em> sections are intented to highlight natural data groupings that can help centralize and expedite remediation on scale in Active Directory environments.
-<br>
-</div>
-</div>
-<button class="collapsible"><span style="color:#CE112D;">2</span> | Review Detailed CSV Files</button>
-<div class="content">
-<div class="landingtext">
-Review potentially excessive share ACL entry details in the associated HTML and CSV files.
-</div>
-</div>
-
-<button class="collapsible"><span style="color:#CE112D;">3</span> | Review Definitions</button>
-<div class="content">
-<div class="landingtext">
-Review the definitions below to ensure you understand what was targeted and how privileges have been qualified as excessive.
-<br><br>
-<strong style="color:#333">Excessive Privileges</strong><br>
-In the context of this report, excessive read and write share permissions have been defined as any network share ACL containing an explicit entry for the <em>"Everyone", "Authenticated Users", "BUILTIN\Users", "Domain Users", or "Domain Computers"</em> groups. 
-All provide domain users access to the affected shares due to privilege inheritance. 
-<Br><br>
-Please note that share permissions can be overruled by NTFS permissions. Also, be aware that testing excluded share names containing the following keywords: <em>"print$", "prnproc$", "printer", "netlogon",and "sysvol"</em>.
-<br><br>
-<strong style="color:#333">High Risk Shares</strong>
-<br>
-In the context of this report, high risk shares have been defined as shares that provide unauthorized remote access to a system or application. By default, that includes <em>wwwroot, inetpub, c$, and admin$</em> shares.  However, additional exposures may exist that are not called out beyond that.
-<br>
-</div>
-</div>
-
-<button class="collapsible"><span style="color:#CE112D;">4</span> | Verify and Remediate Issues</button>
-<div class="content">
-<div class="landingtext" >
-Follow the guidance in the Exploit Share Access, Detect Share Access, and Prioritize Remediation sections.</div>
-</div>
-
-<button class="collapsible"><span style="color:#CE112D;">5</span> | Run Scan Again</button>
-<div class="content">
-<div class="landingtext" style="">
-Collect SMB Share data and generate this HTML report by running <a href="https://github.com/NetSPI/PowerShell/blob/master/Invoke-HuntSMBShares.ps1">Invoke-HuntSMBShares.ps1</a> audit script.<br>
-The command examples below can be used to identify potentially malicious share permissions. 
-<br><br>
-<strong style="color:#333">From Domain System</strong>
-<div style="border: 2px solid #CCC;margin-top:5px;padding: 5px;padding-left: 15px;width:95%;background-color:white;color:#757575;font-family:Lucida, Grande, sans-serif;">
-Invoke-HuntSMBShares -Threads 20 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\ 
-</div>
-<br>
-<strong style="color:#333">From Non-Domain System</strong>
-<div style="border: 2px solid #CCC;margin-top:5px;padding: 5px;padding-left: 15px;width:95%;background-color:white;color:#757575;font-family:Lucida, Grande, sans-serif;">
-runas /netonly /user:domain\user PowerShell.exe<Br>
-Import-Module Invoke-HuntSMBShares.ps1<br>
-Invoke-HuntSMBShares -Threads 20 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\ -DomainController 10.1.1.1 -Username domain\user -Password password 
-</div>
-</div>
-</div>
 <Br>
 <br>
 </div>
 <script>
 
-        // Function to support collapsing and expanding sections
-        var coll = document.getElementsByClassName("collapsible");
-        var i;
+// --------------------------
+// Function to support collapsing and expanding sections
+// --------------------------
+var coll = document.getElementsByClassName("collapsible");
+var i;
 
-        for (i = 0; i < coll.length; i++) {
-          coll[i].addEventListener("click", function() {
-            this.classList.toggle("active");
-            var content = this.nextElementSibling;
-            if (content.style.maxHeight){
-              content.style.maxHeight = null;
-            } else {
-              content.style.Height = content.scrollHeight + "px";
-              content.style.maxHeight = "100%";
-            } 
-          });
+for (i = 0; i < coll.length; i++) {
+  coll[i].addEventListener("click", function() {
+    this.classList.toggle("active");
+    var content = this.nextElementSibling;
+    if (content.style.maxHeight){
+      content.style.maxHeight = null;
+    } else {
+      content.style.Height = content.scrollHeight + "px";
+      content.style.maxHeight = "100%";
+    } 
+  });
+}
+
+function toggleDiv(TargetObjectId) {
+    var content = document.getElementById(TargetObjectId);
+    if (content.style.display === "none") {
+        content.style.display = "block";
+    } else {
+        content.style.display = "none";
+    }
+}
+
+// --------------------------
+// String to update bar chart - Interesting Files
+// --------------------------
+// Function to count strings in the current displayed rows
+function countStringInDisplayedRows(searchString) {
+    var count = 0;
+    currentFilteredRows.forEach(row => {
+        var cells = row.getElementsByTagName('td');
+        var cellValue = cells[2].innerText || cells[2].textContent;
+        if (cellValue === searchString) {
+            count++;
         }
+    });
+    return count;
+}
+
+// Update the chart with counts based on displayed rows
+function updateChart() {
+    $ChartCategoryCatVarsFlat
+
+    chart.updateSeries([{
+        name: 'Count',
+        $ChartCategoryDat
+    }]);
+}
+
+
+// --------------------------
+// Bar Chart Code - Interesting Files
+// --------------------------
+
+// Initialize ApexCharts
+const chartOptions = {
+    chart: {
+        type: 'bar',
+        height: 150
+    },
+    series: [{
+        name: 'Count',
+        data: [4, 3, 3]
+    }],
+    xaxis: {
+        $ChartCategoryCat 
+        labels: {
+            style: {
+                fontSize: '18px',
+                fontWeight: 'bold',
+                colors: '#f08c41'
+            }
+        }
+    },
+    yaxis: {
+        labels: {
+            style: {
+                fontSize: '14px',
+                colors: '#b3afaf'
+            }
+        }
+    },
+    title: {
+        text: '',
+        align: 'left',
+        style: {
+            fontSize: '24px',
+            fontWeight: 'bold'
+        }
+    },
+    plotOptions: {
+        bar: {
+            borderRadius: 4,
+            horizontal: false,
+            colors: {
+                ranges: [{
+                    from: 0,
+                    to: 1000,
+                    color: '#f08c41'
+                }]
+            }
+        }
+    },
+    dataLabels: {
+        enabled: true,
+        style: {
+            fontSize: '18px',
+            fontWeight: 'bold',
+            colors: ['#07142A']  // Set text color to black
+        },
+        formatter: function (val) {
+            return '' + val;
+        },
+        offsetY: 0,  // Adjust this value to position the labels above the bars
+        background: {
+            enabled: false  // Disable background for data labels
+        }
+    },
+    tooltip: {
+        y: {
+            formatter: function (val) {
+                return '' + val;
+            }
+        }
+    }
+};
+
+const chart = new ApexCharts(document.querySelector("#chart"), chartOptions);
+chart.render();
  
- 
-    const rowsPerPage = 10;
-    let currentPage = 1;
-    let currentSortColumn = -1;
-    let currentSortDir = "asc";
+// --------------------------
+// Sorting Functions
+// --------------------------
+const rowsPerPage = 10;
+let currentPage = 1;
+let currentSortColumn = -1;
+let currentSortDir = "asc";
+let currentFilteredRows = [];
 
-    // Sorting Function
-    function sortTable(tableId, columnIndex, dataType = 'number') {
-        const table = document.getElementById(tableId);
-        const tbody = table.querySelector('tbody');
-        const rows = Array.from(tbody.rows);
-        const dir = currentSortColumn === columnIndex && currentSortDir === "asc" ? "desc" : "asc";
-        currentSortDir = dir;
-        currentSortColumn = columnIndex;
+// Sorting Function
+function sortTable(tableId, columnIndex, dataType = 'number') {
+    const table = document.getElementById(tableId);
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.rows);
+    const dir = currentSortColumn === columnIndex && currentSortDir === "asc" ? "desc" : "asc";
+    currentSortDir = dir;
+    currentSortColumn = columnIndex;
 
-        rows.sort((a, b) => {
-            const cellA = a.cells[columnIndex].innerText.toLowerCase();
-            const cellB = b.cells[columnIndex].innerText.toLowerCase();
+    rows.sort((a, b) => {
+        const cellA = a.cells[columnIndex].innerText.toLowerCase();
+        const cellB = b.cells[columnIndex].innerText.toLowerCase();
 
-            if (dataType === 'number') {
-                if (!isNaN(parseFloat(cellA)) && !isNaN(parseFloat(cellB))) {
-                    return dir === "asc" ? parseFloat(cellA) - parseFloat(cellB) : parseFloat(cellB) - parseFloat(cellA);
-                } else if (cellA.includes('%') && cellB.includes('%')) {
-                    const numA = parseFloat(cellA.replace('%', ''));
-                    const numB = parseFloat(cellB.replace('%', ''));
-                    return dir === "asc" ? numA - numB : numB - numA;
-                } else {
-                    if (cellA < cellB) return dir === "asc" ? -1 : 1;
-                    if (cellA > cellB) return dir === "asc" ? 1 : -1;
-                    return 0;
-                }
+        if (dataType === 'number') {
+            if (!isNaN(parseFloat(cellA)) && !isNaN(parseFloat(cellB))) {
+                return dir === "asc" ? parseFloat(cellA) - parseFloat(cellB) : parseFloat(cellB) - parseFloat(cellA);
+            } else if (cellA.includes('%') && cellB.includes('%')) {
+                const numA = parseFloat(cellA.replace('%', ''));
+                const numB = parseFloat(cellB.replace('%', ''));
+                return dir === "asc" ? numA - numB : numB - numA;
             } else {
                 if (cellA < cellB) return dir === "asc" ? -1 : 1;
                 if (cellA > cellB) return dir === "asc" ? 1 : -1;
                 return 0;
             }
-        });
-
-        rows.forEach(row => tbody.appendChild(row));
-        updateSortIndicators(tableId, columnIndex);
-        applyFiltersAndSort(tableId, null, null, 'pagination');
-    }
-
-    function updateSortIndicators(tableId, columnIndex) {
-        const table = document.getElementById(tableId);
-        const headers = table.querySelectorAll("th");
-        headers.forEach((th, index) => {
-            th.classList.remove("asc", "desc");
-            if (index === columnIndex) {
-                th.classList.add(currentSortDir);
-            }
-        });
-    }
-
-    // Filtering Function
-    function applyFiltersAndSort(tableId, searchInputId, filterCounterId, paginationId) {
-        const table = document.getElementById(tableId);
-        const tbody = table.querySelector('tbody');
-        const rows = Array.from(tbody.rows);
-        const searchInput = document.getElementById(searchInputId);
-        const filterCounter = document.getElementById(filterCounterId);
-        const checkboxes = document.querySelectorAll('.filter-checkbox');
-    
-        const filterInputValue = searchInput ? searchInput.value.toLowerCase() : '';
-        const checkedFilters = Array.from(checkboxes)
-            .filter(cb => cb.checked)
-            .map(cb => cb.name);
-
-        const filteredRows = rows.filter(row => {
-            const cells = Array.from(row.cells);
-            const matchesTextFilter = cells.some(cell => cell.innerText.toLowerCase().includes(filterInputValue));
-            const matchesCheckboxFilter = checkedFilters.every(filter => row.getAttribute(filter) === "Yes");
-
-            return matchesTextFilter && matchesCheckboxFilter;
-        });
-
-        let maxPage = Math.ceil(filteredRows.length / rowsPerPage) || 1;
-        if (currentPage > maxPage) {
-            currentPage = maxPage;
+        } else {
+            if (cellA < cellB) return dir === "asc" ? -1 : 1;
+            if (cellA > cellB) return dir === "asc" ? 1 : -1;
+            return 0;
         }
+    });
 
-        displayRows(tableId, filteredRows, filterCounterId, paginationId);
+    rows.forEach(row => tbody.appendChild(row));
+    updateSortIndicators(tableId, columnIndex);
+    applyFiltersAndSort(tableId, searchInputIdForTable(tableId), filterCounterIdForTable(tableId), paginationIdForTable(tableId));
+}
+
+function updateSortIndicators(tableId, columnIndex) {
+    const table = document.getElementById(tableId);
+    const headers = table.querySelectorAll("th");
+    headers.forEach((th, index) => {
+        th.classList.remove("asc", "desc");
+        if (index === columnIndex) {
+            th.classList.add(currentSortDir);
+        }
+    });
+}
+
+// Filtering Function
+function applyFiltersAndSort(tableId, searchInputId, filterCounterId, paginationId) {
+    const table = document.getElementById(tableId);
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.rows);
+    const searchInput = searchInputId ? document.getElementById(searchInputId) : null;
+    const filterCounter = filterCounterId ? document.getElementById(filterCounterId) : null;
+    const checkboxes = document.querySelectorAll('.filter-checkbox');
+
+    const filterInputValue = searchInput ? searchInput.value.toLowerCase() : '';
+    const checkedFilters = Array.from(checkboxes)
+        .filter(cb => cb.checked)
+        .map(cb => cb.name);
+
+    currentFilteredRows = rows.filter(row => { // Update filtered rows
+        const cells = Array.from(row.cells);
+        const matchesTextFilter = cells.some(cell => cell.innerText.toLowerCase().includes(filterInputValue));
+        const matchesCheckboxFilter = checkedFilters.every(filter => row.getAttribute(filter) === "Yes");
+
+        return matchesTextFilter && matchesCheckboxFilter;
+    });
+
+    let maxPage = Math.ceil(currentFilteredRows.length / rowsPerPage) || 1;
+    if (currentPage > maxPage) {
+        currentPage = maxPage;
     }
 
-    function updateFilterCounter(filterCounterId, visibleRows) {
-        const filterCounter = document.getElementById(filterCounterId);
-        filterCounter.textContent = ```${visibleRows} matches found``;
-    }
+    displayRows(tableId, currentFilteredRows, filterCounterId, paginationId);
+    updateChart();
+}
 
-    // Pagination Functions
-    function displayRows(tableId, filteredRows, filterCounterId, paginationId) {
-        const table = document.getElementById(tableId);
-        const tbody = table.querySelector('tbody');
-        const startIndex = (currentPage - 1) * rowsPerPage;
-        const endIndex = currentPage * rowsPerPage;
+function updateFilterCounter(filterCounterId, visibleRows) {
+	const filterCounter = document.getElementById(filterCounterId);
+	filterCounter.textContent = ```${visibleRows} matches found``;
+}
 
-        Array.from(tbody.rows).forEach(row => row.classList.add('hidden'));
-        filteredRows.slice(startIndex, endIndex).forEach(row => row.classList.remove('hidden'));
+// Pagination Functions
+function displayRows(tableId, filteredRows, filterCounterId, paginationId) {
+    const table = document.getElementById(tableId);
+    const tbody = table.querySelector('tbody');
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    const endIndex = currentPage * rowsPerPage;
 
+    Array.from(tbody.rows).forEach(row => row.classList.add('hidden'));
+    filteredRows.slice(startIndex, endIndex).forEach(row => row.classList.remove('hidden'));
+
+    if (paginationId) {
         updatePagination(tableId, paginationId, filteredRows.length);
+    }
+    if (filterCounterId) {
         updateFilterCounter(filterCounterId, filteredRows.length);
+    }
 
-        if (filteredRows.length === 0 || filteredRows.slice(startIndex, endIndex).length === 0) {
-            if (currentPage > 1) {
-                currentPage--;
-                displayRows(tableId, filteredRows, filterCounterId, paginationId);
+    if (filteredRows.length === 0 || filteredRows.slice(startIndex, endIndex).length === 0) {
+        if (currentPage > 1) {
+            currentPage--;
+            displayRows(tableId, filteredRows, filterCounterId, paginationId);
+        }
+    }
+}
+
+function updatePagination(tableId, paginationId, totalRows) {
+    const pagination = document.getElementById(paginationId);
+    const pageCount = Math.ceil(totalRows / rowsPerPage);
+    pagination.innerHTML = '';
+
+    createPageButton(1, tableId, paginationId);
+    for (let i = 2; i <= Math.min(pageCount, 10); i++) {
+        createPageButton(i, tableId, paginationId);
+    }
+
+    if (pageCount > 10) {
+        createEllipsis(pagination);
+
+        const startPage = Math.max(11, currentPage - 2);
+        const endPage = Math.min(pageCount - 1, currentPage + 2);
+
+        if (currentPage > 10) {
+            for (let i = startPage; i <= endPage; i++) {
+                createPageButton(i, tableId, paginationId);
+            }
+            if (currentPage < pageCount - 2) {
+                createEllipsis(pagination);
             }
         }
+        createPageButton(pageCount, tableId, paginationId);
     }
 
-    function updatePagination(tableId, paginationId, totalRows) {
-        const pagination = document.getElementById(paginationId);
-        const pageCount = Math.ceil(totalRows / rowsPerPage);
-		const table = document.getElementById(tableId);
-        pagination.innerHTML = '';
+    createNavigationArrows(pagination, pageCount, tableId, paginationId);
+}
 
-        for (let i = 1; i <= pageCount; i++) {
-            const pageButton = document.createElement('button');
-            pageButton.textContent = i;
-            pageButton.classList.add('pagination-button');
-            if (i === currentPage) pageButton.classList.add('active');
-            pageButton.addEventListener('click', () => {
-                currentPage = i;
-                applyFiltersAndSort(tableId, 'filterInput', 'filterCounter', paginationId);
-            });
-            pagination.appendChild(pageButton);
+function createPageButton(pageNumber, tableId, paginationId) {
+    const pagination = document.getElementById(paginationId);
+    const pageButton = document.createElement('button');
+    pageButton.textContent = pageNumber;
+    pageButton.classList.add('pagination-button');
+    if (pageNumber === currentPage) pageButton.classList.add('active');
+    pageButton.addEventListener('click', () => {
+        currentPage = pageNumber;
+        applyFiltersAndSort(tableId, searchInputIdForTable(tableId), filterCounterIdForTable(tableId), paginationId);
+    });
+    pagination.appendChild(pageButton);
+}
+
+function createEllipsis(pagination) {
+    const ellipsis = document.createElement('span');
+    ellipsis.textContent = '...';
+    ellipsis.classList.add('ellipsis');
+    pagination.appendChild(ellipsis);
+}
+
+function createNavigationArrows(pagination, pageCount, tableId, paginationId) {
+    const nextButton = document.createElement('button');
+    nextButton.textContent = '→';
+    nextButton.classList.add('pagination-button');
+    nextButton.addEventListener('click', () => {
+        if (currentPage < pageCount) {
+            currentPage++;
+            applyFiltersAndSort(tableId, searchInputIdForTable(tableId), filterCounterIdForTable(tableId), paginationId);
         }
-    }
+    });
+    pagination.appendChild(nextButton);
+}
 
-    // Initialize share name table 
-    document.getElementById('filterInput').addEventListener("keyup", () => applyFiltersAndSort('sharenametable', 'filterInput', 'filterCounter', 'pagination'));	
-    document.querySelectorAll('.filter-checkbox').forEach(checkbox => checkbox.addEventListener('change', () => applyFiltersAndSort('sharenametable', 'filterInput', 'filterCounter', 'pagination')));
-    applyFiltersAndSort('sharenametable', 'filterInput', 'filterCounter', 'pagination');
+function searchInputIdForTable(tableId) {
+    if (tableId === 'sharenametable') return 'filterInput';
+    if (tableId === 'foldergrouptable') return 'filterInputTwo';
+    if (tableId === 'InterestingFileTable') return 'filterInputIF';
+    return null;
+}
+
+function filterCounterIdForTable(tableId) {
+    if (tableId === 'sharenametable') return 'filterCounter';
+    if (tableId === 'foldergrouptable') return 'filterCounterTwo';
+    if (tableId === 'InterestingFileTable') return 'filterCounterIF';
+    return null;
+}
+
+function paginationIdForTable(tableId) {
+    if (tableId === 'sharenametable') return 'pagination';
+    if (tableId === 'foldergrouptable') return 'paginationfg';
+    if (tableId === 'InterestingFileTable') return 'paginationIF';
+    return null;
+}
+
+// Initialize share name table 
+document.getElementById('filterInput').addEventListener("keyup", () => applyFiltersAndSort('sharenametable', 'filterInput', 'filterCounter', 'pagination'));
+document.querySelectorAll('.filter-checkbox').forEach(checkbox => checkbox.addEventListener('change', () => applyFiltersAndSort('sharenametable', 'filterInput', 'filterCounter', 'pagination')));
+applyFiltersAndSort('sharenametable', 'filterInput', 'filterCounter', 'pagination');
+
+// Initialize folder group table    
+document.getElementById('filterInputTwo').addEventListener("keyup", () => applyFiltersAndSort('foldergrouptable', 'filterInputTwo', 'filterCounterTwo', 'paginationfg'));
+applyFiltersAndSort('foldergrouptable', 'filterInputTwo', 'filterCounterTwo', 'paginationfg');	
+
+// Initialize interesting files table
+document.getElementById('filterInputIF').addEventListener("keyup", () => applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF'));
+applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF');	
+
+function extractAndDownloadCSV(tableId, columnIndex) {
+    const regex = /\\\\[^\s\\]+\\[^\s\\]+\\[^\s\\]+/g; // UNC path regex
+    const uncPaths = [];
+
+    // Loop through each filtered row
+    currentFilteredRows.forEach(row => {
+        const cells = row.getElementsByTagName('td');
+        if (cells[columnIndex]) {
+            const cellValue = cells[columnIndex].innerText;
+            const matches = cellValue.match(regex);
+            if (matches) {
+                uncPaths.push(...matches);
+            }
+        }
+    });
+
+    // Generate CSV content
+    let csvContent = 'data:text/csv;charset=utf-8,';
+    csvContent += uncPaths.join('\n');
+
+    // Create a link to download the CSV file
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', 'unc_paths.csv');
+    document.body.appendChild(link);
+
+    // Force download the file
+    link.click();
+
+    // Clean up by removing the link
+    document.body.removeChild(link);
+}
+
 	
-    // Initialize folder group table    
-	document.getElementById('filterInputTwo').addEventListener("keyup", () => applyFiltersAndSort('foldergrouptable', 'filterInputTwo', 'filterCounterTwo', 'paginationfg'));
-    applyFiltersAndSort('foldergrouptable', 'filterInputTwo', 'filterCounterTwo', 'paginationfg');	
 </script>
 </div>
 </div>
@@ -6042,7 +6787,7 @@ $HighestTypeCount = $TypeCounts | Sort-Object {[int]$_} -Descending | select -Fi
 # Start Table
 $HTML1 = @"
 <div class="LargeCard">	
-	<div class="LargeCardTitle">
+	<div class="LargeCardTitle" style = "background-color: #07142A">
 		Share Creation Timeline<br>
 		<span class="LargeCardSubtitle2">for share ACLs configured with excessive privileges</span>
 	</div>
@@ -6114,30 +6859,30 @@ foreach {
         $MonthAclReadCount = $MonthAcls | Where-Object {($_.FileSystemRights -like "*Read*") -or ($_.FileSystemRights -like "*Append*") } | Where-Object {($_.FileSystemRights -notlike "*GenericAll*") -and ($_.FileSystemRights -notlike "*Write*")} |  Measure-Object | select count -ExpandProperty count
         if($MonthAclReadCount -eq 0){
             $MonthAclReadCountP = 0;
-            $ReadDot = "<div class=`"TimelineDot`" style=`"border:1px solid #F2F3F4;bottom:15px;background-color:#F56A00;`"></div>"
+            $ReadDot = "<div class=`"TimelineDot`" style=`"bottom:15px;background-color:gray;`"></div>"
         }else{
             $MonthAclReadCountP = [math]::Round($MonthAclReadCount/$HighestTypeCount,4).tostring("P") -replace(" ","")    
-            $ReadDot = "<div class=`"TimelineDot`" style=`"border:1px solid #F2F3F4;bottom:15px;background-color:Orange;opacity: .25;`"></div>"
+            $ReadDot = "<div class=`"TimelineDot`" style=`"bottom:15px;background-color:Orange;opacity: .25;`"></div>"
         }
 
         # Get write count 
         $MonthAclWriteCount = $MonthAcls | Where-Object {($_.FileSystemRights -like "*GenericAll*") -or ($_.FileSystemRights -like "*Write*")} | Measure-Object | select count -ExpandProperty count
         if($MonthAclWriteCount -eq 0){
             $MonthAclWriteCountP = 0;
-            $WriteDot = "<div class=`"TimelineDot`" style=`"border:1px solid #F2F3F4;bottom:30px;background-color:gray;`"></div>"
+            $WriteDot = "<div class=`"TimelineDot`" style=`"bottom:30px;background-color:gray;`"></div>"
         }else{
             $MonthAclWriteCountP = [math]::Round($MonthAclWriteCount/$HighestTypeCount,4).tostring("P") -replace(" ","")       
-            $WriteDot = "<div class=`"TimelineDot`" style=`"border:1px solid #F2F3F4;bottom:30px;background-color:Orange;opacity: .5;`"></div>"
+            $WriteDot = "<div class=`"TimelineDot`" style=`"bottom:30px;background-color:Orange;opacity: .5;`"></div>"
         }
 
         # Get hr count 
         $MonthAclHrCount = $MonthAcls | Where-Object {($_.ShareName -like 'c$') -or ($_.ShareName -like 'admin$') -or ($_.ShareName -like "*wwwroot*") -or ($_.ShareName -like "*inetpub*") -or ($_.ShareName -like 'c') -or ($_.ShareName -like 'c_share')} | Measure-Object | select count -ExpandProperty count            
         if($MonthAclHrCount -eq 0){
             $MonthAclHrCountP = 0;
-            $HrDot = "<div class=`"TimelineDot`" style=`"border:1px solid #F2F3F4;bottom:45px;background-color:gray;`"></div>"
+            $HrDot = "<div class=`"TimelineDot`" style=`"bottom:45px;background-color:gray;`"></div>"
         }else{
             $MonthAclHrCountP = [math]::Round($MonthAclHrCount/$HighestTypeCount,4).tostring("P") -replace(" ","")    
-            $HrDot = "<div class=`"TimelineDot`" style=`"border:1px solid #F2F3F4;bottom:45px;background-color:Orange;opacity: 1;`"></div>"  
+            $HrDot = "<div class=`"TimelineDot`" style=`"bottom:45px;background-color:Orange;opacity: 1;`"></div>"  
         }
 
         # Debug
@@ -6146,7 +6891,7 @@ foreach {
 
         # build column
         $HTMLMonth = @"
-                    <div id="MonthItem" style="position: relative;float:left;padding-left:1px;padding-right:1px">
+                    <div id="MonthItem" style="position: relative;float:left;padding-left:1px;padding-right:0px">
 						<div class="TimelineBarOutside" >
                             <div class="popwrapper" style="height:90px;position:relative;bottom:0;" >
                                 <div class="TimelinePopup" style="position:absolute;">	
@@ -6327,7 +7072,7 @@ $HighestTypeCount = $TypeCounts | Sort-Object {[int]$_} -Descending | select -Fi
 # Start Table
 $HTML1 = @"
 <div class="LargeCard">	
-	<div class="LargeCardTitle">
+	<div class="LargeCardTitle" style = "background-color: #07142A">
 		Last Access Timeline<br>
 		<span class="LargeCardSubtitle2">for share ACLs configured with excessive privileges</span>
 	</div>
@@ -6399,30 +7144,30 @@ foreach {
         $MonthAclReadCount = $MonthAcls | Where-Object {($_.FileSystemRights -like "*Read*") -or ($_.FileSystemRights -like "*Append*") } | Where-Object {($_.FileSystemRights -notlike "*GenericAll*") -and ($_.FileSystemRights -notlike "*Write*")} |  Measure-Object | select count -ExpandProperty count
         if($MonthAclReadCount -eq 0){
             $MonthAclReadCountP = 0;
-            $ReadDot = "<div class=`"TimelineDot`" style=`"border:1px solid #F2F3F4;bottom:15px;background-color:gray;`"></div>"
+            $ReadDot = "<div class=`"TimelineDot`" style=`"bottom:15px;background-color:gray;`"></div>"
         }else{
             $MonthAclReadCountP = [math]::Round($MonthAclReadCount/$HighestTypeCount,4).tostring("P") -replace(" ","")    
-            $ReadDot = "<div class=`"TimelineDot`" style=`"border:1px solid #F2F3F4;bottom:15px;background-color:Orange;opacity: .25;`"></div>"
+            $ReadDot = "<div class=`"TimelineDot`" style=`"bottom:15px;background-color:Orange;opacity: .25;`"></div>"
         }
 
         # Get write count 
         $MonthAclWriteCount = $MonthAcls | Where-Object {($_.FileSystemRights -like "*GenericAll*") -or ($_.FileSystemRights -like "*Write*")} | Measure-Object | select count -ExpandProperty count
         if($MonthAclWriteCount -eq 0){
             $MonthAclWriteCountP = 0;
-            $WriteDot = "<div class=`"TimelineDot`" style=`"border:1px solid #F2F3F4;bottom:30px;background-color:gray;`"></div>"
+            $WriteDot = "<div class=`"TimelineDot`" style=`"bottom:30px;background-color:gray;`"></div>"
         }else{
             $MonthAclWriteCountP = [math]::Round($MonthAclWriteCount/$HighestTypeCount,4).tostring("P") -replace(" ","")       
-            $WriteDot = "<div class=`"TimelineDot`" style=`"border:1px solid #F2F3F4;bottom:30px;background-color:Orange;opacity: .5;`"></div>"
+            $WriteDot = "<div class=`"TimelineDot`" style=`"bottom:30px;background-color:Orange;opacity: .5;`"></div>"
         }
 
         # Get hr count 
         $MonthAclHrCount = $MonthAcls | Where-Object {($_.ShareName -like 'c$') -or ($_.ShareName -like 'admin$') -or ($_.ShareName -like "*wwwroot*") -or ($_.ShareName -like "*inetpub*") -or ($_.ShareName -like 'c') -or ($_.ShareName -like 'c_share')} | Measure-Object | select count -ExpandProperty count            
         if($MonthAclHrCount -eq 0){
             $MonthAclHrCountP = 0;
-            $HrDot = "<div class=`"TimelineDot`" style=`"border:1px solid #F2F3F4;bottom:45px;background-color:gray;`"></div>"
+            $HrDot = "<div class=`"TimelineDot`" style=`"bottom:45px;background-color:gray;`"></div>"
         }else{
             $MonthAclHrCountP = [math]::Round($MonthAclHrCount/$HighestTypeCount,4).tostring("P") -replace(" ","")    
-            $HrDot = "<div class=`"TimelineDot`" style=`"border:1px solid #F2F3F4;bottom:45px;background-color:Orange;opacity: 1;`"></div>"  
+            $HrDot = "<div class=`"TimelineDot`" style=`"bottom:45px;background-color:Orange;opacity: 1;`"></div>"  
         }
 
         # Debug
@@ -6431,7 +7176,7 @@ foreach {
 
         # build column
         $HTMLMonth = @"
-                    <div id="MonthItem" style="position: relative;float:left;padding-left:1px;padding-right:1px">
+                    <div id="MonthItem" style="position: relative;float:left;padding-left:1px;padding-right:0px">
 						<div class="TimelineBarOutside" >
                             <div class="popwrapper" style="height:90px;position:relative;bottom:0;" >
                                 <div class="TimelinePopup" style="position:absolute;">	
@@ -6612,7 +7357,7 @@ function Get-CardLastModified
     # Start Table
     $HTML1 = @"
     <div class="LargeCard">	
-	    <div class="LargeCardTitle">
+	    <div class="LargeCardTitle" style = "background-color: #07142A">
 		    Last Write Timeline<br>
 		    <span class="LargeCardSubtitle2">for share ACLs configured with excessive privileges</span>
 	    </div>
@@ -6684,30 +7429,30 @@ function Get-CardLastModified
             $MonthAclReadCount = $MonthAcls | Where-Object {($_.FileSystemRights -like "*Read*") -or ($_.FileSystemRights -like "*Append*") } | Where-Object {($_.FileSystemRights -notlike "*GenericAll*") -and ($_.FileSystemRights -notlike "*Write*")} |  Measure-Object | select count -ExpandProperty count
             if($MonthAclReadCount -eq 0){
                 $MonthAclReadCountP = 0;
-                $ReadDot = "<div class=`"TimelineDot`" style=`"border:1px solid #F2F3F4;bottom:15px;background-color:gray;`"></div>"
+                $ReadDot = "<div class=`"TimelineDot`" style=`"bottom:15px;background-color:gray;`"></div>"
             }else{
                 $MonthAclReadCountP = [math]::Round($MonthAclReadCount/$HighestTypeCount,4).tostring("P") -replace(" ","")    
-                $ReadDot = "<div class=`"TimelineDot`" style=`"border:1px solid #F2F3F4;bottom:15px;background-color:Orange;opacity: .25;`"></div>"
+                $ReadDot = "<div class=`"TimelineDot`" style=`"bottom:15px;background-color:Orange;opacity: .25;`"></div>"
             }
 
             # Get write count 
             $MonthAclWriteCount = $MonthAcls | Where-Object {($_.FileSystemRights -like "*GenericAll*") -or ($_.FileSystemRights -like "*Write*")} | Measure-Object | select count -ExpandProperty count
             if($MonthAclWriteCount -eq 0){
                 $MonthAclWriteCountP = 0;
-                $WriteDot = "<div class=`"TimelineDot`" style=`"border:1px solid #F2F3F4;bottom:30px;background-color:gray;`"></div>"
+                $WriteDot = "<div class=`"TimelineDot`" style=`"bottom:30px;background-color:gray;`"></div>"
             }else{
                 $MonthAclWriteCountP = [math]::Round($MonthAclWriteCount/$HighestTypeCount,4).tostring("P") -replace(" ","")       
-                $WriteDot = "<div class=`"TimelineDot`" style=`"border:1px solid #F2F3F4;bottom:30px;background-color:Orange;opacity: .5;`"></div>"
+                $WriteDot = "<div class=`"TimelineDot`" style=`"bottom:30px;background-color:Orange;opacity: .5;`"></div>"
             }
 
             # Get hr count 
             $MonthAclHrCount = $MonthAcls | Where-Object {($_.ShareName -like 'c$') -or ($_.ShareName -like 'admin$') -or ($_.ShareName -like "*wwwroot*") -or ($_.ShareName -like "*inetpub*") -or ($_.ShareName -like 'c') -or ($_.ShareName -like 'c_share')} | Measure-Object | select count -ExpandProperty count            
             if($MonthAclHrCount -eq 0){
                 $MonthAclHrCountP = 0;
-                $HrDot = "<div class=`"TimelineDot`" style=`"border:1px solid #F2F3F4;bottom:45px;background-color:gray;`"></div>"
+                $HrDot = "<div class=`"TimelineDot`" style=`"bottom:45px;background-color:gray;`"></div>"
             }else{
                 $MonthAclHrCountP = [math]::Round($MonthAclHrCount/$HighestTypeCount,4).tostring("P") -replace(" ","")    
-                $HrDot = "<div class=`"TimelineDot`" style=`"border:1px solid #F2F3F4;bottom:45px;background-color:Orange;opacity: 1;`"></div>"  
+                $HrDot = "<div class=`"TimelineDot`" style=`"bottom:45px;background-color:Orange;opacity: 1;`"></div>"  
             }
 
             # Debug
@@ -6716,7 +7461,7 @@ function Get-CardLastModified
 
             # build column
             $HTMLMonth = @"
-                        <div id="MonthItem" style="position: relative;float:left;padding-left:1px;padding-right:1px">
+                        <div id="MonthItem" style="position: relative;float:left;padding-left:1px;padding-right:0px">
 						    <div class="TimelineBarOutside" >
                                 <div class="popwrapper" style="height:90px;position:relative;bottom:0;" >
                                     <div class="TimelinePopup" style="position:absolute;">	
