@@ -5,7 +5,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.30
+# Version: v1.31
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Analyze-HuntSMBShares
 {    
@@ -5547,14 +5547,21 @@ function updateChart() {
 
 
 // --------------------------
-// Bar Chart Code - Interesting Files
+// Interesting Files - Bar Chart
 // --------------------------
 
 // Initialize ApexCharts
 const chartOptions = {
     chart: {
         type: 'bar',
-        height: 150
+        height: 150,
+        events: {
+                    dataPointSelection: function(event, chartContext, config) {
+                        // Get the clicked category
+                        var category = config.w.config.xaxis.categories[config.dataPointIndex];
+                        handleCategoryClick(category);
+                    }
+        }
     },
     series: [{
         name: 'Count',
@@ -5626,6 +5633,13 @@ const chartOptions = {
 const chart = new ApexCharts(document.querySelector("#chart"), chartOptions);
 chart.render();
 
+// apply category filter to interestiong table rows
+function handleCategoryClick(category) {
+    //alert("Category clicked: " + category);
+	document.getElementById('filterInputIF').value = category;
+	applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF',2);
+}
+
 // --------------------------
 // Sorting Functions
 // --------------------------
@@ -5684,7 +5698,7 @@ function updateSortIndicators(tableId, columnIndex) {
 }
 
 // Filtering Function
-function applyFiltersAndSort(tableId, searchInputId, filterCounterId, paginationId) {
+function applyFiltersAndSort(tableId, searchInputId, filterCounterId, paginationId, columnId = null) {
     const table = document.getElementById(tableId);
     const tbody = table.querySelector('tbody');
     const rows = Array.from(tbody.rows);
@@ -5699,7 +5713,9 @@ function applyFiltersAndSort(tableId, searchInputId, filterCounterId, pagination
 
     currentFilteredRows = rows.filter(row => { // Update filtered rows
         const cells = Array.from(row.cells);
-        const matchesTextFilter = cells.some(cell => cell.innerText.toLowerCase().includes(filterInputValue));
+        const matchesTextFilter = columnId !== null 
+            ? cells[columnId].innerText.toLowerCase().includes(filterInputValue)
+            : cells.some(cell => cell.innerText.toLowerCase().includes(filterInputValue));
         const matchesCheckboxFilter = checkedFilters.every(filter => row.getAttribute(filter) === "Yes");
 
         return matchesTextFilter && matchesCheckboxFilter;
@@ -5715,8 +5731,8 @@ function applyFiltersAndSort(tableId, searchInputId, filterCounterId, pagination
 }
 
 function updateFilterCounter(filterCounterId, visibleRows) {
-	const filterCounter = document.getElementById(filterCounterId);
-	filterCounter.textContent = ```${visibleRows} matches found``;
+    const filterCounter = document.getElementById(filterCounterId);
+    filterCounter.textContent = ```${visibleRows} matches found``;
 }
 
 // Pagination Functions
@@ -5841,6 +5857,7 @@ applyFiltersAndSort('foldergrouptable', 'filterInputTwo', 'filterCounterTwo', 'p
 document.getElementById('filterInputIF').addEventListener("keyup", () => applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF'));
 applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF');	
 
+// CSV export function
 function extractAndDownloadCSV(tableId, columnIndex) {
     const regex = /\\\\[^\s\\]+\\[^\s\\]+\\[^\s\\]+/g; // UNC path regex
     const uncPaths = [];
