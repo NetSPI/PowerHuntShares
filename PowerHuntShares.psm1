@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.87
+# Version: v1.88
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -4686,19 +4686,12 @@ input[type="checkbox"]:checked::before {
                     <div style="height: 125px;text-align: left;"></div>
 
                     <div class="searchbar" style="text-align: left; display:flex;flex-direction:left;">
-                        <input type="text" id="filterInputIF" placeholder=" Search..." style="height: 25px; font-size: 14px;margin-top:7px;margin-left:10px;padding-left:3px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
-                        <!--
-		                <strong>&nbsp;&nbsp;Quick Filters</strong>
-                        <label><input type="checkbox" class="filter-checkbox" name="h"> Highly Exploitable</label>
-                        <label><input type="checkbox" class="filter-checkbox" name="w"> Write</label>
-                        <label><input type="checkbox" class="filter-checkbox" name="r"> Read</label>
-                        <label><input type="checkbox" class="filter-checkbox" name="i"> Interesting</label>
-                        <label><input type="checkbox" class="filter-checkbox" name="e"> Empty</label>
-                        <label><input type="checkbox" class="filter-checkbox" name="s"> Stale</label>
-                        <label><input type="checkbox" class="filter-checkbox" name="n"> Default</label>
-		                -->
-                        <div id="filterCounterIF" style="margin-top:46px;height: 25px;font-size:11;text-align: left; margin-left: -186px;">Loading...</div>   
-                        <div style="margin-top:46px;height: 25px;font-size:11;text-align: left; margin-left: 10px;"><a style="margin-top:46px;height: 25px;font-size:11;" href="#" onclick="extractAndDownloadCSV('InterestingFileTable', 3)">Export</a></div>						      
+                        <div style="position: relative; display: flex; align-items: center;">
+							<input type="text" id="filterInputIF" placeholder=" Search..." style="height: 25px; font-size: 14px; margin-top: 0px; margin-left: 10px; padding-left: 10px; border-radius: 3px; border: 1px solid #BDBDBD; outline: none; color: #07142A; line-height: 25px;">							
+							<div style="position: absolute; left: 200px; top: 12px; cursor: pointer;color:#07142A;" onmouseover="this.style.textDecoration='underline';" onmouseout="this.style.textDecoration='';this.style.fontWeight='normal';" onclick="document.getElementById('filterInputIF').value = '';applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF');">Clear</div>
+						</div>
+						<div id="filterCounterIF" style="margin-top:47px;height: 25px;font-size:11;text-align: left; margin-left: -194px;">Loading...</div>
+                        <div style="margin-top:47px;height: 25px;font-size:11;text-align: left; margin-left: 6px;"><a style="margin-top:46px;height: 25px;font-size:11;" href="#" onclick="extractAndDownloadCSV('InterestingFileTable', 3)">Export</a></div>						      
                     </div>
                     <br>
                     <table id="InterestingFileTable" class="table table-striped table-hover tabledrop" style="width: 95%;">
@@ -4747,7 +4740,7 @@ input[type="checkbox"]:checked::before {
 		<a href="#" id="DashLink" style="text-decoration:none;color:white;font-size:18px;" onClick="radiobtn = document.getElementById('computersummary');radiobtn.checked = true;">Computers</a>
 	</div>
 	<div class="cardcontainer" align="center" style="padding-bottom: 22px;">	
-				<span class="percentagetext">                    
+				<span class="percentagetext" style = "color:#f08c41;">                    
 					$ComputerWithExcessive                    
 				</span>	
 			<Br>
@@ -4806,7 +4799,7 @@ input[type="checkbox"]:checked::before {
 		<a href="#" id="DashLink" style="text-decoration:none;color:white;font-size:18px;" onClick="radiobtn = document.getElementById('sharesum');radiobtn.checked = true;">Shares</a>
 	</div>
 	<div class="cardcontainer" align="center" style="padding-bottom: 22px;">	
-				<span class="percentagetext">                    
+				<span class="percentagetext" style = "color:#f08c41;">                    
 					$ExcessiveSharesCount                    
 				</span>	
 			<Br>
@@ -4865,7 +4858,7 @@ input[type="checkbox"]:checked::before {
 		<a href="#" id="DashLink" style="text-decoration:none;color:white;font-size:18px;" onClick="radiobtn = document.getElementById('ACLsum');radiobtn.checked = true;">ACLs</a>
 	</div>
 	<div class="cardcontainer" align="center" style="padding-bottom: 22px;">	
-				<span class="percentagetext">                    
+				<span class="percentagetext" style = "color:#f08c41;">                    
 					$ExcessiveSharePrivsCount                    
 				</span>	
 			<Br>
