@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.88
+# Version: v1.90
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -918,7 +918,7 @@ function Invoke-HuntSMBShares
         $CommonShareOwnersTop5 = $CommonShareOwners | Select-Object count,name -First $SampleSum 
 
         $Time =  Get-Date -UFormat "%m/%d/%Y %R"
-        Write-Output " [*][$Time] - Identified top 5 owners of excessive shares."
+        Write-Output " [*][$Time] - Identified top $SampleSum owners of excessive shares."
 
         # ----------------------------------------------------------------------
         # Identify common excessive share groups (group by file list)
@@ -939,7 +939,7 @@ function Invoke-HuntSMBShares
         $CommonShareFileGroupTop5 = $CommonShareFileGroup | Select-Object count,name,filecount -First $SampleSum 
 
         $Time =  Get-Date -UFormat "%m/%d/%Y %R"
-        Write-Output " [*][$Time] - Identified top 5 share groups."
+        Write-Output " [*][$Time] - Identified top $SampleSum share groups."
 
         # ----------------------------------------------------------------------
         # Identify common share names
@@ -976,7 +976,7 @@ function Invoke-HuntSMBShares
         $CommonShareNames | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Inventory-Common-Names.csv"
 
         $Time =  Get-Date -UFormat "%m/%d/%Y %R"
-        Write-Output " [*][$Time] - Identified top 5 share names."
+        Write-Output " [*][$Time] - Identified top $SampleSum share names."
 
         # ----------------------------------------------------------------------
         # Identify excessive share creation in last n 90 days
@@ -1467,7 +1467,7 @@ function Invoke-HuntSMBShares
         
         $Time =  Get-Date -UFormat "%m/%d/%Y %R"
         #Write-Output " [*][$Time] - Summary report data generated."                     
-        #Write-Output " [*][$Time] - $Top5ShareCountTotal of $AllAccessibleSharesCount ($DupPercent) shares are associated with the top 5 share names."
+        #Write-Output " [*][$Time] - $Top5ShareCountTotal of $AllAccessibleSharesCount ($DupPercent) shares are associated with the top $SampleSum share names."
 
         # ----------------------------------------------------------------------
         # Create Interesting Files Table
@@ -1559,6 +1559,7 @@ function Invoke-HuntSMBShares
         $FileNamePatternsAll.Rows.Add("*.kdbx","","None.","Secret","")                                       | Out-Null
         $FileNamePatternsAll.Rows.Add("wp-config.php*","","None.","Secret","")                               | Out-Null
         $FileNamePatternsAll.Rows.Add("*.config","","None.","Secret","")                                     | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.dtsx*","","None.","Secret","")                                      | Out-Null
 
         # Add rows to data table - Database files  
         $FileNamePatternsAll.Rows.Add("*database*","","None.","Database","")                                 | Out-Null
@@ -1592,10 +1593,12 @@ function Invoke-HuntSMBShares
         # Use keyword from define file instead
         if($FileKeywordsPath){
             $FileNamePatternsAllTest = import-csv "$FileKeywordsPath"
+
             $CheckFieldKeyword  =  $FileNamePatternsAllTest | gm | where name -like "keyword" | select name -ExpandProperty name
             $CheckFieldCategory =  $FileNamePatternsAllTest | gm | where name -like "category" | select name -ExpandProperty name
             if($CheckFieldKeyword -and $CheckFieldCategory){
                 # File found and columns exist 
+                $FileNamePatternsAll.Clear()
                 $FileNamePatternsAll = $FileNamePatternsAllTest
             }else{
                 # File columns do not exist
@@ -1621,11 +1624,13 @@ function Invoke-HuntSMBShares
         # once -  categories: ['Sensitive', 'Secrets', 'Scripts'],
         $ChartCategoryCommas = ($FileNamePatternCategories | Select-Object -ExpandProperty category | ForEach-Object { "'$_'" }) -join ", "
         $ChartCategoryCat    = "categories: [$ChartCategoryCommas],"   
+        $ChartCategoryCatDash    = "[$ChartCategoryCommas]" 
                
         # Generate chart categories -
         # once -  data: [MySensitiveCount, MySecretCount, MyScriptsCount] 
         $ChartCategoryCountFormat = ($FileNamePatternCategories | Select-Object -ExpandProperty category | ForEach-Object {"My"+ $_ + "Count"}) -join ", "
         $ChartCategoryDat         = "data: [$ChartCategoryCountFormat]"
+        $ChartCategoryDatDash     = "[$ChartCategoryCountFormat]"
 
         # Get a list of file names from each folder group for the target share name
         $InterestingFilesAllFileNames = $ExcessiveSharePrivs | select FileList -Unique | foreach {$_.FileList -split "`r`n"} | Where-Object {$_ -ne ''} | foreach {$_.ToLower()}|  select -Unique
@@ -1689,6 +1694,18 @@ function Invoke-HuntSMBShares
                 $object 
             }
         } | select ComputerName,ShareName,SharePath,UncPath,FileName,Category -Unique  
+
+        # For each category get the count and store the numbers in an array
+        $IFCategoryList = ($FileNamePatternCategories | select Category -ExpandProperty Category |
+        foreach {
+            
+            $CurrentCategory = $_
+            #$InterestingFilesAllObjects | where Category -eq "$CurrentCategory" | select filename -Unique | measure | select count -ExpandProperty count #unique file name count vs all files
+            $InterestingFilesAllObjects | where Category -eq "$CurrentCategory" | measure | select count -ExpandProperty count
+
+        } | select | ForEach-Object { "'$_'" }) -join ", "
+        $IFCategoryListCount = "[$IFCategoryList]"
+
 
         <#
 
@@ -1857,8 +1874,224 @@ function Invoke-HuntSMBShares
 
             # Return row
             $IfRow 
-        }       
+        }  
         
+        # ----------------------------------------------------------------------
+        # Calculate risk score per acl 
+        # ---------------------------------------------------------------------- 
+        # add interesting file flags
+        # add risk score 
+        # create table for later use
+        # output table to file 
+        
+        # foreach acl update the record 
+        $ExcessiveSharePrivsFinal = $ExcessiveSharePrivs  |
+        foreach {
+
+            # Get variables
+            $myAccessControlType    = $_.AccessControlType
+            $myAuditSettings        = $_.AuditSettings
+            $myComputerName         = $_.ComputerName
+            $myCreationDate         = $_.CreationDate
+            $myCreationDateYear     = $_.CreationDateYear
+            $myFileCount            = $_.FileCount
+            $myFileList             = $_.FileList
+            $myFileListGroup        = $_.FileListGroup
+            $myFileSystemRights     = $_.FileSystemRights
+            $myIdentityReference    = $_.IdentityReference
+            $myIdentitySID          = $_.IdentitySID
+            $myIpAddress            = $_.IpAddress
+            $myLastAccessDate       = $_.LastAccessDate
+            $myLastAccessDateYear   = $_.LastAccessDateYear
+            $myLastModifiedDate     = $_.LastModifiedDate
+            $myLastModifiedDateYear = $_.LastModifiedDateYear
+            $myShareAccess          = $_.ShareAccess
+            $myShareDescription     = $_.ShareDescription
+            $myShareName            = $_.ShareName
+            $myShareOwner           = $_.ShareOwner
+            $mySharePath            = $_.SharePath
+            $myShareType            = $_.ShareType            
+
+            # select interesting files, get categories, compress into one line   
+            # pending                      
+            
+            # parse data for risk score              
+            $ShareNameRiskValue                        = 0
+            $ShareRowHasRCE                            = ""
+            $ShareRowHasHighRisk                       = ""                                                  
+            $ShareRowHasWrite                          = ""              
+            $ShareRowHasRead                           = ""                      
+            $ShareRowHasEmpty                          = ""         
+            $ShareRowHasStale                          = ""
+            $ShareRowCountInterestingData              = ""           
+            $ShareRowInterestingFileListDataCount      = ""          
+            $ShareRowCountInterestingSecrets           = ""    
+            $ShareRowInterestingFileListDataCount      = "" 
+            $ShareRowNonDefault                        = ""
+            
+            # Check for RCE conditions            
+            if((($_.ShareName -like 'c$') -or ($_.ShareName -like 'admin$') -or ($_.ShareName -like "*wwwroot*") -or ($_.ShareName -like "*inetpub*") -or ($_.ShareName -like 'c') -or ($_.ShareName -like 'c_share')) -and (($myFileSystemRights -like "*GenericAll*") -or ($myFileSystemRights -like "*Write*") -or ($myFileSystemRights -like "*Create*")-and ($myAccessControlType  -eq "Allow")))
+            {
+                $ShareRowHasRCE = 1
+            }else{
+                $ShareRowHasRCE = 0
+            }
+
+            # Check for potential read based RCE conditions
+            if(($_.ShareName -like 'c$') -or ($_.ShareName -like 'admin$') -or ($_.ShareName -like "*wwwroot*") -or ($_.ShareName -like "*inetpub*") -or ($_.ShareName -like 'c') -or ($_.ShareName -like 'c_share'))
+            {
+                $ShareRowHasHighRisk = 1
+            }else{
+                $ShareRowHasHighRisk = 0
+            }
+
+            # Determine if write
+            if(($myFileSystemRights -like "*GenericAll*") -or ($myFileSystemRights -like "*Write*") -or ($myFileSystemRights -like "*Create*") -or ($myFileSystemRights -like "*Addfile*") -or ($myFileSystemRights -like "*AppendData*") -or ($myFileSystemRights -like "*Delete*") -and ($myAccessControlType  -eq "Allow"))
+            {
+                $ShareRowHasWrite = 1
+            }else{
+                $ShareRowHasWrite = 0
+            }
+
+            # Determine if read
+            if(($myFileSystemRights -like  "*read*"))
+            {
+                $ShareRowHasRead = 1
+            }else{
+                $ShareRowHasRead = 0
+            }
+
+            # Determine if empty
+            if($_.FileCount -eq 0){
+                $ShareRowHasEmpty = 1
+            }else{
+                $ShareRowHasEmpty = 0
+            }
+
+            # Determine if stale
+            try{                                
+                $oneYearAgo = (Get-Date).AddYears(-1)                            
+                if($_.LastModifiedDate -ge $oneYearAgo){
+                   $ShareRowHasStale = 1
+                }else{
+                   $ShareRowHasStale = 0
+                }
+            }catch{
+                $ShareRowHasStale = 0          
+            }
+
+            # Determine if default
+            if(($_.ShareName -like 'admin$') -or ($_.ShareName -like 'c$') -or ($_.ShareName -like 'd$') -or ($_.ShareName -like 'e$') -or ($_.ShareName -like 'f$')){
+                $ShareRowDefault = 1
+            }else{
+                $ShareRowDefault = 0
+            }
+
+            # Determine number and type of interesting files - secrets
+            try{
+                $MySecretsCount = $InterestingFilesAllObjects | where SharePath -like "$mySharePath" | where Category -like 'Secret' | measure | select count -ExpandProperty count
+                if($MySecretsCount -gt 0){
+                    $ShareRowCountInterestingSecrets = 1
+                }else{
+                    $ShareRowCountInterestingSecrets = 0
+                }
+            }catch{
+            }
+
+            # Determine number and type of interesting files - sensitive
+            try{
+                $MySensitiveCount = $InterestingFilesAllObjects | where SharePath -like "$mySharePath" | where Category -like 'Sensitive' | measure | select count -ExpandProperty count
+                if($MySensitiveCount -gt 0){
+                    $ShareRowCountInterestingData = 1
+                }else{
+                    $ShareRowCountInterestingData = 0
+                }
+            }catch{
+            }
+
+            # categories = $FileNamePatternCategories | Select-Object -ExpandProperty category
+            
+            # Set wieghts
+            $RiskWeightRCE             = 2
+            $RiskWeightHR              = 9 # Potential RCE - no write access
+            $RiskWeightData            = 8
+            $RiskWeightDataVolume      = 1
+            $RiskWeightSecrets         = 2
+            $RiskWeightSecretsVolume   = 1
+            $RiskWeightWrite           = 4
+            $RiskWeightRead            = 3    
+            $RiskWeightEmpty           = -1
+            $RiskWeightStale           = -1
+
+            # Calculate Risk Score
+            $ShareNameRiskValue = 0
+            if($ShareRowHasRCE                          -eq  1){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightRCE           } # RCE
+            if($ShareRowHasHighRisk                     -eq  1){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightHR            } # Potential RCE
+            if($ShareRowCountInterestingData            -eq  1){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightData          } # Potential Sensitive Data 
+            if($MySensitiveCount                        -gt 10){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightDataVolume    } # Potential Sensitive Data Volume            
+            if($ShareRowCountInterestingSecrets         -eq  1){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightSecrets       } # Potential Password Access 
+            if($MySecretsCount                          -gt 10){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightSecretsVolume } # Potential Sensitive Data Volume 
+            if($ShareRowHasWrite                        -eq  1){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightWrite         } # Write Access          
+            if($ShareRowHasRead                         -eq  1){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightRead          } # Read Access                          
+            if($ShareRowHasEmpty                        -eq  1){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightEmpty         } # Empty Folders
+            if($ShareRowHasStale                        -eq  1){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightStale         } # Stake Folders          
+
+            # Set Risk Score
+            If($ShareNameRiskValue -ge 11 ) { $RiskLevel = "High"}
+            If($ShareNameRiskValue -ge 20 ) { $RiskLevel = "Critical"}
+            If($ShareNameRiskValue -lt 11 ) { $RiskLevel = "Medium"}
+            If($ShareNameRiskValue -lt 4  ) { $RiskLevel = "Low"}   
+
+            # Append new column to object
+            $newObject = [PSCustomObject]@{
+                ComputerName           = $myComputerName
+                IpAddress              = $myIpAddress
+                ShareName              = $myShareName
+                SharePath              = $mySharePath
+                ShareType              = $myShareType
+                ShareDescription       = $myShareDescription
+                ShareOwner             = $myShareOwner
+                FileCount              = $myFileCount
+                FileList               = $myFileList
+                FileListGroup          = $myFileListGroup
+                FileSystemRights       = $myFileSystemRights
+                ShareAccess            = $myShareAccess
+                IdentityReference      = $myIdentityReference
+                IdentitySID            = $myIdentitySID                
+                AccessControlType      = $myAccessControlType
+                AuditSettings          = $myAuditSettings
+                CreationDate           = $myCreationDate
+                CreationDateYear       = $myCreationDateYear
+                LastAccessDate         = $myLastAccessDate
+                LastAccessDateYear     = $myLastAccessDateYear
+                LastModifiedDate       = $myLastModifiedDate
+                LastModifiedDateYear   = $myLastModifiedDateYear
+                HasRead                = $ShareRowHasRead 
+                HasWrite               = $ShareRowHasWrite
+                HasHR                  = $ShareRowHasHighRisk 
+                HasRCE                 = $ShareRowHasRCE
+                HasIF                  = $ShareRowCountInterestingData
+                HasSecrets             = $ShareRowCountInterestingSecrets
+                IsEmpty                = $ShareRowHasEmpty
+                IsStale                = $ShareRowHasStale
+                IsDefault              = $ShareRowDefault
+                RiskScore              = $ShareNameRiskValue
+                RiskLevel              = $RiskLevel
+                IFListColumn           = "" # this should be a list of all columns with a 0 or 1, grab category list from above
+            }
+
+            # Return object
+            $newObject                                            
+        }  
+
+        # Output new table that include interesting files, risk, read, write, hr, stale, and empty tags
+        $ExcessiveSharePrivsFinal | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-New.csv"
+        
+        # Get severity level counts
+        $RiskLevelCountLow      = $ExcessiveSharePrivsFinal | where RiskLevel -eq 'Low'      | measure | select count -ExpandProperty count
+        $RiskLevelCountMedium   = $ExcessiveSharePrivsFinal | where RiskLevel -eq 'Medium'   | measure | select count -ExpandProperty count 
+        $RiskLevelCountHigh     = $ExcessiveSharePrivsFinal | where RiskLevel -eq 'High'     | measure | select count -ExpandProperty count 
+        $RiskLevelCountCritical = $ExcessiveSharePrivsFinal | where RiskLevel -eq 'Critical' | measure | select count -ExpandProperty count          
 
         # ----------------------------------------------------------------------
         # Create Timeline Reports
@@ -1951,7 +2184,7 @@ function Invoke-HuntSMBShares
         Write-Output " [*][$Time] - $AclHighRiskCount ($PercentAclHighRiskP) ACLs were found that are associated with HIGH RISK share names."
         Write-Output " [*][$Time] "
         Write-Output " [*][$Time] - The 5 most common share names are:"
-        Write-Output " [*][$Time] - $Top5ShareCountTotal of $AllAccessibleSharesCount ($DupPercent) discovered shares are associated with the top 5 share names."
+        Write-Output " [*][$Time] - $Top5ShareCountTotal of $AllAccessibleSharesCount ($DupPercent) discovered shares are associated with the top $SampleSum share names."
         $CommonShareNamesTop5 |
         foreach {
             $ShareCount = $_.count
@@ -4371,7 +4604,7 @@ $NewHtmlReport = @"
 .TimelineBarInside {
 	width: 100%;
 	display: block;
-    background-color: #CE112D;	
+    background-color: #07142A;	
     opacity: .5;	
     margin-left:1px;
     position: absolute;
@@ -4612,11 +4845,11 @@ input[type="checkbox"]:checked::before {
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ACLsum');radiobtn.checked = true;">ACL Summary</label>		
 		<label class="tabLabel" style="width:100%;color:#07142A;background-color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:2px;margin-bottom:2px;"><Strong>Data Insights</Strong></label>	  	  	
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;">Interesting Files</label>		
-		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;">Top Share Names</label>					
-		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareFolders');radiobtn.checked = true;">Top Folder Groups</label>		
-        <label href="#" class="stuff" style="width:100%;" onclick="radiobtn = document.getElementById('SubNets');radiobtn.checked = true;">Affected Subnets</label>	
-		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('accounts');radiobtn.checked = true;">Group Stats</label>	
-		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareOwner');radiobtn.checked = true;">Top Share Owners</label>	
+		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;">Share Names</label>					
+		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareFolders');radiobtn.checked = true;">Folder Groups</label>		
+        <label href="#" class="stuff" style="width:100%;" onclick="radiobtn = document.getElementById('SubNets');radiobtn.checked = true;">Affected Subnets</label>				
+		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareOwner');radiobtn.checked = true;">Share Owners</label>
+        <label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('accounts');radiobtn.checked = true;">Group ACL Summary</label>	
 		<label class="tabLabel" style="width:100%;color:#07142A;background-color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:2px;margin-bottom:2px;"><strong>Recommendations</strong></label>
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Attacks');radiobtn.checked = true;">Exploit Share Access</label>		
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Detections');radiobtn.checked = true;">Detect Share Scans</label>
@@ -4646,7 +4879,7 @@ input[type="checkbox"]:checked::before {
 					<div class="LargeCard" style="width:25%; ">	
 						
 							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
-								<button class="toggle-button" onclick="toggleDiv('FileTotal')" style="width: 100%;font-size: 15px; "><strong>Interesting Files Found</strong></button> 
+								<button class="toggle-button" onclick="toggleDiv('FileTotal')" style="width: 100%;font-size: 15px; "><strong>Interesting File Names Found</strong></button> 
 							</div>
 						
 						<div id="FileTotal" class="toggle-content">
@@ -4720,21 +4953,22 @@ input[type="checkbox"]:checked::before {
 		<input class="tabInput"  name="tabs" type="radio" id="dashboard"/>
 		<label class="tabLabel" onClick="updateTab('dashboard',false)" for="dashboard"></label>
 		<div id="tabPanel" class="tabPanel">
-		<div style="min-height: 450px;margin-top:11px;">		
-		<div style="margin-left:10px;margin-top:3px">
-		<h2>Excessive Share Privileges Summary</h2>			
-        <div style="border-bottom: 1px solid #DEDFE1 ;  background-color:#f0f3f5; height:5px; margin-bottom:10px;"></div>
-        <div style="width:70%;">
-		Below is a summary of the computers, shares, and ACLs associated with shares configured with excessive privileges.
-        $ExcessiveSharePrivsCount ACL entries, on $ExcessiveSharesCount shares, hosted by $ComputerWithExcessive computers were found configured with excessive privilegs on the $TargetDomain domain.	
-        <br><br> 	
-        </div>	
-		</div> 	
+		<div style="min-height: 450px;margin-top:5px;">		
+		<div style="margin-left:10px;margin-top:0px">
+			<h2>Excessive Share Privileges Dashboard</h2>			
+			<div style="border-bottom: 1px solid #DEDFE1 ;background-color:#f0f3f5; height:5px; margin-bottom:10px;width:118%;margin-left:-18px;"></div>
+			<div style="width:70%;">		
+				<h4 style="color:gray;">Affected Assets</h4>
+				<div style="width:800;">
+				Below is a summary of the computers, shares, and ACLs associated with shares configured with excessive privileges.
+	            $ExcessiveSharePrivsCount ACL entries, on $ExcessiveSharesCount shares, hosted by $ComputerWithExcessive computers were found configured with excessive privileges on the $TargetDomain domain.  Click the "Exposure Summary" or the titles for more detail.<Br><Br>
+				</div>
+			</div>
+		</div>
 
 <!--  
 |||||||||| CARD: COMPUTER SUMMARY
 -->
-
  <div class="card">	
 	<div class="cardtitle" style="text-align:center;">
 		<a href="#" id="DashLink" style="text-decoration:none;color:white;font-size:18px;" onClick="radiobtn = document.getElementById('computersummary');radiobtn.checked = true;">Computers</a>
@@ -4915,16 +5149,69 @@ input[type="checkbox"]:checked::before {
 <div style="height:.5px;width:100%;position:relative;float:left;"></div>
 
 <!--  
+|||||||||| CARD: RISK AND INTERESTING FILE SUMMARY
+-->
+ <div style="margin-left: 10px; width:800;">
+	<h4 style="color:gray;">Exposure Summary</h4>
+	Below is a summary of number of share ACLs by risk level and a summary of file name counts that may contain passwords, sensitive data, or result in remote code execution. Click the titles for more detail.<Br><Br>
+ </div>
+					<div class="LargeCard" style="width:385px;">	
+							<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;">
+							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
+								<button class="toggle-button" onclick="toggleDiv('ChartContent')" style="width: 100%;font-size: 15px; ">
+									<strong>Share ACL Count by Risk Level</strong>
+								</button> 
+							</div>
+							</a>
+						<div id="ChartContent" class="toggle-content">
+							<div class="LargeCardContainer" align="center">											
+									<div class="chart-container">
+									<div id="ChartDashboardRisk"></div>
+										<div class="chart-controls"></div>
+									</div>								  							
+							</div>
+						 </div>
+					</div>
+					
+				
+				
+					<div class="LargeCard" style="width:385px;">	
+							<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;">
+							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
+								<button class="toggle-button" onclick="toggleDiv('ChartContent')" style="width: 100%;font-size: 15px; ">
+									<strong>Exposed File Count by Category</strong>
+								</button> 
+							</div>
+							</a>
+						<div id="ChartContent" class="toggle-content">
+							<div class="LargeCardContainer" align="center">											
+									<div class="chart-container">
+									<div id="ChartDashboardIF"></div>
+										<div class="chart-controls"></div>
+									</div>								  							
+							</div>
+						 </div>
+					</div>
+
+
+<!--  
 |||||||||| CARD: Share Creation Timeline
 -->
+ <div style="height:.5px;width:100%;position:relative;float:left;"></div>
+ <div style="height:130px;"></div>
+	<div style="margin-left: 10px; width:800;">
+	<h4 style="color:gray;">Timelines</h4>
+	Below are charts to help illustrate the share creation and last write timelines.<Br><Br>
+ </div>
 $CardCreationTimeLine
 <div style="height:.5px;width:100%;position:relative;float:left;"></div>
  
+
 <!--  
 |||||||||| CARD: LastAccessDate Timeline
--->
 $CardLastAccessTimeLine
 <div style="height:.5px;width:100%;position:relative;float:left;"></div>
+-->
 
 <!--  
 |||||||||| CARD: LastModifiedDate Timeline
@@ -5175,7 +5462,7 @@ Below is a summary of the SMB share ACL entries discovered on domain computers t
 <label class="tabLabel" onClick="updateTab('accounts',false)" for="accounts"></label>
 <div id="tabPanel" class="tabPanel">
 <div style="margin-left:10px;margin-top:3px">
-<h2>Data Insights: Group Stats</h2>	
+<h2>Group ACL Summary</h2>	
 In the context of this report, excessive read and write share permissions have been defined as any network share ACL containing an explicit entry for the "Everyone", "Authenticated Users", "BUILTIN\Users", "Domain Users", or "Domain Computers" groups. All provide domain users access to the affected shares due to privilege inheritance.
 Below is a summary of the exposure associated with each of those groups. 
 </div>
@@ -5395,7 +5682,7 @@ Below is a summary of the exposure associated with each of those groups.
 <label class="tabLabel" onClick="updateTab('ShareName',false)" for="ShareName"></label>
 <div id="tabPanel" class="tabPanel">
 <div style="margin-left:10px;margin-top:3px">
-<h2>Data Insights: $SampleSum Most Common Share Names</h2>
+<h2>Share Names (Top $SampleSum)</h2>
 This section contains a list of the most common SMB share names. In some cases, shares with the exact same name may be related to a single application or process.  This information can help identify the root cause associated with the excessive privileges and expedite remediation. 
 </div>
 
@@ -5476,7 +5763,7 @@ This section contains a list of the most common SMB share names. In some cases, 
 <label class="tabLabel" onclick="updateTab(&#39;SubNets#39;,false)" for="SubNets"></label>
 <div id="tabPanel" class="tabPanel">
 <div style="margin-left:10px;margin-top:3px">
-<h2>Data Insights: Affected Subnets</h2>
+<h2>Affected Subnets</h2>
 This section contains a list of subnets hosting computers with shares that are configured with accessibe privileges. 
 </div>
 
@@ -5491,7 +5778,7 @@ $SubnetSummaryHTML
 <label class="tabLabel" onClick="updateTab('ShareOwner',false)" for="ShareOwner"></label>
 <div id="tabPanel" class="tabPanel">
 <div style="margin-left:10px;margin-top:3px">
-<h2>Data Insights: $SampleSum Most Common Share Owners</h2>	
+<h2>Share Owners (Top $SampleSum)</h2>	
 This section lists the most common share owners. 
 </div>
 
@@ -5521,7 +5808,7 @@ This section lists the most common share owners.
 <label class="tabLabel" onClick="updateTab('ShareFolders',false)" for="ShareFolders"></label>
 <div id="tabPanel" class="tabPanel">
 <div style="margin-left:10px;margin-top:3px">
-<h2>Data Insights: $SampleSum Most Common Share Folder Groups</h2>
+<h2>Folder Groups (Top $SampleSum)</h2>
 Folder groups are SMB shares that contain the exact same file listing. Each file group has been hashed so they can be quickly correlated. In some cases, shares with the exact same file listing may be related to a single application or process.  This information can help identify the root cause associated with the excessive privileges and expedite remediation.
 </div>
 
@@ -6010,6 +6297,109 @@ The left menu can be used to find summary data, the scan summary is in the table
 <br>
 </div>
 <script>
+
+// --------------------------
+// Dashboard - Interesting Files Chart
+// --------------------------
+
+// Data and categories
+const data = $IFCategoryListCount;
+const categories = $ChartCategoryCatDash;
+
+// Combine data and categories into an array of objects
+//const combined = data.map((value, index) => {
+//  return { value, category: categories[index] };
+//});
+
+// Sort the combined array based on the data values (largest to smallest)
+//combined.sort((a, b) => b.value - a.value);
+
+// Separate the sorted data and categories back into individual arrays
+//const sortedData = combined.map(item => item.value);
+//const sortedCategories = combined.map(item => item.category);
+
+// Initialize ApexCharts
+const ChartDashboardIFOptions = {
+          series: [{
+          data: data
+        }],
+          chart: {
+          type: 'bar',
+          height: 250
+        },
+        plotOptions: {
+          bar: {		 
+            borderRadius: 0,
+            borderRadiusApplication: 'end',
+            horizontal: true,
+			colors: {
+				backgroundBarColors: ['#e0e0e0'],
+				backgroundBarOpacity: 1,
+                ranges: [{
+                    from: 0,
+                    to: 1000,
+                    color: '#f08c41'
+                }]
+            }
+          }
+        },
+        dataLabels: {
+          enabled: false
+        },
+		  grid: {
+			show: false
+		  },
+        xaxis: {
+          categories: categories,
+        }
+        };
+
+const ChartDashboardIF = new ApexCharts(document.querySelector("#ChartDashboardIF"), ChartDashboardIFOptions);
+ChartDashboardIF.render();
+
+// --------------------------
+// Dashboard - Risk Level chart
+// --------------------------
+
+// Initialize ApexCharts
+const ChartDashboardRiskOptions = {
+  series: [{
+    data: [$RiskLevelCountCritical, $RiskLevelCountHigh, $RiskLevelCountMedium, $RiskLevelCountLow]
+  }],
+  chart: {
+    type: 'bar',
+    height: 250
+  },
+  plotOptions: {
+    bar: {		 
+      borderRadius: 0,
+      borderRadiusApplication: 'end',
+      horizontal: true,
+      colors: {
+        backgroundBarColors: ['#e0e0e0'],
+        backgroundBarOpacity: 1,
+        ranges: [{
+          from: 0,
+          to: 1000,
+          color: '#f08c41'
+        }]
+      }
+    }
+  },
+  dataLabels: {
+    enabled: false
+  },
+  grid: {
+    show: false
+  },
+  xaxis: {
+    categories: ['Critical','High','Medium','Low']
+  }
+};
+
+const ChartDashboardRisk = new ApexCharts(document.querySelector("#ChartDashboardRisk"), ChartDashboardRiskOptions);
+ChartDashboardRisk.render();
+
 // --------------------------
 // Function to support collapsing and expanding sections
 // --------------------------
@@ -6410,6 +6800,7 @@ function extractAndDownloadCSV(tableId, columnIndex) {
     // Clean up by removing the link
     document.body.removeChild(link);
 }
+
 	
 </script>
 </div>
@@ -6545,7 +6936,7 @@ $AllSMBSharesCount shares were found.
 $ExcessiveSharesCount shares across $ComputerWithExcessive systems are configured with $ExcessiveSharePrivsCount potentially excessive ACLs.
 $SharesWithWriteCount shares across $ComputerWithWriteCount systems can be written to.
 $SharesHighRiskCount shares across $ComputerwithHighRisk systems are considered high risk.
-$Top5ShareCountTotal of $AllAccessibleSharesCount ($DupPercent) shares are associated with the top 5 share names.
+$Top5ShareCountTotal of $AllAccessibleSharesCount ($DupPercent) shares are associated with the top $SampleSum share names.
 
 The 5 most common share names are:
 
@@ -6685,7 +7076,7 @@ $AllSMBSharesCount shares were found.
 $ExcessiveSharesCount shares across $ComputerWithExcessive systems are configured with $ExcessiveSharePrivsCount potentially excessive ACLs.
 $SharesWithWriteCount shares across $ComputerWithWriteCount systems can be written to.</li>
 $SharesHighRiskCount shares across $ComputerwithHighRisk systems are considered high risk.
-$Top5ShareCountTotal of $AllAccessibleSharesCount ($DupPercent) shares are associated with the top 5 share names.
+$Top5ShareCountTotal of $AllAccessibleSharesCount ($DupPercent) shares are associated with the top $SampleSum share names.
 
 The 5 most common share names are:
 
