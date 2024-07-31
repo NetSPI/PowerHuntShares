@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.90
+# Version: v1.91
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -2228,7 +2228,7 @@ function Invoke-HuntSMBShares
             $ThisFileShareNameList = $ExcessiveSharePrivs | where FileListGroup -eq $FileGroupName | select ShareName -unique -expandproperty sharename | foreach { "$_ <br>"}
             $ThisFileShareNameListUniqueCount = $ThisFileShareNameList | measure | select count -ExpandProperty count 
             $ThisRow = @" 
-	          <tr>	
+	          <tr>
 	          <td>
                 <button class="collapsible">$ThisFileShareNameListUniqueCount</button>
                 <div class="content">
@@ -2245,23 +2245,15 @@ function Invoke-HuntSMBShares
 	          </td>	
 	          <td>              
                   <button class="collapsible"><span style="color:#CE112D;"></span>$ThisFileCount Files</button>
-                  <div class="content">
-                  <div class="filelist" >
+                  <div class="content" style="font-size:11px;width:100px;">
                   $ThisFileList
                   </div>
-                  </div>
-	          </td>		  
-	          <td>
-	          $ComputerBarF
-	          </td>		  
-	          <td>
-	          $ShareBarF
-	          </td>  
+	          </td>		   
 	          <td>
 	          $AclBarF
 	          </td>          	  
 	          </tr>
-"@              
+"@                
             $ThisRow
         }
 
@@ -2323,12 +2315,11 @@ function Invoke-HuntSMBShares
                     $MyFdListBr = $MyFdList -replace "`n", "<br>"
 
                     $ThisFileDirList = @"
-                        <strong style="font-size: 10px;">$fdcount</strong>
-                        <button class="collapsible" style="font-size: 10px;">$fdname ($FdFileCount Files)</button>
-                        <div class="content">
-                        <div class="filelist" style="font-size: 10px;">
+                       
+                        <button class="collapsible" style="font-size: 10px;">$fdcount of $ShareCount shares ($FdFileCount Files)</button>
+                        <div class="content" style="font-size: 10px;background-color: white;padding-left:2px;top: 2px;">
+                        <!-- $fdname<br><br> -->
                         $MyFdListBr
-                        </div>
                         </div>                
 "@
                     $ThisFileDirList
@@ -3313,6 +3304,13 @@ function Invoke-HuntSMBShares
             If($ShareNameRiskScore -lt .80){ $RiskLevel = "$ShareNameRiskScoreP Medium"}
             If($ShareNameRiskScore -lt .50){ $RiskLevel = "$ShareNameRiskScoreP Low"} 
             #>
+
+            # ----------------------------------------------------------------------
+            # Build UNC Path Lists
+            # ----------------------------------------------------------------------
+            $GetRowUncPathsRaw   = $ExcessiveSharePrivs | where ShareName -EQ "$ShareName" | Select SharePath -Unique
+            $GetRowUncPathsCount = $GetRowUncPathsRaw | measure | select count -ExpandProperty count
+            $GetRowUncPaths      = $GetRowUncPathsRaw | ForEach-Object { $ASDF = $_.SharePath; "$ASDF<br>" } | Out-String
                                       
             # ----------------------------------------------------------------------
             # Build Share Name Summary Page Rows
@@ -3320,8 +3318,13 @@ function Invoke-HuntSMBShares
             # Build Rows
             $ThisRow = @" 
 	          <tr h="$ShareRowHasHighRisk" w="$ShareRowHasWrite" r="$ShareRowHasRead" i="$ShareRowCountInteresting" e="$ShareRowHasEmpty" s="$ShareRowHasStale" n="$ShareRowHasDefault" >
-              <td>
-              $ShareCount
+              <td style="text-align:Center;">
+                    <button class="collapsible">
+		            $GetRowUncPathsCount
+                     </button>
+                    <div class="content" style="width:80px;overflow-wrap: break-word;text-align:left;font-size: 10px;">
+                  	    $GetRowUncPaths                                                   
+                    </div>  
 	          </td>	 
 	          <td style="vertical-align: top;text-align:left">
                   <button class="collapsible" style="text-align:left">
@@ -3373,7 +3376,7 @@ function Invoke-HuntSMBShares
                <strong>$RiskLevel</strong>
                 </button>
                 <div class="content">
-                    <div class="filelistparent" style="font-size: 10px;"> 
+                    <div class="filelistparent" style="font-size: 10px;width:90px;"> 
                       <strong>Risk Summary</strong><br>
                       <table class="subtable">
                        <tr id="ignore">
@@ -3407,10 +3410,10 @@ function Invoke-HuntSMBShares
 	          <td>
                 <button class="collapsible" style="font-size: 10px;"><strong>$SimLevel</strong></button>
                     <div class="content">
-                        <div class="filelistparent" style="font-size: 10px;">          
+                        <div class="filelistparent" style="font-size: 10px;width:120px;">          
                             <table class="subtable">
                                 <tr id="ignore">
-                                    <td><strong>Final Weighted Score: </strong>:</td><td>&nbsp;<strong>$FinalSimilarityScoreP</strong></td>
+                                    <td><strong>Final Score: </strong>:</td><td>&nbsp;<strong>$FinalSimilarityScoreP</strong></td>
                                 </tr> 
                                 <tr id="ignore">
                                     <td>File Name Coverage:</td><td>&nbsp;$SimularityFileCoverageScoreP</td>
@@ -3427,68 +3430,68 @@ function Invoke-HuntSMBShares
                             <strong>File Name Metrics</strong><Br>
                             <table class="subtable">
                                 <tr id="ignore">
-                                    <td>1 File FG Coverage  &nbsp;10%:</td><td>&nbsp;$SimularityFileCoverage10</td>
+                                    <td>FG Coverage  &nbsp;10%:</td><td>&nbsp;$SimularityFileCoverage10</td>
                                 </tr>
                                 <tr id="ignore">
-                                    <td>1 File FG Coverage  &nbsp;20%:</td><td>&nbsp;$SimularityFileCoverage20</td>
+                                    <td>FG Coverage  &nbsp;20%:</td><td>&nbsp;$SimularityFileCoverage20</td>
                                 </tr>
                                 <tr id="ignore">
-                                    <td>1 File FG Coverage  &nbsp;30%:</td><td>&nbsp;$SimularityFileCoverage30</td>
+                                    <td>FG Coverage  &nbsp;30%:</td><td>&nbsp;$SimularityFileCoverage30</td>
                                 </tr>
                                 <tr id="ignore">
-                                    <td>1 File FG Coverage  &nbsp;40%:</td><td>&nbsp;$SimularityFileCoverage40</td>
+                                    <td>FG Coverage  &nbsp;40%:</td><td>&nbsp;$SimularityFileCoverage40</td>
                                 </tr>
                                 <tr id="ignore">
-                                    <td>1 File FG Coverage  &nbsp;51%:</td><td>&nbsp;$SimularityFileCoverage50</td>
+                                    <td>FG Coverage  &nbsp;51%:</td><td>&nbsp;$SimularityFileCoverage50</td>
                                 </tr> 
                                 <tr id="ignore">
-                                    <td>1 File FG Coverage  &nbsp;60%:</td><td>&nbsp;$SimularityFileCoverage60</td>
+                                    <td>FG Coverage  &nbsp;60%:</td><td>&nbsp;$SimularityFileCoverage60</td>
                                 </tr> 
                                 <tr id="ignore">
-                                    <td>1 File FG Coverage  &nbsp;70%:</td><td>&nbsp;$SimularityFileCoverage70</td>
+                                    <td>FG Coverage  &nbsp;70%:</td><td>&nbsp;$SimularityFileCoverage70</td>
                                 </tr> 
                                 <tr id="ignore">
-                                    <td>1 File FG Coverage  &nbsp;80%:</td><td>&nbsp;$SimularityFileCoverage80</td>
+                                    <td>FG Coverage  &nbsp;80%:</td><td>&nbsp;$SimularityFileCoverage80</td>
                                 </tr> 
                                 <tr id="ignore">
-                                    <td>1 File FG Coverage  &nbsp;90%:</td><td>&nbsp;$SimularityFileCoverage90</td>
+                                    <td>FG Coverage  &nbsp;90%:</td><td>&nbsp;$SimularityFileCoverage90</td>
                                 </tr> 
                                 <tr id="ignore">
-                                    <td>1 File FG Coverage 100%:</td><td>&nbsp;$SimularityFileCoverage100</td>
+                                    <td>FG Coverage 100%:</td><td>&nbsp;$SimularityFileCoverage100</td>
                                 </tr>                                  
                             </table>
 
                             <Br><Br><strong>Folder Group Metrics</strong><Br>
                             <table class="subtable">
                                 <tr id="ignore">
-                                    <td>1 FG Covers &nbsp;10% of shares:</td><td>&nbsp;$SimularityFolderGroupCoverage10</td>
+                                    <td>1 FG &nbsp;10%/shares:</td><td>&nbsp;$SimularityFolderGroupCoverage10</td>
                                 </tr> 
                                 <tr id="ignore">
-                                    <td>1 FG Covers &nbsp;20% of shares:</td><td>&nbsp;$SimularityFolderGroupCoverage20</td>
+                                    <td>1 FG &nbsp;20%/shares:</td><td>&nbsp;$SimularityFolderGroupCoverage20</td>
                                 </tr> 
                                 <tr id="ignore">
-                                    <td>1 FG Covers &nbsp;30% of shares:</td><td>&nbsp;$SimularityFolderGroupCoverage30</td>
+                                    <td>1 FG &nbsp;30%/shares:</td><td>&nbsp;$SimularityFolderGroupCoverage30</td>
                                 </tr> 
                                 <tr id="ignore">
-                                    <td>1 FG Covers &nbsp;40% of shares:</td><td>&nbsp;$SimularityFolderGroupCoverage40</td>
+                                    <td>1 FG &nbsp;40%/shares:</td><td>&nbsp;$SimularityFolderGroupCoverage40</td>
                                 </tr> 
                                 <tr id="ignore">
-                                    <td>1 FG Covers &nbsp;51% of shares:</td><td>&nbsp;$SimularityFolderGroupCoverage50</td>
+                                    <td>1 FG &nbsp;51%/shares:</td><td>&nbsp;$SimularityFolderGroupCoverage50</td>
                                 </tr> 
                                 <tr id="ignore">
-                                    <td>1 FG Covers &nbsp;60% of shares:</td><td>&nbsp;$SimularityFolderGroupCoverage60</td>
+                                    <td>1 FG &nbsp;60%/shares:</td><td>&nbsp;$SimularityFolderGroupCoverage60</td>
                                 </tr> 
                                 <tr id="ignore">
-                                    <td>1 FG Covers &nbsp;70% of shares:</td><td>&nbsp;$SimularityFolderGroupCoverage70</td>
+                                    <td>1 FG &nbsp;70%/shares:</td><td>&nbsp;$SimularityFolderGroupCoverage70</td>
                                 </tr> 
                                 <tr id="ignore">
-                                    <td>1 FG Covers &nbsp;80% of shares:</td><td>&nbsp;$SimularityFolderGroupCoverage80</td>
+                                    <td>1 FG &nbsp;80%/shares:</td><td>&nbsp;$SimularityFolderGroupCoverage80</td>
                                 </tr> 
                                 <tr id="ignore">
-                                    <td>1 FG Covers &nbsp;90% of shares:</td><td>&nbsp;$SimularityFolderGroupCoverage90</td>
+                                    <td>1 FG &nbsp;90%/shares:</td><td>&nbsp;$SimularityFolderGroupCoverage90</td>
                                 </tr> 
                                 <tr id="ignore">
-                                    <td>1 FG Covers 100% of shares:</td><td>&nbsp;$SimularityFolderGroupCoverage100</td>
+                                    <td>1 FG 100%/shares:</td><td>&nbsp;$SimularityFolderGroupCoverage100</td>
                                 </tr>
 
                             </table>
@@ -3498,7 +3501,7 @@ function Invoke-HuntSMBShares
                                     <td>Same Share Name:</td><td>&nbsp;1</td>
                                 </tr>
                                 <tr id="ignore">
-                                    <td>Folder Group/Owner Ratio Average:</td><td>&nbsp;$SimularitySharePropFGOwnerAvgT</td>
+                                    <td>folder Group/Owner Ratio Average:</td><td>&nbsp;$SimularitySharePropFGOwnerAvgT</td>
                                 </tr>
                                 <tr id="ignore">
                                     <td>Creation Date/Share Ratio:</td><td>&nbsp;$SimularitySharePropCreateDateRatioT</td>
@@ -3510,10 +3513,10 @@ function Invoke-HuntSMBShares
                             <Br><Br><strong>Experimental Metrics</strong><Br>
                             <table class="subtable">
                                 <tr id="ignore">
-                                    <td>Share/Owner Ratio:</td><td>&nbsp;$SimularityCalcShareOwner</td>
+                                    <td>Share Owner Ratio:</td><td>&nbsp;$SimularityCalcShareOwner</td>
                                 </tr>
                                 <tr id="ignore">
-                                    <td>Folder Group/Name Ratio:</td><td>&nbsp;$SimularityCalcShareFg</td>
+                                    <td>File Group/Name Ratio:</td><td>&nbsp;$SimularityCalcShareFg</td>
                                 </tr>
                                 <tr id="ignore">
                                     <td>All Descriptions Match:</td><td>&nbsp;$SimularityCalcShareDesc</td>
@@ -3523,51 +3526,41 @@ function Invoke-HuntSMBShares
                     </div>	              	 
 	          </td>	
               <td>                  
-                  <button class="collapsible" style="font-size: 10px;"><strong>$ShareFolderGroupCount</strong></button>
-                  <div class="content">
-                  <div class="filelistparent" >
+                  <button class="collapsible" style="font-size: 10px;text-align:left;"><strong>$ShareFolderGroupCount</strong></button>
+                  <div class="content" style="width:100px;">
                   $ShareFolderGroupList
-                  </div>
                   </div> 
               </td>   
 	          <td style="font-size: 10px;">
               <button class="collapsible" style="font-size: 10px;"><strong>$SimularityFileCommonListTopNum Files</strong></button>
-              <div class="content">                                         
-                  <div class="filelistparent">
-                  <table class=`"subtable`" style=`"width:80%"`>
+              <div class="content" style="width:100px;overflow-wrap: break-word;">                                         
+                  <table class="subtable" style="width:80%;"`>
                   $SimularityFileCommonListTop
                   </table>
-                  </div>
               </div>
 	          </td> 
 	          <td style="font-size: 10px;">
 
               <button class="collapsible" style="font-size: 10px;"><strong>$ShareRowInterestingFileTotalCount Files</strong></button>
-                  <div class="content">  
-                    <div class="filelistparent" style="font-size: 10px;">
-
+                  <div class="content" style="font-size: 10px;width:100px;overflow-wrap: break-word;">                 
                           <button class="collapsible"><span style="font-size: 10px;">$ShareRowInterestingFileListSecretsCount Secrets Files</span></button>
-                          <div class="content">                                         
-                              <div class="filelistparent" style="font-size: 10px;">
-                              <table class=`"subtable`" style=`"width:80%"`>
+                          <div class="content" style="font-size: 10px;">                                         
+                              <table class="subtable" style="width:80%">
                               $ShareRowInterestingFileListSecrets
                               </table>
-                              </div>
+
                           </div>
 
                           <button class="collapsible"><span style="font-size: 10px;">$ShareRowInterestingFileListDataCount Data Files</span></button>
-                          <div class="content">                                         
-                              <div class="filelistparent" style="font-size: 10px;">
-                              <table class=`"subtable`" style=`"width:80%"`>
+                          <div class="content" style=";font-size: 10px;">                                         
+                              <table class="subtable" style="width:80%"`>
                               $ShareRowInterestingFileListData
                               </table>
-                              </div>
                           </div>
-                      </div>
                  </div>           
-	          </td>           	  
+	          </td>          	  
 	          </tr>
-"@              
+"@               
             $ThisRow  
         } 
 
@@ -3716,8 +3709,10 @@ $NewHtmlReport = @"
 
 	.content {
 	  max-height: 0;
+      --max-width: 0;
 	  overflow: hidden;
 	  transition: max-height 0.2s ease-out;
+	  transition: max-width 0.2s ease-out;
 	}
 
 	.tabs{
@@ -4304,7 +4299,7 @@ $NewHtmlReport = @"
 		margin-top: 5px;
 		margin-right: 5px;
 		margin-bottom: 5px;
-		width: 90%		
+		--width: 90%		
 	}
 
 	.tablecolinfo {
@@ -4844,7 +4839,7 @@ input[type="checkbox"]:checked::before {
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('sharesum');radiobtn.checked = true;">Share Summary</label>		
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ACLsum');radiobtn.checked = true;">ACL Summary</label>		
 		<label class="tabLabel" style="width:100%;color:#07142A;background-color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:2px;margin-bottom:2px;"><Strong>Data Insights</Strong></label>	  	  	
-		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;">Interesting Files</label>		
+		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF');">Interesting Files</label>		
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;">Share Names</label>					
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareFolders');radiobtn.checked = true;">Folder Groups</label>		
         <label href="#" class="stuff" style="width:100%;" onclick="radiobtn = document.getElementById('SubNets');radiobtn.checked = true;">Affected Subnets</label>				
@@ -4879,19 +4874,17 @@ input[type="checkbox"]:checked::before {
 					<div class="LargeCard" style="width:25%; ">	
 						
 							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
-								<button class="toggle-button" onclick="toggleDiv('FileTotal')" style="width: 100%;font-size: 15px; "><strong>Interesting File Names Found</strong></button> 
-							</div>
-						
-						<div id="FileTotal" class="toggle-content">
+								<strong>Interesting File Names Found</strong>
+							</div>												
 							<div class="LargeCardContainer" style="height:165px;text-align:center;vertical-align: middle;">	
 									<br><br>						
-								   <span class="percentagetext" style = "font-size: 50px;color:#f08c41;">                    
+								   <span class="percentagetext" style = "font-size: 50px; color:#f08c41;">                    
 									$InterestingFilesAllFilesCount                        
 									</span>	
 									<br>
 									($InterestingFilesAllFilesCountU unique file names)										
 							</div>
-						 </div>
+					
 					</div>	
 
 
@@ -4899,19 +4892,15 @@ input[type="checkbox"]:checked::before {
 					<div class="LargeCard" style="width:68.5%">	
 						
 							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
-								<button class="toggle-button" onclick="toggleDiv('ChartContent')" style="width: 100%;font-size: 15px; ">
-									<strong>Category Distribution</strong>
-								</button> 
+								<strong>File Name Category Distribution</strong>
 							</div>
 						
-						<div id="ChartContent" class="toggle-content">
 							<div class="LargeCardContainer" align="center">											
 									<div class="chart-container">
 									<div id="chart"></div>
 										<div class="chart-controls"></div>
 									</div>								  							
 							</div>
-						 </div>
 					</div>	
 									
 
@@ -5155,42 +5144,34 @@ input[type="checkbox"]:checked::before {
 	<h4 style="color:gray;">Exposure Summary</h4>
 	Below is a summary of number of share ACLs by risk level and a summary of file name counts that may contain passwords, sensitive data, or result in remote code execution. Click the titles for more detail.<Br><Br>
  </div>
-					<div class="LargeCard" style="width:385px;">	
-							<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;">
+		            <div class="LargeCard" style="width:385px;">	
+							<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;" style="text-decoration:none;">
 							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
-								<button class="toggle-button" onclick="toggleDiv('ChartContent')" style="width: 100%;font-size: 15px; ">
-									<strong>Share ACL Count by Risk Level</strong>
-								</button> 
+								<strong>Share ACL Count by Risk Level</strong>
 							</div>
 							</a>
-						<div id="ChartContent" class="toggle-content">
 							<div class="LargeCardContainer" align="center">											
 									<div class="chart-container">
 									<div id="ChartDashboardRisk"></div>
 										<div class="chart-controls"></div>
 									</div>								  							
 							</div>
-						 </div>
 					</div>
 					
 				
 				
 					<div class="LargeCard" style="width:385px;">	
-							<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;">
+							<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;" style="text-decoration:none;">
 							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
-								<button class="toggle-button" onclick="toggleDiv('ChartContent')" style="width: 100%;font-size: 15px; ">
-									<strong>Exposed File Count by Category</strong>
-								</button> 
+								<strong>Exposed File Count by Category</strong>
 							</div>
 							</a>
-						<div id="ChartContent" class="toggle-content">
 							<div class="LargeCardContainer" align="center">											
 									<div class="chart-container">
 									<div id="ChartDashboardIF"></div>
 										<div class="chart-controls"></div>
 									</div>								  							
 							</div>
-						 </div>
 					</div>
 
 
@@ -5697,7 +5678,8 @@ This section contains a list of the most common SMB share names. In some cases, 
         <label><input type="checkbox" class="filter-checkbox" name="e"> Empty</label>
         <label><input type="checkbox" class="filter-checkbox" name="s"> Stale</label>
         <label><input type="checkbox" class="filter-checkbox" name="n"> Default</label>
-        <div id="filterCounter" style="margin-top:10px;height: 25px;font-size:11">Loading...</div>        
+        <div id="filterCounter" style="margin-top:10px;height: 25px;font-size:11">Loading...</div>   
+        <div style="margin-top:-25px;height: 25px;font-size:11;text-align: left; margin-left: 100px;"><a style="margin-top:46px;height: 25px;font-size:11;" href="#" onclick="extractAndDownloadCSV('sharenametable', 0)">Export</a></div>						           
 </div>	
 <br>
 <table id="sharenametable" class="table table-striped table-hover tabledrop" style="width: 95%;">
@@ -5828,16 +5810,14 @@ Folder groups are SMB shares that contain the exact same file listing. Each file
         <div id="filterCounterTwo" style="margin-top:14px;height: 25px;font-size:11">Loading...</div>        
 </div>	
 <br>
-<table class="table table-striped table-hover tabledrop" id="foldergrouptable">
+<table class="table table-striped table-hover tabledrop" id="foldergrouptable" style="width:95%">
   <thead>
     <tr>  
-      <th onclick="sortTable('foldergrouptable',0,'number')" align="left">Unique Share Name Count</th>
+      <th onclick="sortTable('foldergrouptable',0,'number')" align="left">Unique Share Names</th>
       <th onclick="sortTable('foldergrouptable',1,'number')" align="left">Affected Share Count</th>      
       <th onclick="sortTable('foldergrouptable',2,'alpha')"  align="left">File Group</th>
       <th onclick="sortTable('foldergrouptable',3,'number')" align="left">File Count</th>
-      <th onclick="sortTable('foldergrouptable',4,'number')" align="left">Affected Computers</th>
-	  <th onclick="sortTable('foldergrouptable',5,'number')" align="left">Affected Shares</th>
-	  <th onclick="sortTable('foldergrouptable',6,'number')" align="left">Affected ACLs</th>	 	 
+	  <th onclick="sortTable('foldergrouptable',4,'number')" align="left">Affected ACLs</th>	 	 
     </tr>
   </thead>
   <tbody>
@@ -6411,10 +6391,18 @@ for (i = 0; i < coll.length; i++) {
     this.classList.toggle("active");
     var content = this.nextElementSibling;
     if (content.style.maxHeight){
+
       content.style.maxHeight = null;
+
+      // Adjust width  
+      content.style.width = 0;
+
     } else {
       content.style.Height = content.scrollHeight + "px";
       content.style.maxHeight = "100%";
+      
+      // Adjust width  
+      content.style.width = "auto";  
     } 
   });
 }
@@ -6422,9 +6410,10 @@ for (i = 0; i < coll.length; i++) {
 function toggleDiv(TargetObjectId) {
     var content = document.getElementById(TargetObjectId);
     if (content.style.display === "none") {
-        content.style.display = "block";
+        content.style.display = "block";        
     } else {
-        content.style.display = "none";
+        content.style.display = "none";  
+        content.style.width = 0;    
     }
 }
 
@@ -6504,7 +6493,7 @@ const chartOptions = {
     },
     plotOptions: {
         bar: {
-            borderRadius: 4,
+            borderRadius: 0,
             horizontal: false,
             colors: {
                 ranges: [{
@@ -6768,24 +6757,38 @@ applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 
 
 // CSV export function
 function extractAndDownloadCSV(tableId, columnIndex) {
-    const regex = /\\\\[^\s\\]+\\[^\s\\]+\\[^\s\\]+/g; // UNC path regex
+    // Regex to match \\server\share, \\server\share folder, and \\server\share\file.ext formats, allowing spaces
+    const regex = /\\\\[^\\\s]+\\[^\\]+(?:\\[^\\]*)*/g;
     const uncPaths = [];
 
-    // Loop through each filtered row
-    currentFilteredRows.forEach(row => {
+    // Get the table element by ID
+    const table = document.getElementById(tableId);
+
+    // Determine rows to process: filtered rows or all rows if no filter is applied
+    const rowsToProcess = currentFilteredRows.length > 0 ? currentFilteredRows : Array.from(table.rows);
+
+    // Loop through each row to process
+    rowsToProcess.forEach(row => {
         const cells = row.getElementsByTagName('td');
         if (cells[columnIndex]) {
-            const cellValue = cells[columnIndex].innerText;
-            const matches = cellValue.match(regex);
-            if (matches) {
-                uncPaths.push(...matches);
+            // Get the div with class 'content' inside the cell
+            const contentDiv = cells[columnIndex].querySelector('.content');
+            if (contentDiv) {
+                const cellValue = contentDiv.innerText;
+                const matches = cellValue.match(regex);
+                if (matches) {
+                    uncPaths.push(...matches);
+                }
             }
         }
     });
 
+    // Remove empty or whitespace-only entries
+    const cleanUncPaths = uncPaths.map(path => path.trim()).filter(path => path.length > 0);
+
     // Generate CSV content
     let csvContent = 'data:text/csv;charset=utf-8,';
-    csvContent += uncPaths.join('\n');
+    csvContent += cleanUncPaths.join('\n');
 
     // Create a link to download the CSV file
     const encodedUri = encodeURI(csvContent);
