@@ -5,7 +5,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.45
+# Version: v1.46
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Analyze-HuntSMBShares
 {    
@@ -1062,20 +1062,26 @@ function Analyze-HuntSMBShares
         $FileNamePatternsAll.Columns.Add("SampleRegex")  | Out-Null # Used to parse sample data from file matches.
 
         # Add rows to data table - Sensitive data
-        $FileNamePatternsAll.Rows.Add("*credit*","Credit card number and/or PII.","None.","Sensitive","")    | Out-Null
-        $FileNamePatternsAll.Rows.Add("*pci*","","None.","Sensitive","")                                     | Out-Null
-        $FileNamePatternsAll.Rows.Add("*social*","","None.","Sensitive","")                                  | Out-Null
-        $FileNamePatternsAll.Rows.Add("*ssn*","","None.","Sensitive","")                                     | Out-Null
-        $FileNamePatternsAll.Rows.Add("human*","","None.","Sensitive","")                                    | Out-Null
-        $FileNamePatternsAll.Rows.Add("finance*","","None.","Sensitive","")                                  | Out-Null
-        $FileNamePatternsAll.Rows.Add("Health*","","None.","Sensitive","")                                   | Out-Null
-        $FileNamePatternsAll.Rows.Add("Billing*","","None.","Sensitive","")                                  | Out-Null
-        $FileNamePatternsAll.Rows.Add("patient*","","None.","Sensitive","")                                  | Out-Null
-        $FileNamePatternsAll.Rows.Add("HR*","","None.","Sensitive","")                                       | Out-Null        
-        $FileNamePatternsAll.Rows.Add("*ftp*","","None.","Sensitive","")                                     | Out-Null
-        $FileNamePatternsAll.Rows.Add("*Program Files*","","None.","Sensitive","") | Out-Null
-
+        $FileNamePatternsAll.Rows.Add("*credit*","Credit card number and/or PII.","None.","Sensitive","")     | Out-Null
+        $FileNamePatternsAll.Rows.Add("*pci*","","None.","Sensitive","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*social*","","None.","Sensitive","")                                   | Out-Null
+        $FileNamePatternsAll.Rows.Add("*ssn*","","None.","Sensitive","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("human*","","None.","Sensitive","")                                     | Out-Null
+        $FileNamePatternsAll.Rows.Add("finance*","","None.","Sensitive","")                                   | Out-Null
+        $FileNamePatternsAll.Rows.Add("*medical*","","None.","Sensitive","")                                  | Out-Null
+        $FileNamePatternsAll.Rows.Add("Health*","","None.","Sensitive","")                                    | Out-Null
+        $FileNamePatternsAll.Rows.Add("Billing*","","None.","Sensitive","")                                   | Out-Null
+        $FileNamePatternsAll.Rows.Add("*payment*","","None.","Sensitive","")                                  | Out-Null
+        $FileNamePatternsAll.Rows.Add("patient*","","None.","Sensitive","")                                   | Out-Null
+        $FileNamePatternsAll.Rows.Add("HR*","","None.","Sensitive","")                                        | Out-Null        
+        $FileNamePatternsAll.Rows.Add("*nessus*","This is a vulnerability scanner.","None.","Sensitive","")   | Out-Null
+        $FileNamePatternsAll.Rows.Add("*nexpose*","This is a vulnerability scanner.","None.","Sensitive","")  | Out-Null
+        $FileNamePatternsAll.Rows.Add("*qualys*","This is a vulnerability scanner.","None.","Sensitive","")   | Out-Null
+        $FileNamePatternsAll.Rows.Add("*tripwire*","This is a vulnerability scanner.","None.","Sensitive","") | Out-Null
+       
         # Add rows to data table - Files containing passwords
+        $FileNamePatternsAll.Rows.Add("Bootstrap.ini*","Used for Windows Deployment services (WDS) PXE installation and may contain credentials.","None.","Secret","")                                 | Out-Null
+        $FileNamePatternsAll.Rows.Add(".bcd*","","None.","Secret","")                                        | Out-Null
         $FileNamePatternsAll.Rows.Add("context.xml*","","None.","Secret","")                                 | Out-Null
         $FileNamePatternsAll.Rows.Add("db2cli.ini*","","None.","Secret","")                                  | Out-Null
         $FileNamePatternsAll.Rows.Add("ftpd.*","","None.","Secret","")                                       | Out-Null
@@ -1092,6 +1098,9 @@ function Analyze-HuntSMBShares
         $FileNamePatternsAll.Rows.Add("*ntds.dit*","","None.","Secret","")                                   | Out-Null
         $FileNamePatternsAll.Rows.Add("pg_hba.conf*","","None.","Secret","")                                 | Out-Null
         $FileNamePatternsAll.Rows.Add("php.ini*","","None.","Secret","")                                     | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.pfx*","Private key.","None.","Secret","")                           | Out-Null
+        $FileNamePatternsAll.Rows.Add("policy.xml*","May be associated with SCCM/ConfigMgr and contain credentials to support PXE that can be recovered, base64 decoded, or decrypted using PXEThief or https://github.com/1njected/CMvarDecrypt.","None.","Secret","")                                   | Out-Null
+        $FileNamePatternsAll.Rows.Add(".pol*","May contain credentials to support PXE or other things.","None.","Secret","")                                   | Out-Null
         $FileNamePatternsAll.Rows.Add("putty.reg*","","None.","Secret","")                                   | Out-Null
         $FileNamePatternsAll.Rows.Add("postgresql.conf*","","None.","Secret","")                             | Out-Null
         $FileNamePatternsAll.Rows.Add("SAM","","None.","Secret","")                                          | Out-Null
@@ -1105,28 +1114,14 @@ function Analyze-HuntSMBShares
         $FileNamePatternsAll.Rows.Add("tomcat-users.xml*","","None.","Secret","")                            | Out-Null
         $FileNamePatternsAll.Rows.Add("sitemanager.xml*","","None.","Secret","")                             | Out-Null
         $FileNamePatternsAll.Rows.Add("users.*","","None.","Secret","")                                      | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.vmx*","","None.","Secret","")                                       | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.vmdk*","","None.","Secret","")                                      | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.nvram*","","None.","Secret","")                                     | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.vmsd*","","None.","Secret","")                                      | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.vmsn*","","None.","Secret","")                                      | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.vmss*","","None.","Secret","")                                      | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.vmem*","","None.","Secret","")                                      | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.vhd*","","None.","Secret","")                                       | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.vhdx*","","None.","Secret","")                                      | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.avhd*","","None.","Secret","")                                      | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.avhdx*","","None.","Secret","")                                     | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.vsv*","","None.","Secret","")                                       | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.vbox*","","None.","Secret","")                                      | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.vbox-prev*","","None.","Secret","")                                 | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.vdi*","","None.","Secret","")                                       | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.hdd*","","None.","Secret","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*variable*.dat*","This file is used for SCCM/ConfigMgr PXE deployments. It may contain passwords that can be recovered, base64 decoded, or decrypted using PXEThief or https://github.com/1njected/CMvarDecrypt.","None.","Secret","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.var*","Often contain credentials. May be assocaited with SCCM/MECM","None.","Secret","")             | Out-Null
         $FileNamePatternsAll.Rows.Add("*.sav*","","None.","Secret","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*setting.ini*","","None.","Secret","")                                | Out-Null
         $FileNamePatternsAll.Rows.Add("*.pvm*","","None.","Secret","")                                       | Out-Null
         $FileNamePatternsAll.Rows.Add("*.pvs*","","None.","Secret","")                                       | Out-Null
         $FileNamePatternsAll.Rows.Add("*.qcow*","","None.","Secret","")                                      | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.qcow2*","","None.","Secret","")                                     | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.img*","","None.","Secret","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.qcow2*","","None.","Secret","")                                     | Out-Null     
         $FileNamePatternsAll.Rows.Add("*vcenter*","","None.","Secret","")                                    | Out-Null
         $FileNamePatternsAll.Rows.Add("*vault*","","None.","Secret","")                                      | Out-Null
         $FileNamePatternsAll.Rows.Add("*DefaultAppPool*","","None.","Secret","")                             | Out-Null
@@ -1135,6 +1130,36 @@ function Analyze-HuntSMBShares
         $FileNamePatternsAll.Rows.Add("wp-config.php*","","None.","Secret","")                               | Out-Null
         $FileNamePatternsAll.Rows.Add("*.config","","None.","Secret","")                                     | Out-Null
         $FileNamePatternsAll.Rows.Add("*.dtsx*","","None.","Secret","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.rdp*","","None.","Secret","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.aws*","","None.","Secret","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*vnc.ini*","","None.","Secret","")                                    | Out-Null
+        $FileNamePatternsAll.Rows.Add("*DataSource.xml*","Group policy file that may contain passwords.","None.","Secret","")                         | Out-Null
+        $FileNamePatternsAll.Rows.Add("*ScheduledTasks.xml*","Group policy file that may contain passwords.","None.","Secret","")                     | Out-Null
+        $FileNamePatternsAll.Rows.Add("*Groups.xml*","Group policy file that may contain passwords.","None.","Secret","")                             | Out-Null
+        $FileNamePatternsAll.Rows.Add("*Drives.xml*","Group policy file that may contain passwords.","None.","Secret","")                             | Out-Null
+        $FileNamePatternsAll.Rows.Add("*unattend*","","None.","Secret","")                                   | Out-Null
+        $FileNamePatternsAll.Rows.Add("*sysprep*","","None.","Secret","")                                    | Out-Null
+
+        # Add rows to data table - System/VM Images
+        $FileNamePatternsAll.Rows.Add("*.img*","","None.","SystemImage","")                                                                            | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.iso*","This is system image.It may contain passwords in Variables.dat, unattend.xml, and policy.xml files.","None.","SystemImage","")                                   | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.wmi*","This is system image.It may contain passwords in Variables.dat, unattend.xml, and policy.xml files.","None.","SystemImage","")                                   | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vmx*","This is a virtual machine image file.","None.","SystemImage","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vmdk*","This is a virtual machine image file.","None.","SystemImage","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.nvram*","This is a virtual machine image file.","None.","SystemImage","")                                     | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vmsd*","This is a virtual machine image file.","None.","SystemImage","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vmsn*","This is a virtual machine image file.","None.","SystemImage","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vmss*","This is a virtual memory file that could be used to recover data or System Images.","None.","SystemImage","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vmem*","This is a virtual memory file that could be used to recover data or System Images.","None.","SystemImage","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vhd*","This is a virtual machine image file.","None.","SystemImage","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vhdx*","This is a virtual machine image file.","None.","SystemImage","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.avhd*","This is a virtual machine image file.","None.","SystemImage","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.avhdx*","This is a virtual machine image file.","None.","SystemImage","")                                     | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vsv*","This is a virtual memory file that could be used to recover data or SystemImages.","None.","SystemImage","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vbox*","This is a virtual machine image file.","None.","SystemImage","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vbox-prev*","This is a virtual machine image file.","None.","SystemImage","")                                 | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vdi*","This is a virtual machine image file.","None.","SystemImage","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.hdd*","This is a virtual machine image file.","None.","SystemImage","")                                       | Out-Null
 
         # Add rows to data table - Database files  
         $FileNamePatternsAll.Rows.Add("*database*","","None.","Database","")                                 | Out-Null
@@ -1142,6 +1167,8 @@ function Analyze-HuntSMBShares
         $FileNamePatternsAll.Rows.Add("*.sqlite*","","None.","Database","")                                  | Out-Null
         $FileNamePatternsAll.Rows.Add("*.idf*","","None.","Database","")                                     | Out-Null
         $FileNamePatternsAll.Rows.Add("*.mdf*","","None.","Database","")                                     | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.ora*","","None.","Database","")                                     | Out-Null
+        $FileNamePatternsAll.Rows.Add("*oracle*","","None.","Database","")                                   | Out-Null
 
         # Add rows to data table - Backup files
         $FileNamePatternsAll.Rows.Add("*.bak*","","None.","Backup","")                                       | Out-Null
@@ -1149,6 +1176,7 @@ function Analyze-HuntSMBShares
         $FileNamePatternsAll.Rows.Add("*backup*","","None.","Backup","")                                     | Out-Null
         $FileNamePatternsAll.Rows.Add("*.tar*","","None.","Backup","")                                       | Out-Null
         $FileNamePatternsAll.Rows.Add("*.zip*","","None.","Backup","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("IT*","May contain IT department files","None.","Backup","")           | Out-Null
 
         # Add rows to data table - Scripts
         $FileNamePatternsAll.Rows.Add("*.ps1*","","None.","Script","")                                       | Out-Null
@@ -1164,6 +1192,7 @@ function Analyze-HuntSMBShares
         $FileNamePatternsAll.Rows.Add("*.dll","","None.","Binaries","")                                      | Out-Null
         $FileNamePatternsAll.Rows.Add("*.exe","","None.","Binaries","")                                      | Out-Null
         $FileNamePatternsAll.Rows.Add("*.msi","","None.","Binaries","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*Program Files*","This is an application directory.","None.","Binaries","") | Out-Null
 
         # Use keyword from define file instead
         if($FileKeywordsPath){
@@ -1796,25 +1825,27 @@ function Analyze-HuntSMBShares
             $ThisFileBars = Get-GroupFileBar -DataTable $ExcessiveSharePrivs -Name $FileGroupName -AllComputerCount $ComputerCount -AllShareCount $AllSMBSharesCount -AllAclCount $ShareACLsCount
             $ComputerBarF = $ThisFileBars.ComputerBar
             $ShareBarF = $ThisFileBars.ShareBar
-            $AclBarF = $ThisFileBars.AclBar
+            $AclBarF = $ThisFileBars.AclBar            
             $ThisFileListPrep = $ThisFileBars.FileList 
             $ThisFileList = $ThisFileListPrep -replace "`n", "<br>"          
             $ThisFileCount = $ThisFileBars.FileCount
             $ThisFileShareCount = $ThisFileBars.Sharecount
             $ThisFileShareNameList = $ExcessiveSharePrivs | where FileListGroup -eq $FileGroupName | select ShareName -unique -expandproperty sharename | foreach { "$_ <br>"}
-            $ThisFileShareNameListUniqueCount = $ThisFileShareNameList | measure | select count -ExpandProperty count 
+            $ThisFileShareNameListUniqueCount = $ThisFileShareNameList | measure | select count -ExpandProperty count
+            $ShareFileShareUnc = $ExcessiveSharePrivs | where FileListGroup -eq $FileGroupName | select SharePath -unique -expandproperty SharePath | foreach { "$_ <br>"}
             $ThisRow = @" 
 	          <tr>
 	          <td>
                 <button class="collapsible">$ThisFileShareNameListUniqueCount</button>
-                <div class="content">
-                    <div class="filelist" >
+                <div class="content" style="font-size:11px;width:100px;">
                     $ThisFileShareNameList
-                    </div>
                 </div>
 	          </td>	
 	          <td>
-                $ThisFileShareCount
+                <button class="collapsible">$ThisFileShareCount</button>
+                <div class="content" style="font-size:11px;width:100px;">
+                $ShareFileShareUnc
+                </div>
 	          </td>
 	          <td>
               $FileGroupName
@@ -4380,7 +4411,7 @@ input[type="checkbox"]:checked::before {
                     <div class="searchbar" style="text-align: left; display:flex;flex-direction:left;">
                         <div style="position: relative; display: flex; align-items: center;">
 							<input type="text" id="filterInputIF" placeholder=" Search..." style="height: 25px; font-size: 14px; margin-top: 0px; margin-left: 10px; padding-left: 10px; border-radius: 3px; border: 1px solid #BDBDBD; outline: none; color: #07142A; line-height: 25px;">							
-							<div style="position: absolute; left: 200px; top: 12px; cursor: pointer;color:#07142A;" onmouseover="this.style.textDecoration='underline';" onmouseout="this.style.textDecoration='';this.style.fontWeight='normal';" onclick="document.getElementById('filterInputIF').value = '';applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF');">Clear</div>
+							<div style="position: absolute; left: 200px; top: 12px; cursor: pointer;color:grey;" onmouseover="this.style.color=#07142A;" onmouseout="this.style.textDecoration='';this.style.fontWeight='normal';" onclick="document.getElementById('filterInputIF').value = '';applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF');">Clear</div>
 						</div>
 						<div id="filterCounterIF" style="margin-top:47px;height: 25px;font-size:11;text-align: left; margin-left: -194px;">Loading...</div>
                         <div style="margin-top:47px;height: 25px;font-size:11;text-align: left; margin-left: 6px;"><a style="margin-top:46px;height: 25px;font-size:11;" href="#" onclick="extractAndDownloadCSV('InterestingFileTable', 3)">Export</a></div>						      
@@ -5267,6 +5298,7 @@ Folder groups are SMB shares that contain the exact same file listing. Each file
 <div style="border-bottom: 1px solid #DEDFE1 ;  background-color:#f0f3f5; height:5px; margin-bottom:10px;"></div>
 <div class="searchbar">
         <input type="text" id="filterInputTwo" placeholder=" Search..." style="height: 25px; font-size: 14px;margin-top:7px;margin-left:10px;padding-left:3px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
+        <div style="position: absolute; left:390px; top: 121px; cursor: pointer;color:grey;" onmouseover="this.style.color=#07142A;" onmouseout="this.style.textDecoration='';this.style.fontWeight='normal';" onclick="document.getElementById('filterInputTwo').value = '';applyFiltersAndSort('foldergrouptable', 'filterInputTwo', 'filterCounterTwo', 'paginationfg');">Clear</div>
         <!--
 		<strong>&nbsp;&nbsp;Quick Filters</strong>
         <label><input type="checkbox" class="filter-checkbox" name="h"> Highly Exploitable</label>
@@ -5278,6 +5310,7 @@ Folder groups are SMB shares that contain the exact same file listing. Each file
         <label><input type="checkbox" class="filter-checkbox" name="n"> Default</label>
 		-->
         <div id="filterCounterTwo" style="margin-top:14px;height: 25px;font-size:11">Loading...</div>        
+        <div style="font-size:11;text-align: left; margin-left: 100px; margin-top: -25px;"><a style="font-size:11;" href="#" onclick="extractAndDownloadCSV('foldergrouptable', 1)">Export</a></div>
 </div>	
 <br>
 <table class="table table-striped table-hover tabledrop" id="foldergrouptable" style="width:95%">
