@@ -1,55 +1,75 @@
-
-#Requires -Version 5.1 
+#Requires -Version 5.1
 #--------------------------------------
-# Function: Analyze-HuntSMBShares
+# Function: Invoke-HuntSMBShares
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.46
+# Version: v1.92
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
-function Analyze-HuntSMBShares
+function Invoke-HuntSMBShares
 {    
 	<#
             .SYNOPSIS
-            This function can be used to analyze data collected by Invoke-HuntSMBShares offline, analyze data, and generate the report.  
-            It's goal in life is to expedite development.
+            This function can be used to inventory to SMB shares on the current Active Directory domain and identify potentially high risk exposures.  
+			It will automatically generate csv files and html summary report.
             .PARAMETER Threads
             Number of concurrent tasks to run at once.
             .PARAMETER Output Directory
-            File path report will be exported.
+            File path where all csv and html report will be exported.
             .EXAMPLE
-	        PS C:\> Analyze-HuntSMBShares -TargetDirectory c:\temp\SmbShareHunt-06132024085736\ -OutputDirectory c:\temp
+	        PS C:\temp\test> Invoke-HuntSMBShares -Threads 20 -OutputDirectory c:\temp\test -DomainController 10.1.1.1 -ExportFindings -Username domain\user -Password password
+            .EXAMPLE   
+            C:\temp\test> runas /netonly /user:domain\user PowerShell.exe
+            PS C:\temp\test> Import-Module Invoke-HuntSMBShares.ps1
+            PS C:\temp\test> Invoke-HuntSMBShares -Threads 20 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\ -DomainController 10.1.1.1 -ExportFindings -Username domain\user -Password password        
+            .EXAMPLE
+			PS C:\temp\test> Invoke-HuntSMBShares -Threads 20 -ExportFindings -OutputDirectory c:\temp\test
+
              ---------------------------------------------------------------
-             Analyze-HuntSMBShares                                       
+             INVOKE-HUNTSMBSHARES                                        
              ---------------------------------------------------------------
               This function automates the following tasks:                  
                                                                 
+              o Determine current computer's domain                         
+              o Enumerate domain computers                                  
+              o Check if computers respond to ping requests         
+              o Filter for computers that have TCP 445 open and accessible  
+              o Enumerate SMB shares                                        
+              o Enumerate SMB share permissions                             
               o Identify shares with potentially excessive privileges      
               o Identify shares that provide read or write access           
               o Identify shares thare are high risk                         
               o Identify common share owners, names, & directory listings   
               o Generate last written & last accessed timelines             
-              o Generate html summary report and detailed csv files                      
+              o Generate html summary report and detailed csv files         
+
+              Note: This can take hours to run in large environments.       
              ---------------------------------------------------------------
              |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
              ---------------------------------------------------------------
-             [*][07/03/2024 11:20] IMPORT DATA
+             SHARE DISCOVERY      
              ---------------------------------------------------------------
-             [*][07/03/2024 11:20] Importing computer data...
-             [*][07/03/2024 11:20] - acme.com is the target domain.
-             [*][07/03/2024 11:20] - 11724 computers found.
-             [*][07/03/2024 11:20] - 282 Active Directory subnets found.
-             [*][07/03/2024 11:20] - 5733 computers responded to ping requests.
-             [*][07/03/2024 11:20] - 5567 computers have TCP port 445 open.
-             [*][07/03/2024 11:20] Importing share data...
-             [*][07/03/2024 11:21] - 25949 SMB shares were found across 4886 computers.
-             [*][07/03/2024 11:21] Importing acl data...
-             [*][07/03/2024 11:21] - 41923 share permissions were enumerated.
-             [*][07/03/2024 11:21] Importing excessive privilege data...
-             [*][07/03/2024 11:21] - 4633 acls were found configured with potentially excess
-            ive privileges on 1839 shares across 808 computers.
+             [*][03/01/2021 09:35] Scan Start
+             [*][03/01/2021 09:35] Output Directory: c:\temp\smbshares\SmbShareHunt-03012021093504
+             [*][03/01/2021 09:35] Successful connection to domain controller: dc1.demo.local
+             [*][03/01/2021 09:35] Performing LDAP query for computers associated with the demo.local domain
+             [*][03/01/2021 09:35] - 245 computers found
+             [*][03/01/2021 09:35] Pinging 245 computers
+             [*][03/01/2021 09:35] - 55 computers responded to ping requests.
+             [*][03/01/2021 09:35] Checking if TCP Port 445 is open on 55 computers
+             [*][03/01/2021 09:36] - 49 computers have TCP port 445 open.
+             [*][03/01/2021 09:36] Getting a list of SMB shares from 49 computers
+             [*][03/01/2021 09:36] - 217 SMB shares were found.
+             [*][03/01/2021 09:36] Getting share permissions from 217 SMB shares
+             [*][03/01/2021 09:37] - 374 share permissions were enumerated.
+             [*][03/01/2021 09:37] Getting directory listings from 33 SMB shares
+             [*][03/01/2021 09:37] - Targeting up to 3 nested directory levels
+             [*][03/01/2021 09:37] - 563 files and folders were enumerated.
+             [*][03/01/2021 09:37] Identifying potentially excessive share permissions
+             [*][03/01/2021 09:37] - 33 potentially excessive privileges were found across 12 systems..
+             [*][03/01/2021 09:37] Scan Complete
              ---------------------------------------------------------------
-             SHARE DATA ANALYSIS      
+             SHARE ANALYSIS      
              ---------------------------------------------------------------
              [*][03/01/2021 09:37] Analysis Start
              [*][03/01/2021 09:37] - 14 shares can be read across 12 systems.
@@ -110,21 +130,45 @@ function Analyze-HuntSMBShares
 	#>
     [CmdletBinding()]
     Param(
+       [Parameter(Mandatory = $false,
+        HelpMessage = 'Domain user to authenticate with domain\user. For computer lookup.')]
+        [string]$Username,
+
+        [Parameter(Mandatory = $false,
+        HelpMessage = 'Domain password to authenticate with domain\user. For computer lookup.')]
+        [string]$Password,
+
+        [Parameter(Mandatory = $false,
+        HelpMessage = 'Credentials to use when connecting to a Domain Controller. For computer lookup.')]
+        [System.Management.Automation.PSCredential]
+        [System.Management.Automation.Credential()]$Credential = [System.Management.Automation.PSCredential]::Empty,
+
+        [Parameter(Mandatory = $false,
+        HelpMessage = 'Domain controller for Domain and Site that you want to query against. For computer lookup.')]
+        [string]$DomainController,
         
         [Parameter(Mandatory = $false,
         HelpMessage = 'Number of threads to process at once.')]
         [int]$Threads = 20,
 
-        [Parameter(Mandatory = $false,
+        [Parameter(Mandatory = $true,
         HelpMessage = 'Directory to output files to.')]
         [string]$OutputDirectory,
 
-        [Parameter(Mandatory = $true,
-        HelpMessage = 'The PowerHuntShare output folder.')]
-        [string]$TargetDirectory,
+        [Parameter(Mandatory = $false,
+        HelpMessage = 'Export to CSV file format to support importing into other tools.')]
+        [switch]$ExportFindings,
 
         [Parameter(Mandatory = $false,
-        HelpMessage = 'Number of items to sample for summary report. Typically something like: SmbShareHunt-06132024085403')]
+        HelpMessage = 'Convert the export to the NOVA file format.')]
+        [switch]$ExportNova,
+
+        [Parameter(Mandatory = $false,
+        HelpMessage = 'This is the path to a host list. One per line.')]
+        [string] $HostList,
+
+        [Parameter(Mandatory = $false,
+        HelpMessage = 'Number of items to sample for summary report.')]
         [int]$SampleSum = 200,
 
         [Parameter(Mandatory = $false,
@@ -148,29 +192,37 @@ function Analyze-HuntSMBShares
         [switch] $ShowRunpaceErrors,
 
         [Parameter(Mandatory = $false,
-        HelpMessage = 'Import all data from files vs analyzing raw import data. Mostly used when making code changes.')]
-        [switch] $ImportAll,
-
-        [Parameter(Mandatory = $false,
         HelpMessage = 'Supress timeline report generation.')]
         [switch] $SupressTimelineRpt,
 
         [Parameter(Mandatory = $false,
         HelpMessage = 'Number of directory levels to capture file list.')]
         [int] $DirLevel = 3,
-                
+
         [Parameter(Mandatory = $false,
         HelpMessage = 'Path to interesting files template to import file keywords to search for.')]
-        [string] $FileKeywordsPath        
+        [string] $FileKeywordsPath,
+
+        [Parameter(Mandatory = $false,
+        HelpMessage = 'Do not perform ping scan.')]
+        [switch] $NoPing
+        
     )
 	
     
     Begin
     {
         Write-Output " ===============================================================" 
-        Write-Output " Analyze-HuntSMBShares                                "
+        Write-Output " INVOKE-HUNTSMBSHARES                                           "
         Write-Output " ==============================================================="         
         Write-Output "  This function automates the following tasks:                  "
+        Write-Output "                                                                "
+        Write-Output "  o Determine current computer's domain                         "
+        Write-Output "  o Enumerate domain computers                                  "
+        Write-Output "  o Check if computers respond to ping requests                 "
+        Write-Output "  o Filter for computers that have TCP 445 open and accessible  "
+        Write-Output "  o Enumerate SMB shares                                        "
+        Write-Output "  o Enumerate SMB share permissions                             "
         Write-Output "  o Identify shares with potentially excessive privielges       "
         Write-Output "  o Identify shares that provide read or write access           "                     
         Write-Output "  o Identify shares thare are high risk                         "
@@ -181,34 +233,49 @@ function Analyze-HuntSMBShares
         Write-Output "  Note: This can take hours to run in large environments.       "              
         Write-Output " ---------------------------------------------------------------"  
         Write-Output " |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||"
-        Write-Output " ---------------------------------------------------------------"           
+        Write-Output " ---------------------------------------------------------------"  
+        Write-Output " SHARE DISCOVERY      "
+        Write-Output " ---------------------------------------------------------------"
+
 
         # Get start time
         $StartTime = Get-Date
         $StopWatch =  [system.diagnostics.stopwatch]::StartNew()
         $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+        Write-Output " [*][$Time] Scan Start"
 
-        # Set target directory
-        if(-not $TargetDirectory){          
-           $TargetDirectory = ".\Results"
+        # Nova format
+        If ($Nova) {
+            Write-Verbose " [*][$Time] The results will be export to the NOVA format as well."
+            $rMasterFindingId = "FindingTemplateSourceIdentifier"
+            $rFindingName = "FindingName"
+            $rAssetName = "AssetName" # This could eventually be updated to reflect a different Nova asset, e.g. 'AD Domain'.
         }else{
-           $TargetDirectory = "$TargetDirectory\Results" 
-           $TargetDirectory = $TargetDirectory.Replace('\\','\')
-        }
-        Write-Output " [*] Target directory: $TargetDirectory"
-
-        # Set output directory
-        if(-not $OutputDirectory){
-           $OutputDirectory = $TargetDirectory
-        }
-        Write-Output " [*] Output directory: $OutputDirectory"
+            $rMasterFindingId = "MasterFindingSourceIdentifier"
+            $rFindingName = "InstanceName"
+            $rAssetName = "AssetName" # R7 only has one option. 
+        }  
         
-        # Check for target directory
-        if(Test-Path $TargetDirectory){ 
-            #Write-Output " [x]The target directory exists."
+
+        # ----------------------------------------------------------------------
+        # Create output directory
+        # ----------------------------------------------------------------------
+        if(Test-Path $OutputDirectory){                                
+
+            # Verify output directory path
+            $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+            $FolderDateTime =  Get-Date -Format "MMddyyyyHHmmss"
+            $OutputDirectoryBase = "$OutputDirectory\SmbShareHunt-$FolderDateTime"                                        
+
+            #  Create sub directories
+            mkdir $OutputDirectoryBase | Out-Null
+            $SubDir = "Results"
+            mkdir "$OutputDirectoryBase\Results" | Out-Null
+            $OutputDirectory = "$OutputDirectoryBase\Results"
+            Write-Output " [*][$Time] Output Directory: $OutputDirectoryBase"
         }else{
-            Write-Output " [x] The $TargetDirectory did not exist."
-            Write-Output " [!] Aborting operation."
+            Write-Output " [x][$Time] The $OutputDirectory was not writable."
+            Write-Output " [!][$Time] Aborting operation."
             break
         }
 
@@ -224,253 +291,612 @@ function Analyze-HuntSMBShares
             }
         }
 
-        # Check for output directory
-        if(Test-Path $OutputDirectory){ 
-            #Write-Output " [x][$Time] The output directory exists."
+        # ----------------------------------------------------------------------
+        # Import computers from file 
+        # ----------------------------------------------------------------------
+        if($HostList){
+            
+            if(test-path $HostList){
+                $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+                Write-Output " [*][$Time] Importing computer targets from $HostList"
+                $HostListContent = gc $HostList
+                $DomainComputers = $HostListContent |
+                foreach {
+                    $object = New-Object psobject
+                    $Object | Add-Member Noteproperty ComputerName $_
+                    $Object  
+                }
+                $TargetDomain = "SmbHunt"
+                $ComputerCount = $DomainComputers | measure | select count -ExpandProperty count            
+                $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+                Write-Output " [*][$Time] $ComputerCount systems will be targeted"
+            }else{
+                Write-Output " [!][$Time] The host list was not accessible: $HostList"
+                break
+            }
+        }
+        
+        # Set variables
+        $GlobalThreadCount = $Threads
+
+        # ----------------------------------------------------------------------
+        # Enumerate domain computers 
+        # ----------------------------------------------------------------------
+
+        if(-not $HostList){
+
+            # Create PS Credential object
+            if($Username -and $Password)
+            {
+                $secpass = ConvertTo-SecureString $Password -AsPlainText -Force
+                $Credential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList ($Username, $secpass)
+            }
+
+            # Set target domain        
+            $DCRecord = Get-LdapQuery -LdapFilter "(&(objectCategory=computer)(userAccountControl:1.2.840.113556.1.4.803:=8192))" -DomainController $DomainController -Credential $Credential | select -first 1 | select properties -expand properties -ErrorAction SilentlyContinue
+            [string]$DCHostname = $DCRecord.dnshostname
+            [string]$DCCn = $DCRecord.cn
+            [string]$TargetDomain = $DCHostname -replace ("$DCCn\.","") 
+            
+            $Time =  Get-Date -UFormat "%m/%d/%Y %R"    
+            if($DCHostname)
+            {
+                Write-Output " [*][$Time] Successful connection to domain controller: $DCHostname"             
+            }else{
+                Write-Output " [*][$Time] There appears to have been an error connecting to the domain controller."
+                Write-Output " [*][$Time] Aborting."
+                break
+            }           
+
+            # Status user
+            Write-Output " [*][$Time] Performing LDAP query for computers associated with the $TargetDomain domain"
+
+            # Get domain computers        
+            $DomainComputersRecord = Get-LdapQuery -LdapFilter "(objectCategory=Computer)" -DomainController $DomainController -Credential $Credential
+            $DomainComputers = $DomainComputersRecord | 
+            foreach{
+                
+                $DnsHostName = [string]$_.Properties['dnshostname']
+                if($DnsHostName -notlike ""){
+                    $object = New-Object psobject
+                    $Object | Add-Member Noteproperty ComputerName $DnsHostName
+                    $Object      
+                }
+            }
+
+            # Status user
+            $ComputerCount = $DomainComputers.count
+            $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+            Write-Output " [*][$Time] - $ComputerCount computers found"
+
+            # Save results
+            # Write-Output " [*] - Saving results to $OutputDirectory\$TargetDomain-Domain-Computers.csv"
+            $DomainComputers | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Domain-Computers.csv"
+            $null = Convert-DataTableToHtmlTable -DataTable $DomainComputers -Outfile "$OutputDirectory\$TargetDomain-Domain-Computers.html" -Title "Domain Computers" -Description "This page shows the domain computers discovered for the $TargetDomain Active Directory domain."
+            $DomainComputersFile = "$TargetDomain-Domain-Computers.csv"
+            $DomainComputersFileH = "$TargetDomain-Domain-Computers.html"
+
+            # Get subnet info
+            $DomainSubnets = Get-DomainSubnet -DomainController $DomainController -Credential $Credential
+            $DomainSubnetsCount = $DomainSubnets | measure | select count -ExpandProperty count
+            $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+            Write-Output " [*][$Time] - $DomainSubnetsCount subnets found"
+            $DomainSubnets | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Domain-Subnets.csv"
+
+        }
+
+        # ----------------------------------------------------------------------
+        # Identify computers that respond to ping reqeusts
+        # ----------------------------------------------------------------------
+
+        if($NoPing){
+            Write-Output " [*][$Time] - Skipping ping scan."
+            $ComputerPingableCount = 0
         }else{
-            Write-Output " [x] The $OutputDirectory did not exist."
-            Write-Output " [!] Aborting operation."
+
+            # Status user
+            $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+            Write-Output " [*][$Time] Pinging $ComputerCount computers"
+
+            # Ping computerss
+            $PingResults = $DomainComputers | Invoke-Ping -Throttle $GlobalThreadCount
+
+            # select computers that respond
+            $ComputersPingable = $PingResults |
+            foreach {
+
+                $computername = $_.address
+                $status = $_.status
+                if($status -like "Responding"){
+                    $object = new-object psobject            
+                    $Object | add-member Noteproperty ComputerName $computername
+                    $Object | add-member Noteproperty status $status
+                    $Object
+                }
+            }
+
+            # Status user
+            $ComputerPingableCount = $ComputersPingable.count
+            $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+            Write-Output " [*][$Time] - $ComputerPingableCount computers responded to ping requests."        
+
+            # Save results
+            # Write-Output " [*] - Saving results to $OutputDirectory\$TargetDomain-Domain-Computers-Pingable.csv"
+            if($ComputersPingable){
+                $ComputersPingable | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Domain-Computers-Pingable.csv"
+                $null = Convert-DataTableToHtmlTable -DataTable $ComputersPingable -Outfile "$OutputDirectory\$TargetDomain-Domain-Computers-Pingable.html" -Title "Domain Computers: Ping Response" -Description "This page shows the domain computers for the $TargetDomain Active Directory domain that responded to ping requests."
+            }
+            $ComputersPingableFile = "$TargetDomain-Domain-Computers-Pingable.csv"
+            $ComputersPingableFileH =  "$TargetDomain-Domain-Computers-Pingable.html"
+        }
+
+        # ----------------------------------------------------------------------
+        # Identify computers that have TCP 445 open and accessible
+        # ----------------------------------------------------------------------
+
+        # Status user
+        $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+        Write-Output " [*][$Time] Checking if TCP Port 445 is open on $ComputerCount computers"
+
+        # Create script block to port scan tcp 445
+        $MyScriptBlock = {
+                $ComputerName = $_.ComputerName
+                try{                      
+                    $Socket = New-Object System.Net.Sockets.TcpClient($ComputerName,"445")
+                    
+                    if($Socket.Connected)
+                    {
+                        $Status = "Open"             
+                        $Socket.Close()
+                    }
+                    else 
+                    {
+                        $Status = "Closed"    
+                    }
+                }
+                catch{
+                    $Status = "Closed"
+                }   
+
+                if($Status -eq "Open")
+                {            
+                    $object = new-object psobject            
+                    $Object | add-member Noteproperty ComputerName $computername
+                    $Object | add-member Noteproperty 445status $status
+                    $Object                            
+                }
+        }
+           
+        # Perform port scan of tcp 445 threaded
+        $Computers445Open = $DomainComputers | Invoke-Parallel -ScriptBlock $MyScriptBlock -ImportSessionFunctions -ImportVariables -Throttle $GlobalThreadCount -RunspaceTimeout $RunSpaceTimeOut -ErrorAction SilentlyContinue
+
+        # Status user
+        $Computers445OpenCount = $Computers445Open.count
+        $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+        Write-Output " [*][$Time] - $Computers445OpenCount computers have TCP port 445 open."
+        
+         
+        # Stop if no ports are accessible
+        If ($Computers445OpenCount -eq 0)
+        {
+            $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+            Write-Output " [*][$Time] - Aborting."
             break
         }
 
-        Write-Output " ---------------------------------------------------------------"
-        Write-Output " [*][$Time] IMPORT SHARE DATA"
-        Write-Output " ---------------------------------------------------------------"
-        Write-Output " [*][$Time] Importing computer data..."
-
-        $TargetDomain = "Testing"
-
-        # Get all computers
-        try{
-            $DomainComputers          =  import-csv "$TargetDirectory\*-Domain-Computers.csv"
-            $ComputerCount            = $DomainComputers | Measure-Object | select count -ExpandProperty count 
-
-            # Get domain
-            $DomainNamePrep = $DomainComputers | select computername -first 1 -expandproperty computername
-            $TargetDomain   = Get-ADDomainFromFQDN -FQDN $DomainNamePrep 
-            $Time =  Get-Date -UFormat "%m/%d/%Y %R"
-            Write-Output " [*][$Time] - $TargetDomain is the target domain."
-            Write-Output " [*][$Time] - $ComputerCount computers found."
-        }catch{
-            $DomainComputers  = ""
-            $ComputerCount = 0
-            Write-Output " [*][$Time] - Computers file could not be imported."                          
+        # Save results
+        # Write-Output " [*] - Saving results to $OutputDirectory\$TargetDomain-Domain-Computers-Open445.csv"                
+        if($Computers445Open){
+            $Computers445Open | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Domain-Computers-Open445.csv"
+            $null = Convert-DataTableToHtmlTable -DataTable $Computers445Open -Outfile "$OutputDirectory\$TargetDomain-Domain-Computers-Open445.html" -Title "Domain Computers: Port 445 Open" -Description "This page shows the domain computers for the $TargetDomain Active Directory domain with port 445 open."
         }
-
-        # Get all pingable
-        try{
-            $ComputersPingable        =  import-csv "$TargetDirectory\*-Domain-Computers-Pingable.csv"
-            $ComputerPingableCount    = $ComputersPingable | Measure-Object | select count -ExpandProperty count 
-            $Time =  Get-Date -UFormat "%m/%d/%Y %R"
-            Write-Output " [*][$Time] - $ComputerPingableCount computers responded to ping requests." 
-        }catch{
-            $ComputersPingable = ""
-            $ComputersPingableCount = 0
-            Write-Output " [*][$Time] - Computers that were pingable file could not be imported."
-        }         
-
-        # Get all open ports
-        try{
-            $Computers445Open         =  import-csv "$TargetDirectory\*-Domain-Computers-Open445.csv"
-            $Computers445OpenCount    = $Computers445Open | Measure-Object | select count -ExpandProperty count 
-            $Time =  Get-Date -UFormat "%m/%d/%Y %R"
-            Write-Output " [*][$Time] - $Computers445OpenCount computers have TCP port 445 open."
-        }catch{
-            $Computers445Open = ""
-            $Computers445OpenCount = 0
-            Write-Output " [*][$Time] - Computers with open port 445 file could not be imported."
-        }
-
-        # Get Subnets
-        try{
-            $DomainSubnets            =  import-csv "$TargetDirectory\*-Domain-Subnets.csv"
-            $DomainSubnetsCount       = $DomainSubnets | measure | select count -ExpandProperty count
-            $Time =  Get-Date -UFormat "%m/%d/%Y %R"
-            Write-Output " [*][$Time] - $DomainSubnetsCount Active Directory subnets found."
-        }catch{
-            $DomainSubnets  = ""
-            $DomainSubnetsCount = 0
-            Write-Output " [*][$Time] - Subnets file could not be imported."
-        }
-
-        # Get all shares
-        Write-Output " [*][$Time] Importing share data..." 
-        try{
-            $AllSMBShares             = import-csv "$TargetDirectory\*-Shares-Inventory-All.csv"
-            $AllSMBSharesCount        = $AllSMBShares | Measure-Object | select count -ExpandProperty count         
-
-            # Get all computers with shares
-            $AllComputersWithShares   = $AllSMBShares | Select-Object ComputerName -Unique
-            $AllComputersWithSharesCount =  $AllComputersWithShares | Measure-Object | select count -ExpandProperty count 
-             $Time =  Get-Date -UFormat "%m/%d/%Y %R"
-            Write-Output " [*][$Time] - $AllSMBSharesCount SMB shares were found across $AllComputersWithSharesCount computers."
-        }catch{
-            $AllSMBShares = ""
-            $AllComputersWithShares = ""
-            $AllSMBSharesCount = 0
-            $AllComputersWithSharesCount = 0
-            Write-Output " [*][$Time] - Shares file could not be imported."
-        }
-
-        # Get all acls
-        Write-Output " [*][$Time] Importing acl data..." 
-        try{
-            $ShareACLs                =  import-csv "$TargetDirectory\*-Shares-Inventory-All-ACL.csv"
-            $ShareACLsCount           = $ShareACLs | Measure-Object | select count -ExpandProperty count
-            $Time =  Get-Date -UFormat "%m/%d/%Y %R"
-            Write-Output " [*][$Time] - $ShareACLsCount share permissions were enumerated." 
-        }catch{
-            $ShareACLs = ""
-            $ShareACLsCount = 0
-            Write-Output " [*][$Time] - Share ACL file could not be imported."
-        }
-
-        # Get acls with excessive privileges
-        Write-Output " [*][$Time] Importing excessive privilege data..." 
-        try{
-            $ExcessiveSharePrivs      = import-csv "$TargetDirectory\*-Shares-Inventory-Excessive-Privileges.csv"              
-            $ExcessiveSharePrivsCount = $ExcessiveSharePrivs | Measure-Object | select count -ExpandProperty count 
-            $ExcessiveAclCount        = $ExcessiveSharePrivs | Measure-Object | select count -ExpandProperty count #sloppy patch
-        }catch{
-            Write-Output " [*][$Time] - Excessive privileges file could not be imported - aborted."
-        }        
-
-        # Get shares with excessive privileges          
-        $ExcessiveShares          = $ExcessiveSharePrivs | Select-Object ComputerName,ShareName -unique
-        $ExcessiveSharesCount     = $ExcessiveShares     | Measure-Object | select count -ExpandProperty count
-
-        # Get computers with excessive privileges              
-        $ComputerWithExcessive    = $ExcessiveSharePrivs | Select-Object ComputerName -Unique | Measure-Object | select count -ExpandProperty count
-        $Time =  Get-Date -UFormat "%m/%d/%Y %R"
-
-        Write-Output " [*][$Time] - $ExcessiveSharePrivsCount acls were found configured with potentially excessive privileges on $ExcessiveSharesCount shares across $ComputerWithExcessive computers."                   
-
-        Write-Output " ---------------------------------------------------------------"
-        Write-Output " [*][$Time] ANALYZE SHARE DATA"
-        Write-Output " ---------------------------------------------------------------"
-        
-        # Get non default share access
-        Write-Output " [*][$Time] Identifying non-default share access..." 
-        try{
-            if($ImportAll){
-                 Write-Output " [*][$Time] - Importing from file..."
-                $SharesNonDefault = import-csv "$TargetDirectory\*-Shares-Inventory-Excessive-Privileges-NonDefault.csv"
-            } else {
-                Write-Output " [*][$Time] - Parsing excessive privileges..."
-                $SharesNonDefault = $ShareACLs | 
-                Foreach {
-
-                    if(($_.ShareName -notlike 'admin$') -or ($_.ShareName -notlike 'c$') -or ($_.ShareName -notlike 'd$') -or ($_.ShareName -notlike 'e$') -or ($_.ShareName -notlike 'f$'))
-                    {
-                        $_ # out to file
-                    }
-                }
-            }
-            $AclNonDefaultCount = $SharesNonDefault | measure | select count -ExpandProperty count
-            $SharesNonDefaultCount = $SharesNonDefault | Select-Object SharePath -Unique | Measure-Object | select count -ExpandProperty count
-            $ComputerwithNonDefaultCount = $SharesNonDefault | Select-Object ComputerName -Unique | Measure-Object | select count -ExpandProperty count
-            $Time =  Get-Date -UFormat "%m/%d/%Y %R"
-            Write-Output " [*][$Time] - $SharesNonDefaultCount shares are considered non-default across $ComputerwithNonDefaultCount systems."
-        }catch{
-            $AclNonDefaultCount = 0
-            $SharesNonDefaultCount = 0
-            $ComputerwithNonDefaultCount = 0
-            Write-Output " [*][$Time] - Non default shares file could not be imported."
-        }
-
-        # Get shares that provide read access
-        Write-Output " [*][$Time] Identifying excessive read access..." 
-        try{
-            if($ImportAll){
-                Write-Output " [*][$Time] - Importing from file..."
-                $SharesWithread = import-csv "$TargetDirectory\*-Shares-Inventory-Excessive-Privileges-Read.csv"
-            } else {
-                Write-Output " [*][$Time] - Parsing excessive privileges..."
-                $SharesWithread = $ExcessiveSharePrivs | 
-                Foreach {
-
-                    if(($_.FileSystemRights -like "*read*"))
-                    {
-                        $_ # out to file
-                    }
-                } 
-            }              
-            $AclWithReadCount = $SharesWithread | Measure-Object | select count -ExpandProperty count 
-            $SharesWithReadCount = $SharesWithread | Select-Object SharePath -Unique | Measure-Object | select count -ExpandProperty count
-            $ComputerWithReadCount = $SharesWithread | Select-Object ComputerName -Unique | Measure-Object | select count -ExpandProperty count
-            $Time =  Get-Date -UFormat "%m/%d/%Y %R"
-            Write-Output " [*][$Time] - $SharesWithReadCount shares can be read across $ComputerWithReadCount computers."
-        }catch{
-            $AclWithReadCount = 0
-            $SharesWithReadCount = 0 
-            $ComputerWithReadCount = 0
-            Write-Output " [*][$Time] - Read shares file could not be imported."
-        }
-
-        # Get shares that provide write access
-        Write-Output " [*][$Time] Identifying excessive write access..." 
-        try{
-            if($ImportAll){
-                Write-Output " [*][$Time] - Importing from file..."
-                $SharesWithWrite = import-csv "$TargetDirectory\*-Shares-Inventory-Excessive-Privileges-Write.csv"
-            }else{
-                Write-Output " [*][$Time] - Parsing excessive privileges..."
-                $SharesWithWrite = $ExcessiveSharePrivs | 
-                Foreach {
-
-                    if(($_.FileSystemRights -like "*GenericAll*") -or ($_.FileSystemRights -like "*Write*"))
-                    {
-                        $_ # out to file
-                    }
-                }
-            }
-            $AclWithWriteCount = $SharesWithWrite | Measure-Object | select count -ExpandProperty count
-            $SharesWithWriteCount = $SharesWithWrite | Select-Object SharePath -Unique | Measure-Object | select count -ExpandProperty count
-            $ComputerWithWriteCount = $SharesWithWrite | Select-Object ComputerName -Unique | Measure-Object | select count -ExpandProperty count
-            $Time =  Get-Date -UFormat "%m/%d/%Y %R"
-            Write-Output " [*][$Time] - $SharesWithWriteCount shares can be written to across $ComputerWithWriteCount systems."          
-        }catch{
-            $AclWithWriteCount = 0
-            $SharesWithWriteCount = 0
-            $ComputerWithWriteCount = 0
-            Write-Output " [*][$Time] - Write shares file could not be imported."
-        }
-
-        # Get high risk share access
-        try{
-            Write-Output " [*][$Time] Identifying high risk access..." 
-            if($ImportAll){
-                Write-Output " [*][$Time] - Importing from file..."
-                $SharesHighRisk = import-csv "$TargetDirectory\*-Shares-Inventory-Excessive-Privileges-HighRisk.csv"
-            }else{
-                Write-Output " [*][$Time] - Parsing excessive privileges..."
-                $SharesHighRisk = $ExcessiveSharePrivs | 
-                Foreach {
-
-                    if(($_.ShareName -like 'c$') -or ($_.ShareName -like 'admin$') -or ($_.ShareName -like "*wwwroot*") -or ($_.ShareName -like "*inetpub*") -or ($_.ShareName -like 'c') -or ($_.ShareName -like 'C') -or ($_.ShareName -like 'c_share'))
-                    {
-                        $_ # out to file
-                    }
-                }
-            }
-            $AclHighRiskCount = $SharesHighRisk | Measure-Object | select count -ExpandProperty count 
-            $SharesHighRiskCount = $SharesHighRisk | Select-Object SharePath -Unique | Measure-Object | select count -ExpandProperty count
-            $ComputerwithHighRisk = $SharesHighRisk | Select-Object ComputerName -Unique | Measure-Object | select count -ExpandProperty count
-            $Time =  Get-Date -UFormat "%m/%d/%Y %R"
-            Write-Output " [*][$Time] - $SharesHighRiskCount shares are considered high risk across $ComputerwithHighRisk systems."
-        }catch{
-            $AclHighRiskCount = 0
-            $SharesHighRiskCount = 0
-            $ComputerwithHighRisk = 0
-             Write-Output " [*][$Time] - High risk shares file could not be imported."
-        }
-        
-        Write-Output " [*][$Time] Identifying trends..." 
+        $Computers445OpenFile = "$TargetDomain-Domain-Computers-Open445.csv"
+        $Computers445OpenFileH ="$TargetDomain-Domain-Computers-Open445.html"
 
         # ----------------------------------------------------------------------
-        # Identify common excessive share owners
-        # ----------------------------------------------------------------------                
+        # Enumerate computer SMB shares
+        # ----------------------------------------------------------------------
 
+        # Status user
+        $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+        Write-Output " [*][$Time] Getting a list of SMB shares from $Computers445OpenCount computers"
+
+        # Create script block to query for SMB shares
+        $MyScriptBlock = { 
+            Get-MySMBShare -ComputerName $_.ComputerName
+        }
+
+        # Get smb shares threaded
+        $AllSMBShares = $Computers445Open | Invoke-Parallel -ScriptBlock $MyScriptBlock -ImportSessionFunctions -ImportVariables -Throttle $GlobalThreadCount -RunspaceTimeout $RunSpaceTimeOut -ErrorAction SilentlyContinue
+
+        # Computer computers with shares
+        $AllComputersWithShares = $AllSMBShares | Select-Object ComputerName -Unique
+        $AllComputersWithSharesCount =  $AllComputersWithShares.count
+
+        # Status user
+        $AllSMBSharesCount = $AllSMBShares.count
+        $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+        Write-Output " [*][$Time] - $AllSMBSharesCount SMB shares were found."
+        
+        # Stop if no shares
+        If ($AllSMBSharesCount -eq 0)
+        {
+            $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+            Write-Output " [*][$Time] - Aborting."
+            break
+        }
+
+        # Save results
+        # Write-Output " [*] - Saving results to $OutputDirectory\$TargetDomain-Shares-Inventory-All.csv"
+        $AllSMBShares | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Inventory-All.csv"
+        $null = Convert-DataTableToHtmlTable -DataTable $AllSMBShares -Outfile "$OutputDirectory\$TargetDomain-Shares-Inventory-All.html" -Title "Domain Shares" -Description "This page shows the all enumerated shares for the $TargetDomain Active Directory domain."
+        $AllSMBSharesFile = "$TargetDomain-Shares-Inventory-All.csv"
+        $AllSMBSharesFileH = "$TargetDomain-Shares-Inventory-All.html"
+
+        # ----------------------------------------------------------------------
+        # Enumerate computer SMB share permissions 
+        # ----------------------------------------------------------------------
+
+        # Status user
+        $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+        Write-Output " [*][$Time] Getting share permissions from $AllSMBSharesCount SMB shares"
+
+        # Create script block to query for SMB permissions
+        $MyScriptBlock = {     
+
+            $CurrentShareName = $_.ShareName
+            $CurrentComputerName = $_.ComputerName
+            $CurrentIP = $_.IpAddress 
+            $ShareDescription = $_.ShareDesc
+            $Sharetype = $_.sharetype
+            $Shareaccess = $_.shareaccess
+            
+             if($CurrentComputerName -eq ""){
+                 $TargetAsset = $CurrentIP    
+             }else{
+                 $TargetAsset = $CurrentComputerName
+             }
+
+             $currentaacl = Get-PathAcl "\\$TargetAsset\$CurrentShareName" -ErrorAction SilentlyContinue
+             $currentaacl |
+                foreach{
+                        
+                      # Get file listing
+                      $FullFileList = Get-ChildItem -Path "\\$TargetAsset\$CurrentShareName"
+
+                      # Get file count
+                      $FileCount = $FullFileList.Count 
+
+                      # Get top 5 files list
+                      $FileList = $FullFileList | Select-Object Name -ExpandProperty Name | Out-String
+
+                      # Get File listing hash
+                      $FileListGroup = Get-FolderGroupMd5 -FolderList $FileList
+                      $FileListGroup
+
+                      # Audit Settings
+                      $AuditSettings = Get-ACL "\\$TargetAsset\$CurrentShareName" -ErrorAction SilentlyContinue | Select-Object AuditToString -ExpandProperty AuditToString
+
+                      # Creation date
+                      $CreationdDateObject = Get-Item "\\$TargetAsset\$CurrentShareName" -ErrorAction SilentlyContinue | Select CreationTime
+                      $CreationdDate = $CreationdDateObject.CreationTime.ToString()
+                      $CreationdDateYear = $CreationdDateObject.CreationTime.Year.ToString()
+
+                      # Last modified date
+                      $TargetPath = $_.Path
+                      $LastModifiedDateObject = Get-Item "\\$TargetAsset\$CurrentShareName" -ErrorAction SilentlyContinue | Select-Object LastWriteTime
+                      $LastModifiedDate = $LastModifiedDateObject.LastWriteTime.ToString()
+                      $LastModifiedDateYear  = $LastModifiedDate.split(' ')[0].split('/')[2]
+
+                      # Last accessed date
+                      $TargetPath = $_.Path
+                      $LastAccessDateObject = Get-Item "\\$TargetAsset\$CurrentShareName" -ErrorAction SilentlyContinue | Select-Object LastAccessTime
+                      $LastAccessDate = $LastAccessDateObject.LastAccessTime.ToString()
+                      $LastAccessDateYear = $LastAccessDate.split(' ')[0].split('/')[2]
+
+                      $aclObject = new-object psobject            
+                      $aclObject | add-member  Noteproperty ComputerName         $CurrentComputerName
+                      $aclObject | add-member  Noteproperty IpAddress            $CurrentIP
+                      $aclObject | add-member  Noteproperty ShareName            $CurrentShareName
+                      $aclObject | add-member  Noteproperty SharePath            $_.Path
+                      $aclObject | add-member  Noteproperty ShareDescription     $ShareDescription
+                      $aclObject | add-member  Noteproperty ShareOwner           $_.PathOwner
+                      $aclObject | add-member  Noteproperty ShareType            $ShareType
+                      $aclObject | add-member  Noteproperty ShareAccess          $ShareAccess
+                      $aclObject | add-member  Noteproperty FileSystemRights     $_.FileSystemRights
+                      $aclObject | add-member  Noteproperty IdentityReference    $_.IdentityReference
+                      $aclObject | add-member  Noteproperty IdentitySID          $_.IdentitySID
+                      $aclObject | add-member  Noteproperty AccessControlType    $_.AccessControlType
+                      $aclObject | add-member  Noteproperty CreationDate         $CreationdDate
+                      $aclObject | add-member  Noteproperty CreationDateYear     $CreationdDateYear
+                      $aclObject | add-member  Noteproperty LastModifiedDate     $LastModifiedDate
+                      $aclObject | add-member  Noteproperty LastModifiedDateYear $LastModifiedDateYear
+                      $aclObject | add-member  Noteproperty LastAccessDate       $LastAccessDate                                           
+                      $aclObject | add-member  Noteproperty LastAccessDateYear   $LastAccessDateYear
+                      $aclObject | add-member  Noteproperty FileCount            $FileCount
+                      $aclObject | add-member  Noteproperty FileList             $FileList
+                      $aclObject | add-member  Noteproperty FileListGroup        $FileListGroup
+                      $aclObject | add-member  Noteproperty AuditSettings        $AuditSettings
+                      $aclObject                             
+                }
+         }   
+
+        # Get SMB permissions threaded
+        $ShareACLs = $AllSMBShares | Invoke-Parallel -ScriptBlock $MyScriptBlock -ImportSessionFunctions -ImportVariables -Throttle $GlobalThreadCount -RunspaceTimeout $RunSpaceTimeOut -ErrorAction SilentlyContinue  -WarningAction SilentlyContinue | where ShareName -notlike ""
+
+        # Status user
+        $ShareACLsCount = $ShareACLs | measure | select count -ExpandProperty count
+        $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+        Write-Output " [*][$Time] - $ShareACLsCount share permissions were enumerated."       
+        
+        # Stop if no shares ACLs were enumerated
+        If ($ShareACLsCount -eq 0)
+        {
+            $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+            Write-Output " [*][$Time] - Aborting."
+            break
+        }
+
+        # Save results
+        # Write-Output " [*] - Saving results to $OutputDirectory\$TargetDomain-Shares-Inventory-All-ACL.csv"
+        $ShareACLs | where ShareName -notlike "" | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Inventory-All-ACL.csv"                
+        $null = Convert-DataTableToHtmlTable -DataTable $ShareACLs -Outfile "$OutputDirectory\$TargetDomain-Shares-Inventory-All-ACL.html" -Title "Domain Shares: All ACL Entries" -Description "This page shows all share ACL entries discovered on computers associated with the $TargetDomain Active Directory domain."
+        $ShareACLsFile = "$TargetDomain-Shares-Inventory-All-ACL.csv"
+        $ShareACLsFileH = "$TargetDomain-Shares-Inventory-All-ACL.html"
+
+
+        # ----------------------------------------------------------------------
+        # Get potentially excessive share permissions 
+        # ----------------------------------------------------------------------
+
+        # Status user
+        $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+        Write-Output " [*][$Time] Identifying potentially excessive share permissions"
+
+        # Check for share that provide read/write access to common user groups
+        $ExcessiveSharePrivs = foreach ($line in $ShareACLs){
+            
+            # Filter for basic user ACLs
+            if (($line.IdentityReference -eq "Everyone") -or ($line.IdentityReference -eq "BUILTIN\Users") -or ($line.IdentityReference -eq "Authenticated Users") -or ($line.IdentityReference -like "*Domain Users*") ){
+                
+                if($line.ShareAccess -like "Yes"){
+
+                    if(($line.ShareName -notlike "print$") -and ($line.ShareName -notlike "prnproc$") -and ($line.ShareName -notlike "*printer*") -and ($line.ShareName -notlike "sysvol") -and ($line.ShareName -notlike "netlogon"))
+                    {
+                        $line                        
+                    }
+                }
+            }
+        } 
+
+        # Status user
+        $ExcessiveAclCount = $ExcessiveSharePrivs.count
+        $ExcessiveShares = $ExcessiveSharePrivs | Select-Object ComputerName,ShareName -unique
+        $ExcessiveSharesCount = $ExcessiveShares.count
+        $ExcessiveSharePrivsCount = $ExcessiveSharePrivs.count
+        $ComputerWithExcessive = $ExcessiveSharePrivs | Select-Object ComputerName -Unique | Measure-Object | select count -ExpandProperty count
+        $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+        Write-Output " [*][$Time] - $ExcessiveSharePrivsCount potentially excessive privileges were found on $ExcessiveSharesCount shares across $ComputerWithExcessive systems."
+
+        # Save results
+        if($ExcessiveSharesCount -ne 0){
+            # Write-Output " [*] - Saving results to $OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges.csv"            
+            $ExcessiveSharePrivs | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges.csv"
+            $null = Convert-DataTableToHtmlTable -DataTable $ExcessiveSharePrivs -Outfile "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges.html" -Title "Domain Shares: ACL Entries - Excessive Privileges" -Description "This page shows all share ACL entries discovered on computers associated with the $TargetDomain Active Directory domain that appear to be configured with excessive privileges."
+            $ShareACLsExFile = "$TargetDomain-Shares-Inventory-Excessive-Privileges.csv"
+            $ShareACLsExFileH = "$TargetDomain-Shares-Inventory-Excessive-Privileges.html"                          
+        }else{
+            $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+            Write-Output " [!][$Time] 0 excessive privileges found."
+            break
+        }
+
+        $ExcessiveSharePrivsFile = "$TargetDomain-Shares-Inventory-Excessive-Privileges.csv"
+
+
+        # ----------------------------------------------------------------------
+        # Get Recursive Directory Listings
+        # ----------------------------------------------------------------------
+        # Default depth is 3 by default
+
+        # Status user
+        $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+        Write-Output " [*][$Time] Getting directory listings from $ExcessiveSharesCount SMB shares"
+        Write-Output " [*][$Time] - Targeting up to $DirLevel nested directory levels"
+
+        # Create script block to query for directory listing
+        $MyScriptBlock = {     
+
+            # Get share context            
+            $CurrentComputerName = $_.ComputerName
+            $CurrentIP = $_.IpAddress 
+            $ShareDescription = $_.ShareDesc
+            $CurrentShareName = $_.ShareName
+            $SharePath = $_.SharePath
+            
+            # Get file listing from non system directories
+            #$FullFileList = Get-ChildItem -Path $SharePath -Exclude "c:\windows" | Select FullName   
+            $FullFileList = Get-ChildItem -Depth $DirLevel -Path "$SharePath" | select fullname | where {$_.fullname -NotLike "$SharePath\Windows*" -and $_.fullname -notlike "$SharePath\WINNT"}                 
+            
+            $FullFileList | 
+            Foreach{
+                $aclObject = new-object psobject            
+                $aclObject | add-member  Noteproperty ComputerName         $CurrentComputerName
+                $aclObject | add-member  Noteproperty IpAddress            $CurrentIP
+                $aclObject | add-member  Noteproperty ShareName            $CurrentShareName
+                $aclObject | add-member  Noteproperty SharePath            $SharePath
+                $aclObject | add-member  Noteproperty ShareDescription     $ShareDescription
+                $aclObject | add-member  Noteproperty FilePath             $_.fullname
+                $aclObject  
+            }     
+        }            
+
+        # Get SMB directory listing threaded
+        $ShareDirListing = $ExcessiveSharePrivs | select computername,ipaddress,sharedesc,sharename,sharepath -Unique | Invoke-Parallel -ScriptBlock $MyScriptBlock -ImportSessionFunctions -ImportVariables -Throttle $GlobalThreadCount -RunspaceTimeout $RunSpaceTimeOut -ErrorAction SilentlyContinue  -WarningAction SilentlyContinue | where ShareName -notlike "" #| select * -Unique
+
+        # Status user
+        $ShareDirListingCount = $ShareDirListing | measure | select count -ExpandProperty count
+        $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+        Write-Output " [*][$Time] - $ShareDirListingCount files and folders were enumerated."
+        
+        # Write output
+        # Write-Output " [*] Saving results to $OutputDirectory\$TargetDomain-Shares-Directory-Listings-Depth-$DirLevel.csv" 
+        $ShareDirListing | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Directory-Listings-Depth-$DirLevel.csv"
+               
+        
+        # ----------------------------------------------------------------------
+        # Get File Listings from Shares
+        # ----------------------------------------------------------------------
+        #$FindFiles # hardcoded array
+        #$FindFilesList # file
+        # combine
+        # create where statement
+        #$ShareDirListing | Where
+        #count
+        #export
+
+        # End of scanning
+        $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+        Write-Output " [*][$Time] Scan Complete"
+
+        Write-Output " ---------------------------------------------------------------"  
+        Write-Output " SHARE ANALYSIS      "
+        Write-Output " ---------------------------------------------------------------"
+        Write-Output " [*][$Time] Analysis Start"
+
+        # ----------------------------------------------------------------------
+        # Identify shares that provide read access
+        # ----------------------------------------------------------------------
+
+        # Get shares that provide read access
+        $SharesWithread = $ExcessiveSharePrivs | 
+        Foreach {
+
+            if(($_.FileSystemRights -like "*read*"))
+            {
+                $_ # out to file
+            }
+        }
+                
+        # Status user
+        $AclWithReadCount = $SharesWithread.count
+        $SharesWithReadCount = $SharesWithread | Select-Object SharePath -Unique | Measure-Object | select count -ExpandProperty count
+        $ComputerWithReadCount = $SharesWithread | Select-Object ComputerName -Unique | Measure-Object | select count -ExpandProperty count
+        $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+        Write-Output " [*][$Time] - $SharesWithReadCount shares can be read across $ComputerWithReadCount systems."
+
+        # Save results
+        if($SharesWithReadCount -ne 0){
+            #Write-Output " [*] - Saving results to $OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-Read.csv"
+            $SharesWithRead | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-Read.csv"               
+            $null = Convert-DataTableToHtmlTable -DataTable $SharesWithRead -Outfile "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-Read.html" -Title "Domain Shares: ACL Allow Read Entries" -Description "This page shows all share ACL entries discovered on computers associated with the $TargetDomain Active Directory domain that are readable."
+            $ShareACLsReadFile = "$TargetDomain-Shares-Inventory-Excessive-Privileges-Read.csv"
+            $ShareACLsReadFileH = "$TargetDomain-Shares-Inventory-Excessive-Privileges-Read.html"
+        }
+
+        $SharesWithReadFile = "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-Read.csv"
+
+        # ----------------------------------------------------------------------
+        # Identify shares that provide write access
+        # ----------------------------------------------------------------------
+
+        # Get shares that provide write access
+        $SharesWithWrite = $ExcessiveSharePrivs | 
+        Foreach {
+
+            if(($_.FileSystemRights -like "*GenericAll*") -or ($_.FileSystemRights -like "*Write*"))
+            {
+                $_ # out to file
+            }
+        }
+                
+        # Status user
+        $AclWithWriteCount = $SharesWithWrite | Measure-Object | select count -ExpandProperty count
+        $SharesWithWriteCount = $SharesWithWrite | Select-Object SharePath -Unique | Measure-Object | select count -ExpandProperty count
+        $ComputerWithWriteCount = $SharesWithWrite | Select-Object ComputerName -Unique | Measure-Object | select count -ExpandProperty count
+        $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+        Write-Output " [*][$Time] - $SharesWithWriteCount shares can be written to across $ComputerWithWriteCount systems."          
+
+        # Save results
+        if($SharesWithWriteCount -ne 0){
+            # Write-Output " [*] - Saving results to $OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-Write.csv"
+            $SharesWithWrite | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-Write.csv"            
+            $null = Convert-DataTableToHtmlTable -DataTable $SharesWithWrite -Outfile "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-Write.html" -Title "Domain Shares: ACL Allow Write Entries" -Description "This page shows all share ACL entries discovered on computers associated with the $TargetDomain Active Directory domain that are writable."
+            $ShareACLsWriteFile = "$TargetDomain-Shares-Inventory-Excessive-Privileges-Write.csv"
+            $ShareACLsWriteFileH = "$TargetDomain-Shares-Inventory-Excessive-Privileges-Write.html"
+        }
+
+        $SharesWithWriteFile = "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-Write.csv"
+
+        # ----------------------------------------------------------------------
+        # Identify shares that are non-default
+        # ----------------------------------------------------------------------
+
+        # Get high risk share access
+        $SharesNonDefault = $ShareACLs | 
+        Foreach {
+
+            if(($_.ShareName -notlike 'admin$') -or ($_.ShareName -notlike 'c$') -or ($_.ShareName -notlike 'd$') -or ($_.ShareName -notlike 'e$') -or ($_.ShareName -notlike 'f$'))
+            {
+                $_ # out to file
+            }
+        }
+
+        # Status user
+        $AclNonDefaultCount = $SharesNonDefault | measure | select count -ExpandProperty count
+        $SharesNonDefaultCount = $SharesNonDefault | Select-Object SharePath -Unique | Measure-Object | select count -ExpandProperty count
+        $ComputerwithNonDefaultCount = $SharesNonDefault | Select-Object ComputerName -Unique | Measure-Object | select count -ExpandProperty count
+        $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+        Write-Output " [*][$Time] - $SharesNonDefaultCount shares are considered non-default across $ComputerwithNonDefaultCount systems."
+
+        # Save results
+        if($SharesNonDefaultCount-ne 0){
+            # Write-Output " [*] - Saving results to $OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-NonDefault.csv"
+            $SharesNonDefault | where ShareName -notlike "" | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-NonDefault.csv"   
+            $null = Convert-DataTableToHtmlTable -DataTable $SharesNonDefault -Outfile "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-NonDefault.html" -Title "Domain Shares: Non-Default" -Description "This page shows all share ACL entries discovered on computers associated with the $TargetDomain Active Directory domain that are non-default."
+            $ShareACLsNonDefaultFile = "$TargetDomain-Shares-Inventory-Excessive-Privileges-NonDefault.csv"
+            $ShareACLsNonDefaultFileH = "$TargetDomain-Shares-Inventory-Excessive-Privileges-NonDefault.html"                    
+        }
+
+        $SharesNonDefaultFile = "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-NonDefault.csv"
+
+        # ----------------------------------------------------------------------
+        # Identify shares that are high risk
+        # ----------------------------------------------------------------------
+
+        # Get high risk share access
+        $SharesHighRisk = $ExcessiveSharePrivs | 
+        Foreach {
+
+            if(($_.ShareName -like 'c$') -or ($_.ShareName -like 'admin$') -or ($_.ShareName -like "*wwwroot*") -or ($_.ShareName -like "*inetpub*") -or ($_.ShareName -like 'c') -or ($_.ShareName -like 'c_share'))
+            {
+                $_ # out to file
+            }
+        }
+
+        # Status user
+        $AclHighRiskCount = $SharesHighRisk.count
+        $SharesHighRiskCount = $SharesHighRisk | Select-Object SharePath -Unique | Measure-Object | select count -ExpandProperty count
+        $ComputerwithHighRisk = $SharesHighRisk | Select-Object ComputerName -Unique | Measure-Object | select count -ExpandProperty count
+        $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+        Write-Output " [*][$Time] - $SharesHighRiskCount shares are considered high risk across $ComputerwithHighRisk systems."
+
+        # Save results
+        if($SharesHighRiskCount -ne 0){
+            # Write-Output " [*] - Saving results to $OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-HighRisk.csv"
+            $SharesHighRisk | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-HighRisk.csv"   
+			$null = Convert-DataTableToHtmlTable -DataTable $SharesHighRisk -Outfile "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-HighRisk.html" -Title "Domain Shares: ACL High Risk Entries" -Description "This page shows all share ACL entries discovered on computers associated with the $TargetDomain Active Directory domain that are considered to be high risk."
+            $ShareACLsHRFile = "$TargetDomain-Shares-Inventory-Excessive-Privileges-HighRisk.csv"
+            $ShareACLsHRFileH = "$TargetDomain-Shares-Inventory-Excessive-Privileges-HighRisk.html"                     
+        }
+
+        $SharesHighRiskFile = "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-HighRisk.csv"        
+       
+        
+        # ----------------------------------------------------------------------
+        # Identify common excessive share owners
+        # ----------------------------------------------------------------------
+        
         # Get share owner list
         $CommonShareOwners = $ExcessiveSharePrivs | Select SharePath,ShareOwner -Unique |
         Select-Object ShareOwner | 
@@ -527,14 +953,14 @@ function Analyze-HuntSMBShares
             }
         }        
        
-        # Get percent of shared covered by top n
+        # Get percent of shared covered by top 5
         # If very weighted this indicates if the shares are part of a deployment process, image, or app
         
         # Get top five share name
         $CommonShareNamesCount = $CommonShareNames.count
         $CommonShareNamesTop5 = $CommonShareNames | Select-Object count,name -First $SampleSum 
         
-        # Get count of share name if in the top n
+        # Get count of share name if in the top 5
         $Top5ShareCountTotal = 0
         $CommonShareNamesTop5 |
         foreach{
@@ -1043,7 +1469,6 @@ function Analyze-HuntSMBShares
         #Write-Output " [*][$Time] - Summary report data generated."                     
         #Write-Output " [*][$Time] - $Top5ShareCountTotal of $AllAccessibleSharesCount ($DupPercent) shares are associated with the top $SampleSum share names."
 
-
         # ----------------------------------------------------------------------
         # Create Interesting Files Table
         # ---------------------------------------------------------------------- 
@@ -1062,26 +1487,20 @@ function Analyze-HuntSMBShares
         $FileNamePatternsAll.Columns.Add("SampleRegex")  | Out-Null # Used to parse sample data from file matches.
 
         # Add rows to data table - Sensitive data
-        $FileNamePatternsAll.Rows.Add("*credit*","Credit card number and/or PII.","None.","Sensitive","")     | Out-Null
-        $FileNamePatternsAll.Rows.Add("*pci*","","None.","Sensitive","")                                      | Out-Null
-        $FileNamePatternsAll.Rows.Add("*social*","","None.","Sensitive","")                                   | Out-Null
-        $FileNamePatternsAll.Rows.Add("*ssn*","","None.","Sensitive","")                                      | Out-Null
-        $FileNamePatternsAll.Rows.Add("human*","","None.","Sensitive","")                                     | Out-Null
-        $FileNamePatternsAll.Rows.Add("finance*","","None.","Sensitive","")                                   | Out-Null
-        $FileNamePatternsAll.Rows.Add("*medical*","","None.","Sensitive","")                                  | Out-Null
-        $FileNamePatternsAll.Rows.Add("Health*","","None.","Sensitive","")                                    | Out-Null
-        $FileNamePatternsAll.Rows.Add("Billing*","","None.","Sensitive","")                                   | Out-Null
-        $FileNamePatternsAll.Rows.Add("*payment*","","None.","Sensitive","")                                  | Out-Null
-        $FileNamePatternsAll.Rows.Add("patient*","","None.","Sensitive","")                                   | Out-Null
-        $FileNamePatternsAll.Rows.Add("HR*","","None.","Sensitive","")                                        | Out-Null        
-        $FileNamePatternsAll.Rows.Add("*nessus*","This is a vulnerability scanner.","None.","Sensitive","")   | Out-Null
-        $FileNamePatternsAll.Rows.Add("*nexpose*","This is a vulnerability scanner.","None.","Sensitive","")  | Out-Null
-        $FileNamePatternsAll.Rows.Add("*qualys*","This is a vulnerability scanner.","None.","Sensitive","")   | Out-Null
-        $FileNamePatternsAll.Rows.Add("*tripwire*","This is a vulnerability scanner.","None.","Sensitive","") | Out-Null
-       
+        $FileNamePatternsAll.Rows.Add("*credit*","Credit card number and/or PII.","None.","Sensitive","")    | Out-Null
+        $FileNamePatternsAll.Rows.Add("*pci*","","None.","Sensitive","")                                     | Out-Null
+        $FileNamePatternsAll.Rows.Add("*social*","","None.","Sensitive","")                                  | Out-Null
+        $FileNamePatternsAll.Rows.Add("*ssn*","","None.","Sensitive","")                                     | Out-Null
+        $FileNamePatternsAll.Rows.Add("human*","","None.","Sensitive","")                                    | Out-Null
+        $FileNamePatternsAll.Rows.Add("finance*","","None.","Sensitive","")                                  | Out-Null
+        $FileNamePatternsAll.Rows.Add("Health*","","None.","Sensitive","")                                   | Out-Null
+        $FileNamePatternsAll.Rows.Add("Billing*","","None.","Sensitive","")                                  | Out-Null
+        $FileNamePatternsAll.Rows.Add("patient*","","None.","Sensitive","")                                  | Out-Null
+        $FileNamePatternsAll.Rows.Add("HR*","","None.","Sensitive","")                                       | Out-Null        
+        $FileNamePatternsAll.Rows.Add("*ftp*","","None.","Sensitive","")                                     | Out-Null
+        $FileNamePatternsAll.Rows.Add("*Program Files*","","None.","Sensitive","") | Out-Null
+
         # Add rows to data table - Files containing passwords
-        $FileNamePatternsAll.Rows.Add("Bootstrap.ini*","Used for Windows Deployment services (WDS) PXE installation and may contain credentials.","None.","Secret","")                                 | Out-Null
-        $FileNamePatternsAll.Rows.Add(".bcd*","","None.","Secret","")                                        | Out-Null
         $FileNamePatternsAll.Rows.Add("context.xml*","","None.","Secret","")                                 | Out-Null
         $FileNamePatternsAll.Rows.Add("db2cli.ini*","","None.","Secret","")                                  | Out-Null
         $FileNamePatternsAll.Rows.Add("ftpd.*","","None.","Secret","")                                       | Out-Null
@@ -1098,9 +1517,6 @@ function Analyze-HuntSMBShares
         $FileNamePatternsAll.Rows.Add("*ntds.dit*","","None.","Secret","")                                   | Out-Null
         $FileNamePatternsAll.Rows.Add("pg_hba.conf*","","None.","Secret","")                                 | Out-Null
         $FileNamePatternsAll.Rows.Add("php.ini*","","None.","Secret","")                                     | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.pfx*","Private key.","None.","Secret","")                           | Out-Null
-        $FileNamePatternsAll.Rows.Add("policy.xml*","May be associated with SCCM/ConfigMgr and contain credentials to support PXE that can be recovered, base64 decoded, or decrypted using PXEThief or https://github.com/1njected/CMvarDecrypt.","None.","Secret","")                                   | Out-Null
-        $FileNamePatternsAll.Rows.Add(".pol*","May contain credentials to support PXE or other things.","None.","Secret","")                                   | Out-Null
         $FileNamePatternsAll.Rows.Add("putty.reg*","","None.","Secret","")                                   | Out-Null
         $FileNamePatternsAll.Rows.Add("postgresql.conf*","","None.","Secret","")                             | Out-Null
         $FileNamePatternsAll.Rows.Add("SAM","","None.","Secret","")                                          | Out-Null
@@ -1114,14 +1530,28 @@ function Analyze-HuntSMBShares
         $FileNamePatternsAll.Rows.Add("tomcat-users.xml*","","None.","Secret","")                            | Out-Null
         $FileNamePatternsAll.Rows.Add("sitemanager.xml*","","None.","Secret","")                             | Out-Null
         $FileNamePatternsAll.Rows.Add("users.*","","None.","Secret","")                                      | Out-Null
-        $FileNamePatternsAll.Rows.Add("*variable*.dat*","This file is used for SCCM/ConfigMgr PXE deployments. It may contain passwords that can be recovered, base64 decoded, or decrypted using PXEThief or https://github.com/1njected/CMvarDecrypt.","None.","Secret","")                                       | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.var*","Often contain credentials. May be assocaited with SCCM/MECM","None.","Secret","")             | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vmx*","","None.","Secret","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vmdk*","","None.","Secret","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.nvram*","","None.","Secret","")                                     | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vmsd*","","None.","Secret","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vmsn*","","None.","Secret","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vmss*","","None.","Secret","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vmem*","","None.","Secret","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vhd*","","None.","Secret","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vhdx*","","None.","Secret","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.avhd*","","None.","Secret","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.avhdx*","","None.","Secret","")                                     | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vsv*","","None.","Secret","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vbox*","","None.","Secret","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vbox-prev*","","None.","Secret","")                                 | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vdi*","","None.","Secret","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.hdd*","","None.","Secret","")                                       | Out-Null
         $FileNamePatternsAll.Rows.Add("*.sav*","","None.","Secret","")                                       | Out-Null
-        $FileNamePatternsAll.Rows.Add("*setting.ini*","","None.","Secret","")                                | Out-Null
         $FileNamePatternsAll.Rows.Add("*.pvm*","","None.","Secret","")                                       | Out-Null
         $FileNamePatternsAll.Rows.Add("*.pvs*","","None.","Secret","")                                       | Out-Null
         $FileNamePatternsAll.Rows.Add("*.qcow*","","None.","Secret","")                                      | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.qcow2*","","None.","Secret","")                                     | Out-Null     
+        $FileNamePatternsAll.Rows.Add("*.qcow2*","","None.","Secret","")                                     | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.img*","","None.","Secret","")                                       | Out-Null
         $FileNamePatternsAll.Rows.Add("*vcenter*","","None.","Secret","")                                    | Out-Null
         $FileNamePatternsAll.Rows.Add("*vault*","","None.","Secret","")                                      | Out-Null
         $FileNamePatternsAll.Rows.Add("*DefaultAppPool*","","None.","Secret","")                             | Out-Null
@@ -1130,36 +1560,6 @@ function Analyze-HuntSMBShares
         $FileNamePatternsAll.Rows.Add("wp-config.php*","","None.","Secret","")                               | Out-Null
         $FileNamePatternsAll.Rows.Add("*.config","","None.","Secret","")                                     | Out-Null
         $FileNamePatternsAll.Rows.Add("*.dtsx*","","None.","Secret","")                                      | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.rdp*","","None.","Secret","")                                       | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.aws*","","None.","Secret","")                                       | Out-Null
-        $FileNamePatternsAll.Rows.Add("*vnc.ini*","","None.","Secret","")                                    | Out-Null
-        $FileNamePatternsAll.Rows.Add("*DataSource.xml*","Group policy file that may contain passwords.","None.","Secret","")                         | Out-Null
-        $FileNamePatternsAll.Rows.Add("*ScheduledTasks.xml*","Group policy file that may contain passwords.","None.","Secret","")                     | Out-Null
-        $FileNamePatternsAll.Rows.Add("*Groups.xml*","Group policy file that may contain passwords.","None.","Secret","")                             | Out-Null
-        $FileNamePatternsAll.Rows.Add("*Drives.xml*","Group policy file that may contain passwords.","None.","Secret","")                             | Out-Null
-        $FileNamePatternsAll.Rows.Add("*unattend*","","None.","Secret","")                                   | Out-Null
-        $FileNamePatternsAll.Rows.Add("*sysprep*","","None.","Secret","")                                    | Out-Null
-
-        # Add rows to data table - System/VM Images
-        $FileNamePatternsAll.Rows.Add("*.img*","","None.","SystemImage","")                                                                            | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.iso*","This is system image.It may contain passwords in Variables.dat, unattend.xml, and policy.xml files.","None.","SystemImage","")                                   | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.wmi*","This is system image.It may contain passwords in Variables.dat, unattend.xml, and policy.xml files.","None.","SystemImage","")                                   | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.vmx*","This is a virtual machine image file.","None.","SystemImage","")                                       | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.vmdk*","This is a virtual machine image file.","None.","SystemImage","")                                      | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.nvram*","This is a virtual machine image file.","None.","SystemImage","")                                     | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.vmsd*","This is a virtual machine image file.","None.","SystemImage","")                                      | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.vmsn*","This is a virtual machine image file.","None.","SystemImage","")                                      | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.vmss*","This is a virtual memory file that could be used to recover data or System Images.","None.","SystemImage","")                                      | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.vmem*","This is a virtual memory file that could be used to recover data or System Images.","None.","SystemImage","")                                      | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.vhd*","This is a virtual machine image file.","None.","SystemImage","")                                       | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.vhdx*","This is a virtual machine image file.","None.","SystemImage","")                                      | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.avhd*","This is a virtual machine image file.","None.","SystemImage","")                                      | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.avhdx*","This is a virtual machine image file.","None.","SystemImage","")                                     | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.vsv*","This is a virtual memory file that could be used to recover data or SystemImages.","None.","SystemImage","")                                       | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.vbox*","This is a virtual machine image file.","None.","SystemImage","")                                      | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.vbox-prev*","This is a virtual machine image file.","None.","SystemImage","")                                 | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.vdi*","This is a virtual machine image file.","None.","SystemImage","")                                       | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.hdd*","This is a virtual machine image file.","None.","SystemImage","")                                       | Out-Null
 
         # Add rows to data table - Database files  
         $FileNamePatternsAll.Rows.Add("*database*","","None.","Database","")                                 | Out-Null
@@ -1167,8 +1567,6 @@ function Analyze-HuntSMBShares
         $FileNamePatternsAll.Rows.Add("*.sqlite*","","None.","Database","")                                  | Out-Null
         $FileNamePatternsAll.Rows.Add("*.idf*","","None.","Database","")                                     | Out-Null
         $FileNamePatternsAll.Rows.Add("*.mdf*","","None.","Database","")                                     | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.ora*","","None.","Database","")                                     | Out-Null
-        $FileNamePatternsAll.Rows.Add("*oracle*","","None.","Database","")                                   | Out-Null
 
         # Add rows to data table - Backup files
         $FileNamePatternsAll.Rows.Add("*.bak*","","None.","Backup","")                                       | Out-Null
@@ -1176,7 +1574,6 @@ function Analyze-HuntSMBShares
         $FileNamePatternsAll.Rows.Add("*backup*","","None.","Backup","")                                     | Out-Null
         $FileNamePatternsAll.Rows.Add("*.tar*","","None.","Backup","")                                       | Out-Null
         $FileNamePatternsAll.Rows.Add("*.zip*","","None.","Backup","")                                       | Out-Null
-        $FileNamePatternsAll.Rows.Add("IT*","May contain IT department files","None.","Backup","")           | Out-Null
 
         # Add rows to data table - Scripts
         $FileNamePatternsAll.Rows.Add("*.ps1*","","None.","Script","")                                       | Out-Null
@@ -1192,7 +1589,6 @@ function Analyze-HuntSMBShares
         $FileNamePatternsAll.Rows.Add("*.dll","","None.","Binaries","")                                      | Out-Null
         $FileNamePatternsAll.Rows.Add("*.exe","","None.","Binaries","")                                      | Out-Null
         $FileNamePatternsAll.Rows.Add("*.msi","","None.","Binaries","")                                      | Out-Null
-        $FileNamePatternsAll.Rows.Add("*Program Files*","This is an application directory.","None.","Binaries","") | Out-Null
 
         # Use keyword from define file instead
         if($FileKeywordsPath){
@@ -1695,7 +2091,7 @@ function Analyze-HuntSMBShares
         $RiskLevelCountLow      = $ExcessiveSharePrivsFinal | where RiskLevel -eq 'Low'      | measure | select count -ExpandProperty count
         $RiskLevelCountMedium   = $ExcessiveSharePrivsFinal | where RiskLevel -eq 'Medium'   | measure | select count -ExpandProperty count 
         $RiskLevelCountHigh     = $ExcessiveSharePrivsFinal | where RiskLevel -eq 'High'     | measure | select count -ExpandProperty count 
-        $RiskLevelCountCritical = $ExcessiveSharePrivsFinal | where RiskLevel -eq 'Critical' | measure | select count -ExpandProperty count               
+        $RiskLevelCountCritical = $ExcessiveSharePrivsFinal | where RiskLevel -eq 'Critical' | measure | select count -ExpandProperty count          
 
         # ----------------------------------------------------------------------
         # Create Timeline Reports
@@ -1771,7 +2167,7 @@ function Analyze-HuntSMBShares
         Write-Output " [*][$Time] - $ComputerwithHighRisk ($PercentComputerHighRiskP) domain computers had shares that are HIGH RISK."  
         Write-Output " [*][$Time] "
         Write-Output " [*][$Time] SHARE SUMMARY"      
-        Write-Output " [*][$Time] - $AllSMBSharesCount shares were found. We expected a minimum of $MinExpectedShareCount shares"
+        Write-Output " [*][$Time] - $AllSMBSharesCount shares were found. We expect a minimum of $MinExpectedShareCount shares"
         Write-Output " [*][$Time]   because $Computers445OpenCount systems had open ports and there are typically two default shares."
         Write-Output " [*][$Time] - $SharesNonDefaultCount ($PercentSharesNonDefaultP) shares across $ComputerwithNonDefaultCount systems were non-default."
         Write-Output " [*][$Time] - $ExcessiveSharesCount ($PercentSharesExPrivP) shares across $ComputerWithExcessive systems are configured with $ExcessiveSharePrivsCount potentially excessive ACLs."
@@ -1787,15 +2183,15 @@ function Analyze-HuntSMBShares
         Write-Output " [*][$Time] - $AclWithWriteCount ($PercentAclWriteP) ACLs were found that allowed WRITE access."                               
         Write-Output " [*][$Time] - $AclHighRiskCount ($PercentAclHighRiskP) ACLs were found that are associated with HIGH RISK share names."
         Write-Output " [*][$Time] "
-        Write-Output " [*][$Time] - The $SampleSum most common share names are:"
+        Write-Output " [*][$Time] - The 5 most common share names are:"
         Write-Output " [*][$Time] - $Top5ShareCountTotal of $AllAccessibleSharesCount ($DupPercent) discovered shares are associated with the top $SampleSum share names."
         $CommonShareNamesTop5 |
         foreach {
             $ShareCount = $_.count
-            $ShareName  = $_.name
+            $ShareName = $_.name
             Write-Output " [*][$Time]   - $ShareCount $ShareName"   
         }
-
+        
         # Estimate report generation time
         $ReportGenTimeEstimate = "Unknown"
         If($AllSMBSharesCount -le 500   ) {$ReportGenTimeEstimate = "1 minute or less"   }
@@ -1806,8 +2202,7 @@ function Analyze-HuntSMBShares
         If($AllSMBSharesCount -ge 15000 ) {$ReportGenTimeEstimate = "25 minutes or less" }
         If($AllSMBSharesCount -ge 30000 ) {$ReportGenTimeEstimate = "30 minutes or less" }
 
-
-        Write-Output " [*] -----------------------------------------------"
+        Write-Output " [*] -----------------------------------------------" 
         Write-Output " [*][$Time]   - Generating HTML Report"
         Write-Output " [*][$Time]   - Estimated generation time: $ReportGenTimeEstimate"  
         
@@ -1825,13 +2220,13 @@ function Analyze-HuntSMBShares
             $ThisFileBars = Get-GroupFileBar -DataTable $ExcessiveSharePrivs -Name $FileGroupName -AllComputerCount $ComputerCount -AllShareCount $AllSMBSharesCount -AllAclCount $ShareACLsCount
             $ComputerBarF = $ThisFileBars.ComputerBar
             $ShareBarF = $ThisFileBars.ShareBar
-            $AclBarF = $ThisFileBars.AclBar            
+            $AclBarF = $ThisFileBars.AclBar
             $ThisFileListPrep = $ThisFileBars.FileList 
             $ThisFileList = $ThisFileListPrep -replace "`n", "<br>"          
             $ThisFileCount = $ThisFileBars.FileCount
             $ThisFileShareCount = $ThisFileBars.Sharecount
             $ThisFileShareNameList = $ExcessiveSharePrivs | where FileListGroup -eq $FileGroupName | select ShareName -unique -expandproperty sharename | foreach { "$_ <br>"}
-            $ThisFileShareNameListUniqueCount = $ThisFileShareNameList | measure | select count -ExpandProperty count
+            $ThisFileShareNameListUniqueCount = $ThisFileShareNameList | measure | select count -ExpandProperty count 
             $ShareFileShareUnc = $ExcessiveSharePrivs | where FileListGroup -eq $FileGroupName | select SharePath -unique -expandproperty SharePath | foreach { "$_ <br>"}
             $ThisRow = @" 
 	          <tr>
@@ -1860,7 +2255,7 @@ function Analyze-HuntSMBShares
 	          $AclBarF
 	          </td>          	  
 	          </tr>
-"@              
+"@                
             $ThisRow
         }
 
@@ -2622,12 +3017,98 @@ function Analyze-HuntSMBShares
             # Set default
             $ShareRowCountInteresting                = "No"
 
+            # Define common image and other formats to filter out later
+            $ImageFormats = @("*.jpg", "*.jpeg", "*.png", "*.gif", "*.bmp", "*.ico", "*.svg", "*.webp", "*.mif", "*.heic", "*.msi")
+
             # Check if interesting files - Secrets
             # Files that may contain passwords, key, or other authentication tokens
             $ShareRowInterestingFileListSecrets      = ""
             $ShareRowInterestingFileListSecretsCount = 0
             $ShareRowCountInterestingSecrets         = "No"            
-            
+            $FileNamePatternsSecrets = @(
+                "*.bacpac*",
+                "*.bat*",
+                "*.config*",
+                "*.dtsx*",
+                "*.json*",
+                "*.ps1*",
+                "*.psm1*",
+                "*.UDL*",
+                "*config.php*",
+                "*Credentials*",
+                "*Creds*",
+                "*keys*",
+                "*pass*",
+                "*private*",
+                "*secret*",
+                "*secure*",
+                "*security*",
+                "*web.conf*",
+                "*htaccess*",
+                "*htpasswd*",
+                "*inetpub*",
+                "applicationhost.config*",
+                "auth*",
+                "config.xml*",
+                "context.xml*",
+                "db2cli.ini*",
+                "ftpd.*",
+                "ftpusers*",
+                "httpd.conf*",
+                "hudson.security.HudsonPrivateSecurityRealm.*",
+                "jboss-cli.xml*",
+                "jboss-logmanager.properties*",
+                "jenkins.model.JenkinsLocationConfiguration.*",
+                "machine.config*",
+                "my.*",
+                "mysql.user*",
+                "nginx.conf*",
+                "*ntds.dit*",
+                "pg_hba.conf*",
+                "php.ini*",
+                "putty.reg*",
+                "postgresql.conf*",
+                "SAM",               
+                "SAM-*",
+                "SAM_*",
+                "SYSTEM",
+                "server.xml*",
+                "shadow*",
+                "standalone.xml*",
+                "tnsnames.ora*",
+                "tomcat-users.xml*",
+                "sitemanager.xml*",
+                "users.*",
+                "*.vmx*",
+                "*.vmdk*",
+                "*.nvram*",
+                "*.vmsd*",
+                "*.vmsn*",
+                "*.vmss*",
+                "*.vmem*",
+                "*.vhd*",
+                "*.vhdx*",
+                "*.avhd*",
+                "*.avhdx*",
+                "*.vsv*",
+                "*.vbox*",
+                "*.vbox-prev*",
+                "*.vdi*",
+                "*.hdd*",
+                "*.sav*",
+                "*.pvm*",
+                "*.pvs*",
+                "*.qcow*",
+                "*.qcow2*",
+                "*.img*",
+                "*vcenter*",
+                "*vault*",
+                "*DefaultAppPool*",
+                "*WinSCP.ini*",
+                "*.kdbx",
+                "wp-config.php*"
+            )
+
             # Check for matches            
             $ShareRowInterestingFileListSecrets = foreach ($pattern in $FileNamePatternsSecrets) {
                 
@@ -2676,6 +3157,29 @@ function Analyze-HuntSMBShares
             $ShareRowInterestingFileListData         = ""
             $ShareRowInterestingFileListDataCount    = 0
             $ShareRowCountInterestingData            = "No"
+            $FileNamePatternsData = @(               
+                "*credit*",
+                "*card*",               
+                "*pci*",
+                "*social*",
+                "*ssn*",
+                "*database*",
+                "human*",
+                "finance*",
+                "Health*",
+                "Billing*",
+                "patient*",
+                "*.bak*",
+                "*backup*",
+                "*.sql",
+                "*.mdb",
+                "*.mdf",
+                "*.idf",
+                "*.sqlite",
+                "*ftp",
+                "*Program Files*",
+                "HR*"
+            )
 
             # Check for matches
             $ShareRowInterestingFileListData = foreach ($pattern in $FileNamePatternsData) {
@@ -3058,7 +3562,7 @@ function Analyze-HuntSMBShares
                  </div>           
 	          </td>          	  
 	          </tr>
-"@              
+"@               
             $ThisRow  
         } 
 
@@ -3134,8 +3638,8 @@ $NewHtmlReport = @"
   <link rel="shortcut icon" src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyhpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuNi1jMTM4IDc5LjE1OTgyNCwgMjAxNi8wOS8xNC0wMTowOTowMSAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENDIDIwMTcgKE1hY2ludG9zaCkiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6QTQxQkNBNzA2OEI1MTFFNzlENkRCMzJFODY4RjgwNDMiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6QTQxQkNBNzE2OEI1MTFFNzlENkRCMzJFODY4RjgwNDMiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDpBNDFCQ0E2RTY4QjUxMUU3OUQ2REIzMkU4NjhGODA0MyIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDpBNDFCQ0E2RjY4QjUxMUU3OUQ2REIzMkU4NjhGODA0MyIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/Ptdv5vcAAAB9SURBVHjaYmTAAS4IajsCqeVQbqTB+6v7saljxKHZCUhtAWJOqNB3IPYBGrKPoAFYNDPgM4SRSM04DWEkQTNWQxhJ1IxhCCM0tLeSoBnZEG+QAS+ADHEG8sBLJgYKAciASKhzGMjwQiTlgUiVaKRKQqJKUqZKZiI1OwMEGAA7FE70gYsL4wAAAABJRU5ErkJggg==" >
   <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
   <title>Report</title>
-  <style>    
-  
+  <style> 
+
         .toggle-content {
             display: block; /* Set to block to be expanded by default */	
         }
@@ -3147,28 +3651,29 @@ $NewHtmlReport = @"
             background-color: transparent;	
 			color: white;
         } 	
+  
+    .hidden { display: none; }
 
-	.hidden { display: none; }
+    button.pagination-button {
+        border: none;
+        outline: none;
+        background-color: transparent;
+        cursor: pointer;
+        padding: 5px 10px;
+        margin: 2px;	
+        border-radius:0.20rem 0.20rem 0.20rem 0.20rem;	
+        color: #07142A;			
+    }
 
-        button.pagination-button {
-            border: none;
-            outline: none;
-            background-color: transparent;
-            cursor: pointer;
-            padding: 5px 10px;
-            margin: 2px;	
-			border-radius:0.20rem 0.20rem 0.20rem 0.20rem;	
-			color: #07142A;			
-        }
-        button.pagination-button:hover{
-            background-color: #F56A00 ;
-            color: #07142A;		
-		}
+    button.pagination-button:hover{
+        background-color: #F56A00 ;
+        color: #07142A;		
+    }
 		
-        button.pagination-button.active {
-            background-color: #07142A;
-            color: white;
-        }
+    button.pagination-button.active {
+        background-color: #07142A;
+        color: white;
+    }     	
 
     .1collapsible:after {
 	  content: '\0208A';
@@ -3209,7 +3714,7 @@ $NewHtmlReport = @"
       --max-width: 0;
 	  overflow: hidden;
 	  transition: max-height 0.2s ease-out;
-      transition: max-width 0.2s ease-out;
+	  transition: max-width 0.2s ease-out;
 	}
 
 	.tabs{
@@ -3343,7 +3848,7 @@ $NewHtmlReport = @"
 		--margin-bottom:1rem;
 		border-collapse:collapse;		
 	}
-
+	
     table th:first-child {
         --border-top-left-radius: 3px;
     }
@@ -3363,7 +3868,7 @@ $NewHtmlReport = @"
 		margin: 10px;
 		width: 90%;
 		--margin-left:10px;
-	}
+	}	
 	
 	table thead th{
 		vertical-align:bottom;
@@ -3677,7 +4182,7 @@ $NewHtmlReport = @"
 		font-weight: 700;
 		font-family:"Open Sans", sans-serif;
 		--color:#9B3722;
-		color:#F56A00;
+		color:#CE112D;
 	}
 	
 	.percentagetext2 {
@@ -3783,7 +4288,7 @@ $NewHtmlReport = @"
 		margin-top: 5px;
 		margin-right: 5px;
 		margin-bottom: 5px;
-		--width: 90%		
+		width: 90%		
 	}
 
 	.filelistparent {
@@ -3829,8 +4334,8 @@ $NewHtmlReport = @"
 	}	
 
 	.cardtitle{	
-	    padding:5px;	
-		-- padding-left: 20px;
+		padding:5px;	
+		--padding-left: 20px;
 		font-size: 20;
 		color: white;
 		font-weight:bold;
@@ -4274,7 +4779,7 @@ input[type="checkbox"]:checked {
 
 input[type="checkbox"]:checked::before {
     content: '✔';
-    color: #F56A00;
+    color: orange;
     display: block;
     text-align: center;
     line-height: 20px;
@@ -4309,10 +4814,6 @@ input[type="checkbox"]:checked::before {
 	font-weight: bold;	
     z-index: 2;
 }
-
-.circle:hover {
-	opacity:.5;
-}
   </style>
 </head>
 <body onload="radiobtn = document.getElementById('dashboard');radiobtn.checked = true;">
@@ -4344,8 +4845,8 @@ input[type="checkbox"]:checked::before {
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;">Share Names</label>					
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareFolders');radiobtn.checked = true;">Folder Groups</label>		
         <label href="#" class="stuff" style="width:100%;" onclick="radiobtn = document.getElementById('SubNets');radiobtn.checked = true;">Affected Subnets</label>				
-		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareOwner');radiobtn.checked = true;">Share Owners</label>	
-        <label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('accounts');radiobtn.checked = true;">Group ACL Summary</label>
+		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareOwner');radiobtn.checked = true;">Share Owners</label>
+        <label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('accounts');radiobtn.checked = true;">Group ACL Summary</label>	
 		<label class="tabLabel" style="width:100%;color:#07142A;background-color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:2px;margin-bottom:2px;"><strong>Recommendations</strong></label>
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Attacks');radiobtn.checked = true;">Exploit Share Access</label>		
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Detections');radiobtn.checked = true;">Detect Share Scans</label>
@@ -4731,7 +5232,7 @@ Below is a summary of the domain computers that were targeted, connectivity to t
 	  <td><div class="divbarDomain"><div class="divbarDomainInside" style="width: 100%;"></div></div></td>
 	  <td>100.00%</td>
 	  <td>$ComputerCount</td>
-      <td><a href="$SubDir/$DomainComputersFile"><span class="cardsubtitle">CSV</a> | </span><a href="$SubDir/$DomainComputersFileH"><span class="cardsubtitle">HTML</span></a></td>	  
+      <td><a href="$OutputDirectory/$DomainComputersFile"><span class="cardsubtitle">CSV</a> | </span><a href="$OutputDirectory/$DomainComputersFileH"><span class="cardsubtitle">HTML</span></a></td>	  
     </tr>
     <tr>
       <td>PING RESPONSE</td>
@@ -4803,8 +5304,8 @@ Below is a summary of the domain computers that were targeted, connectivity to t
 <div style="margin-left:10px;margin-top:3px">
 <h2>Share Summary</h2>
 Below is a summary of the SMB shares discovered on domain computers that may provide excessive privileges to standard domain users.
-<div style="border-bottom: 1px solid #DEDFE1 ;  background-color:#f0f3f5; height:5px; margin-bottom:10px;"></div>
 </div> 	
+<div style="border-bottom: 1px solid #DEDFE1 ;  background-color:#f0f3f5; height:5px; margin-bottom:10px;"></div>
 
 <table class="table table-striped table-hover tabledrop">
   <thead>
@@ -5179,8 +5680,8 @@ This section contains a list of the most common SMB share names. In some cases, 
         <label><input type="checkbox" class="filter-checkbox" name="e"> Empty</label>
         <label><input type="checkbox" class="filter-checkbox" name="s"> Stale</label>
         <label><input type="checkbox" class="filter-checkbox" name="n"> Default</label>
-        <div id="filterCounter" style="margin-top:10px;height: 25px;font-size:11">Loading...</div>      
-        <div style="margin-top:-25px;height: 25px;font-size:11;text-align: left; margin-left: 100px;"><a style="margin-top:46px;height: 25px;font-size:11;" href="#" onclick="extractAndDownloadCSV('sharenametable', 0)">Export</a></div>						             
+        <div id="filterCounter" style="margin-top:10px;height: 25px;font-size:11">Loading...</div>   
+        <div style="margin-top:-25px;height: 25px;font-size:11;text-align: left; margin-left: 100px;"><a style="margin-top:46px;height: 25px;font-size:11;" href="#" onclick="extractAndDownloadCSV('sharenametable', 0)">Export</a></div>						           
 </div>	
 <br>
 <table id="sharenametable" class="table table-striped table-hover tabledrop" style="width: 95%;">
@@ -5227,7 +5728,7 @@ This section contains a list of the most common SMB share names. In some cases, 
     iTHD/4Hv7s1i9NTblIwDvS+2PbHOBDYBVoN2/4+tu3WCeB/Bq60jr/WBOY+SW90tPARMLQNXFx3NHkPuNwBRp50yZAcyU9TKBaB9zP6pjwwfAv0r7m9tfdx+gBkqavlG+DgEIiUKHvd49193b39e6bd3w/VdnLO67/jCAAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0
     SU1FB+gHDA40BpbiKy8AAAEjSURBVBjTXZAxS4JhFIWfe5XqA6NIBSvK1pak2tqjvb8Q/oUImgPnqL/R7tbYVPCtUb46iKYoSUGK3tvQK0hnu889HO49Uq1eyOXVtRby+Q1VrSBSBpaBMRDMLG2GMLi/uzV5fXvPFIvFHRE5A0qAAVMgCyjQNbN6v99vyfBzVFTVc2ArprWAHrAJbANLQNts9qCqWom
     JAB/u9uzuPXd/AjqRl1T1QIEyIBGuiuiJiJwCGeArcgHZy8Zn5loHcsBL5IWF3bLGOxf1DUxEZP+feazgAfAF+OOOAGuxDQB396BmloJ3F8w5EXbjOXN1zCzVZggDM68D7dhxEttJ/mZvu1u92QyDzGw25fDoeJQkK0FExiAKTIAhkJrZY2g0urXajf0CiVl4icFa+XEAAAAASUVORK5CYII=" /><span class="tooltiptext"><strong>Interesting Files</strong><br>are filenames that<br>may be sensitive.</span></div> </th>	 	        
-
+      
     </tr>
     </thead>
 
@@ -5309,16 +5810,16 @@ Folder groups are SMB shares that contain the exact same file listing. Each file
         <label><input type="checkbox" class="filter-checkbox" name="s"> Stale</label>
         <label><input type="checkbox" class="filter-checkbox" name="n"> Default</label>
 		-->
-        <div id="filterCounterTwo" style="margin-top:14px;height: 25px;font-size:11">Loading...</div>        
-        <div style="font-size:11;text-align: left; margin-left: 100px; margin-top: -25px;"><a style="font-size:11;" href="#" onclick="extractAndDownloadCSV('foldergrouptable', 1)">Export</a></div>
+        <div id="filterCounterTwo" style="margin-top:14px;height: 25px;font-size:11">Loading...</div> 
+        <div style="font-size:11;text-align: left; margin-left: 100px; margin-top: -25px;"><a style="font-size:11;" href="#" onclick="extractAndDownloadCSV('foldergrouptable', 1)">Export</a></div>       
 </div>	
 <br>
 <table class="table table-striped table-hover tabledrop" id="foldergrouptable" style="width:95%">
   <thead>
     <tr>  
       <th onclick="sortTable('foldergrouptable',0,'number')" align="left">Unique Share Names</th>
-      <th onclick="sortTable('foldergrouptable',1,'number')" align="left">Share Count</th>      
-      <th onclick="sortTable('foldergrouptable',2,'alpha')" align="left">File Group</th>
+      <th onclick="sortTable('foldergrouptable',1,'number')" align="left">Affected Share Count</th>      
+      <th onclick="sortTable('foldergrouptable',2,'alpha')"  align="left">File Group</th>
       <th onclick="sortTable('foldergrouptable',3,'number')" align="left">File Count</th>
 	  <th onclick="sortTable('foldergrouptable',4,'number')" align="left">Affected ACLs</th>	 	 
     </tr>
@@ -5609,6 +6110,74 @@ Below are some tips for getting started on prioritizing the remediation of share
 <!-- home text -->
 <div style="margin-left:300px;"> 
 <br>
+<div style="float:left;display:block;position:relative;">
+<h4>How do I use this report?</h4>
+Follow the guidance below to get the most out of this report.
+<br><br>
+<button class="collapsible"><span style="color:#CE112D;">1</span> | Review Reports and Insights</button>
+<div class="content">
+<div class="landingtext" >
+Review the reports and data insights to get a quick feel for the level of SMB share exposure in your environment.
+<br><br>
+<strong style="color:#333">Reports</strong><br>
+The <em>Scan, Computer, Share, and ACL</em> summary sections will provide a  summary of the results.  
+<br>
+<br>
+<strong style="color:#333">Data Insights</strong><br>
+The <em>Data Insights</em> sections are intented to highlight natural data groupings that can help centralize and expedite remediation on scale in Active Directory environments.
+<br>
+</div>
+</div>
+<button class="collapsible"><span style="color:#CE112D;">2</span> | Review Detailed CSV Files</button>
+<div class="content">
+<div class="landingtext">
+Review potentially excessive share ACL entry details in the associated HTML and CSV files.
+</div>
+</div>
+
+<button class="collapsible"><span style="color:#CE112D;">3</span> | Review Definitions</button>
+<div class="content">
+<div class="landingtext">
+Review the definitions below to ensure you understand what was targeted and how privileges have been qualified as excessive.
+<br><br>
+<strong style="color:#333">Excessive Privileges</strong><br>
+In the context of this report, excessive read and write share permissions have been defined as any network share ACL containing an explicit entry for the <em>"Everyone", "Authenticated Users", "BUILTIN\Users", "Domain Users", or "Domain Computers"</em> groups. 
+All provide domain users access to the affected shares due to privilege inheritance. 
+<Br><br>
+Please note that share permissions can be overruled by NTFS permissions. Also, be aware that testing excluded share names containing the following keywords: <em>"print$", "prnproc$", "printer", "netlogon",and "sysvol"</em>.
+<br><br>
+<strong style="color:#333">High Risk Shares</strong>
+<br>
+In the context of this report, high risk shares have been defined as shares that provide unauthorized remote access to a system or application. By default, that includes <em>wwwroot, inetpub, c$, and admin$</em> shares.  However, additional exposures may exist that are not called out beyond that.
+<br>
+</div>
+</div>
+
+<button class="collapsible"><span style="color:#CE112D;">4</span> | Verify and Remediate Issues</button>
+<div class="content">
+<div class="landingtext" >
+Follow the guidance in the Exploit Share Access, Detect Share Access, and Prioritize Remediation sections.</div>
+</div>
+
+<button class="collapsible"><span style="color:#CE112D;">5</span> | Run Scan Again</button>
+<div class="content">
+<div class="landingtext" style="">
+Collect SMB Share data and generate this HTML report by running <a href="https://github.com/NetSPI/PowerShell/blob/master/Invoke-HuntSMBShares.ps1">Invoke-HuntSMBShares.ps1</a> audit script.<br>
+The command examples below can be used to identify potentially malicious share permissions. 
+<br><br>
+<strong style="color:#333">From Domain System</strong>
+<div style="border: 2px solid #CCC;margin-top:5px;padding: 5px;padding-left: 15px;width:95%;background-color:white;color:#757575;font-family:Lucida, Grande, sans-serif;">
+Invoke-HuntSMBShares -Threads 20 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\ 
+</div>
+<br>
+<strong style="color:#333">From Non-Domain System</strong>
+<div style="border: 2px solid #CCC;margin-top:5px;padding: 5px;padding-left: 15px;width:95%;background-color:white;color:#757575;font-family:Lucida, Grande, sans-serif;">
+runas /netonly /user:domain\user PowerShell.exe<Br>
+Import-Module Invoke-HuntSMBShares.ps1<br>
+Invoke-HuntSMBShares -Threads 20 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\ -DomainController 10.1.1.1 -Username domain\user -Password password 
+</div>
+</div>
+</div>
 <h4>Collection Approach</h4>
 <div>
 The <a  style="color:#333" href="https://github.com/NetSPI/PowerHuntShares/blob/main/PowerHuntShares.psm1">PowerHuntShares</a> audit script was run against the netspi.local domain to collect SMB Share data, generate this HTML summary report, and generate the associated csv files that detail potentially excessive share configurations.
@@ -5706,75 +6275,6 @@ The left menu can be used to find summary data, the scan summary is in the table
 				</div>				 		  
 	</div>
  </div>
-</div>
-</div>
-
-<div style="float:left;display:block;position:relative;">
-<h4>How do I use this report?</h4>
-Follow the guidance below to get the most out of this report.
-<br><br>
-<button class="collapsible"><span style="color:#CE112D;">1</span> | Review Reports and Insights</button>
-<div class="content">
-<div class="landingtext" >
-Review the reports and data insights to get a quick feel for the level of SMB share exposure in your environment.
-<br><br>
-<strong style="color:#333">Reports</strong><br>
-The <em>Scan, Computer, Share, and ACL</em> summary sections will provide a  summary of the results.  
-<br>
-<br>
-<strong style="color:#333">Data Insights</strong><br>
-The <em>Data Insights</em> sections are intented to highlight natural data groupings that can help centralize and expedite remediation on scale in Active Directory environments.
-<br>
-</div>
-</div>
-<button class="collapsible"><span style="color:#CE112D;">2</span> | Review Detailed CSV Files</button>
-<div class="content">
-<div class="landingtext">
-Review potentially excessive share ACL entry details in the associated HTML and CSV files.
-</div>
-</div>
-
-<button class="collapsible"><span style="color:#CE112D;">3</span> | Review Definitions</button>
-<div class="content">
-<div class="landingtext">
-Review the definitions below to ensure you understand what was targeted and how privileges have been qualified as excessive.
-<br><br>
-<strong style="color:#333">Excessive Privileges</strong><br>
-In the context of this report, excessive read and write share permissions have been defined as any network share ACL containing an explicit entry for the <em>"Everyone", "Authenticated Users", "BUILTIN\Users", "Domain Users", or "Domain Computers"</em> groups. 
-All provide domain users access to the affected shares due to privilege inheritance. 
-<Br><br>
-Please note that share permissions can be overruled by NTFS permissions. Also, be aware that testing excluded share names containing the following keywords: <em>"print$", "prnproc$", "printer", "netlogon",and "sysvol"</em>.
-<br><br>
-<strong style="color:#333">High Risk Shares</strong>
-<br>
-In the context of this report, high risk shares have been defined as shares that provide unauthorized remote access to a system or application. By default, that includes <em>wwwroot, inetpub, c$, and admin$</em> shares.  However, additional exposures may exist that are not called out beyond that.
-<br>
-</div>
-</div>
-
-<button class="collapsible"><span style="color:#CE112D;">4</span> | Verify and Remediate Issues</button>
-<div class="content">
-<div class="landingtext" >
-Follow the guidance in the Exploit Share Access, Detect Share Access, and Prioritize Remediation sections.</div>
-</div>
-
-<button class="collapsible"><span style="color:#CE112D;">5</span> | Run Scan Again</button>
-<div class="content">
-<div class="landingtext" style="">
-Collect SMB Share data and generate this HTML report by running <a href="https://github.com/NetSPI/PowerShell/blob/master/Invoke-HuntSMBShares.ps1">Invoke-HuntSMBShares.ps1</a> audit script.<br>
-The command examples below can be used to identify potentially malicious share permissions. 
-<br><br>
-<strong style="color:#333">From Domain System</strong>
-<div style="border: 2px solid #CCC;margin-top:5px;padding: 5px;padding-left: 15px;width:95%;background-color:white;color:#757575;font-family:Lucida, Grande, sans-serif;">
-Invoke-HuntSMBShares -Threads 20 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\ 
-</div>
-<br>
-<strong style="color:#333">From Non-Domain System</strong>
-<div style="border: 2px solid #CCC;margin-top:5px;padding: 5px;padding-left: 15px;width:95%;background-color:white;color:#757575;font-family:Lucida, Grande, sans-serif;">
-runas /netonly /user:domain\user PowerShell.exe<Br>
-Import-Module Invoke-HuntSMBShares.ps1<br>
-Invoke-HuntSMBShares -Threads 20 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\ -DomainController 10.1.1.1 -Username domain\user -Password password 
-</div>
 </div>
 </div>
 <Br>
@@ -5883,7 +6383,6 @@ const ChartDashboardRiskOptions = {
 
 const ChartDashboardRisk = new ApexCharts(document.querySelector("#ChartDashboardRisk"), ChartDashboardRiskOptions);
 ChartDashboardRisk.render();
-
 
 // --------------------------
 // Function to support collapsing and expanding sections
@@ -6327,8 +6826,7 @@ function extractAndDownloadCSV(tableId, columnIndex) {
 </html>
 "@
 
-$NewHtmlReport | Out-File "$OutputDirectory\Summary-Report-$TargetDomain.html"
-$Time =  Get-Date -UFormat "%m/%d/%Y %R"
+$NewHtmlReport | Out-File "$OutputDirectoryBase\Summary-Report-$TargetDomain.html"
 Write-Output " [*][$Time]   - Done." 
 Write-Output ""
 Write-Output ""  
@@ -6371,10 +6869,10 @@ Write-Output ""
 
                 # Create new finding object
                 $object = New-Object psobject
-                $object | add-member noteproperty MasterFindingSourceIdentifier $ExcessivePrivID
-                $object | add-member noteproperty InstanceName            "Excessive Share ACL"
-                $object | add-member noteproperty AssetName               $ComputerName       
-                $object | add-member noteproperty IssueFirstFoundDate     $EndTime
+                $object | add-member noteproperty $rMasterFindingId $ExcessivePrivID
+                $object | add-member noteproperty $rFindingName            "Excessive Share ACL"
+                $object | add-member noteproperty $rAssetName               $ComputerName       
+                if(-not $Nova){$object | add-member noteproperty IssueFirstFoundDate     $EndTime}
                 $object | add-member noteproperty VerificationCaption01   "$IdentityReference has $FileSystemRights privileges on $SharePath." 
                 $ShareDetails = @"
 Computer Name: $ComputerName
@@ -6394,14 +6892,18 @@ File Count: $FileCount
 File List Sample: 
 $FileList 
 "@                
-                $object | add-member noteproperty VerificationText01      $ShareDetails
+                if($Nova){
+                    $object | add-member noteproperty VerificationText01 "<pre><code>$ShareDetails</code></pre>"
+                }else{
+                    $object | add-member noteproperty VerificationText01 $ShareDetails
+                }   
                 $object | add-member noteproperty VerificationCaption02   "caption 2"
-                $object | add-member noteproperty VerificationText02      "text 2"
+                $object | add-member noteproperty VerificationText02      ""
                 $object | add-member noteproperty VerificationCaption03   "caption 3"
-                $object | add-member noteproperty VerificationText03      "text 3"
+                $object | add-member noteproperty VerificationText03      ""
                 $object | add-member noteproperty VerificationCaption04   "caption 4"
-                $object | add-member noteproperty VerificationText04      "text 4"
-                $object
+                $object | add-member noteproperty VerificationText04      ""
+                $object 
             }
 
             # Write export file            
@@ -6409,13 +6911,19 @@ $FileList
 
             # Create record containing verification summary for domain
             $object = New-Object psobject
-            $object | add-member noteproperty MasterFindingSourceIdentifier $ExcessivePrivID
-            $object | add-member noteproperty InstanceName            "Domain ACL Summary"
-            $object | add-member noteproperty AssetName               $TargetDomain       
-            $object | add-member noteproperty IssueFirstFoundDate     $EndTime            
+            $object | add-member noteproperty $rMasterFindingId       $ExcessivePrivID
+            $object | add-member noteproperty $rFindingName           "Domain ACL Summary"
+            $object | add-member noteproperty $rAssetName             $TargetDomain                  
+            if(-not $Nova){
+                $object | add-member noteproperty IssueFirstFoundDate     $EndTime
+            }         
             $object | add-member noteproperty VerificationCaption01   "$ExcessiveSharesCount shares across $ComputerWithExcessive systems are configured with $ExcessiveSharePrivsCount potentially excessive ACLs." 
             $ShareDetails = $ExcessiveSharePrivs | Select-Object SharePath -Unique -ExpandProperty SharePath | Out-String            
-            $object | add-member noteproperty VerificationText01      $ShareDetails
+            if($Nova){
+                $object | add-member noteproperty VerificationText01      "<pre><code>$ShareDetails</code></pre>"
+            }else{
+                $object | add-member noteproperty VerificationText01      $ShareDetails
+            }
             $object | add-member noteproperty VerificationCaption02   "$TargetDomain SMB Share Scan Summary"
             $Summary1 = @"
 Target Domain: $TargetDomain
@@ -6433,7 +6941,7 @@ $Computers445OpenCount domain computers had TCP port 445 accessible
 Share Summary
 $AllSMBSharesCount shares were found.
 $ExcessiveSharesCount shares across $ComputerWithExcessive systems are configured with $ExcessiveSharePrivsCount potentially excessive ACLs.
-$SharesWithWriteCount shares across $ComputerWithWriteCount systems can be written to.</li>
+$SharesWithWriteCount shares across $ComputerWithWriteCount systems can be written to.
 $SharesHighRiskCount shares across $ComputerwithHighRisk systems are considered high risk.
 $Top5ShareCountTotal of $AllAccessibleSharesCount ($DupPercent) shares are associated with the top $SampleSum share names.
 
@@ -6450,11 +6958,15 @@ The 5 most common share names are:
 
             $SummaryFinal = $Summary1 + $Summary2
 
-            $object | add-member noteproperty VerificationText02      "$SummaryFinal"
+            if($Nova){
+                $object | add-member noteproperty VerificationText02      "<pre><code>$SummaryFinal</code></pre>"
+            }else{
+                $object | add-member noteproperty VerificationText02      $SummaryFinal
+            }
             $object | add-member noteproperty VerificationCaption03   "caption 3"
-            $object | add-member noteproperty VerificationText03      "text 3"
+            $object | add-member noteproperty VerificationText03      ""
             $object | add-member noteproperty VerificationCaption04   "caption 4"
-            $object | add-member noteproperty VerificationText04      "text 4"
+            $object | add-member noteproperty VerificationText04      ""
             
             # Write record to file
             $object | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Excessive-Privileges-EXPORT.csv" -Append
@@ -6498,10 +7010,12 @@ The 5 most common share names are:
 
                 # Create new finding object
                 $object = New-Object psobject
-                $object | add-member noteproperty MasterFindingSourceIdentifier $ExcessivehighRiskID
-                $object | add-member noteproperty InstanceName            "Excessive Share ACL"
-                $object | add-member noteproperty AssetName               $ComputerName       
-                $object | add-member noteproperty IssueFirstFoundDate     $EndTime
+                $object | add-member noteproperty $rMasterFindingId $ExcessivehighRiskID
+                $object | add-member noteproperty $rFindingName            "Excessive Share ACL"
+                $object | add-member noteproperty $rAssetName               $ComputerName       
+                if(-not $Nova){
+                    $object | add-member noteproperty IssueFirstFoundDate     $EndTime
+                }
                 $object | add-member noteproperty VerificationCaption01   "$IdentityReference has $FileSystemRights privileges on $SharePath." 
                 $ShareDetails = @"
 Computer Name: $ComputerName
@@ -6537,13 +7051,19 @@ $FileList
 
             # Create record containing verification summary for domain
             $object = New-Object psobject
-            $object | add-member noteproperty MasterFindingSourceIdentifier $ExcessivehighRiskID
-            $object | add-member noteproperty InstanceName            "Domain ACL Summary"
-            $object | add-member noteproperty AssetName               $TargetDomain       
-            $object | add-member noteproperty IssueFirstFoundDate     $EndTime            
+            $object | add-member noteproperty $rMasterFindingId $ExcessivehighRiskID
+            $object | add-member noteproperty $rFindingName            "Domain ACL Summary"
+            $object | add-member noteproperty $rAssetName               $TargetDomain       
+            if(-not $Nova){
+                $object | add-member noteproperty IssueFirstFoundDate     $EndTime
+            }          
             $object | add-member noteproperty VerificationCaption01   "$SharesHighRiskCount shares across $ComputerwithHighRisk systems are considered high risk." 
             $ShareDetails = $SharesHighRisk | Select-Object SharePath -Unique -ExpandProperty SharePath | Out-String            
-            $object | add-member noteproperty VerificationText01      $ShareDetails
+            if($Nova){
+                $object | add-member noteproperty VerificationText01      "<pre><code>$ShareDetails</code></pre>"
+            }else{
+                $object | add-member noteproperty VerificationText01      $ShareDetails
+            }
             $object | add-member noteproperty VerificationCaption02   "$TargetDomain SMB Share Scan Summary"
             $Summary1 = @"
 Target Domain: $TargetDomain
@@ -6578,11 +7098,15 @@ The 5 most common share names are:
 
             $SummaryFinal = $Summary1 + $Summary2
 
-            $object | add-member noteproperty VerificationText02      "$SummaryFinal"
+            if($Nova){
+                $object | add-member noteproperty VerificationText02      "<pre><code>$SummaryFinal</code></pre>"
+            }else{
+                $object | add-member noteproperty VerificationText02      $SummaryFinal
+            }
             $object | add-member noteproperty VerificationCaption03   "caption 3"
-            $object | add-member noteproperty VerificationText03      "text 3"
+            $object | add-member noteproperty VerificationText03      ""
             $object | add-member noteproperty VerificationCaption04   "caption 4"
-            $object | add-member noteproperty VerificationText04      "text 4"
+            $object | add-member noteproperty VerificationText04      ""
             
             # Write record to file
             $object | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Excessive-Privileges-EXPORT.csv" -Append
