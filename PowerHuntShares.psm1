@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.93
+# Version: v1.94
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1735,123 +1735,6 @@ function Invoke-HuntSMBShares
         } | select | ForEach-Object { "'$_'" }) -join ", "
         $IFCategoryListCount = "[$IFCategoryList]"
 
-
-        <#
-
-		# Define list of words associated with sensitive data	
-        $FileNamePatternsSecrets = $FileNamePatternsAll | where category -like "*Secret*" | select Keyword -ExpandProperty keyword 
-		
-        # Define list of words associated with password files
-        $FileNamePatternsData    = $FileNamePatternsAll | where category -like "*Sensitive*" | select Keyword -ExpandProperty keyword
-
-        # Get a list of file names from each folder group for the target share name
-        $InterestingFilesAllFileNames = $ExcessiveSharePrivs | select FileList -Unique | foreach {$_.FileList -split "`r`n"} | Where-Object {$_ -ne ''} | foreach {$_.ToLower()}|  select -Unique                                       
-
-        # Identify Secrets
-        $InterestingFilesAllSecrets = $FileNamePatternsSecrets | 
-        foreach {
-                $TargetSecret = $_
-                $InterestingFilesAllFileNames | 
-                foreach {
-                    if($_ -like "$TargetSecret"){
-
-                        # return file name match
-                        $_
-                    }
-                }
-        }
-
-        # Create new secret files objects
-        $InterestingFilesAllSecretsObjects = $InterestingFilesAllSecrets | 
-        foreach{
-
-            # Set target file
-            $TargetSecretFile    = $_
-
-            # Filter for record with the target file
-            $TargetSecretMatches = $ExcessiveSharePrivs | where FileList -like "*$TargetSecretFile*" | select ComputerName,ShareName,SharePath -Unique
-            $TargetSecretMatches | 
-            foreach {
-
-                # Select the propertity and make new ones
-                $TargetSecretComputer  = $_.ComputerName   
-                $TargetSecretShareName = $_.ShareName 
-                $TargetSecretSharePath = $_.SharePath
-                $TargetSecretUNCPath   = "$TargetSecretSharePath\$TargetSecretFile"
-                $TargetSecretType      = "Secrets"  
-
-                # Create updated object
-                $object = New-Object psobject
-                $object | add-member noteproperty ComputerName            $TargetSecretComputer
-                $object | add-member noteproperty ShareName               $TargetSecretShareName
-                $object | add-member noteproperty SharePath               $TargetSecretSharePath   
-                $object | add-member noteproperty UncPath                 $TargetSecretUNCPath
-                $object | add-member noteproperty FileName                $TargetSecretFile
-                $object | add-member noteproperty DataType                $TargetSecretType 
-
-                # Return object
-                $object 
-            }
-        } | select ComputerName,ShareName,SharePath,UncPath,FileName,DataType -Unique 
-
-        # Identify Data
-        $InterestingFilesAllData = $FileNamePatternsData | 
-        foreach {
-                $TargetSecret = $_
-                $InterestingFilesAllFileNames | 
-                foreach {
-                    if($_ -like "$TargetSecret"){
-
-                        # return file name match
-                        $_
-                    }
-                }
-        }
-
-        # Create new data files objects
-        $InterestingFilesAllDataObjects = $InterestingFilesAllData | 
-        foreach{
-
-            # Set target file
-            $TargetSecretFile    = $_
-
-            # Filter for record with the target file
-            $TargetSecretMatches = $ExcessiveSharePrivs | where FileList -like "*$TargetSecretFile*" | select ComputerName,ShareName,SharePath -Unique
-            $TargetSecretMatches | 
-            foreach {
-
-                # Select the propertity and make new ones
-                $TargetSecretComputer  = $_.ComputerName   
-                $TargetSecretShareName = $_.ShareName 
-                $TargetSecretSharePath = $_.SharePath
-                $TargetSecretUNCPath   = "$TargetSecretSharePath\$TargetSecretFile"
-                $TargetSecretType      = "Sensitive"  
-
-                # Create updated object
-                $object = New-Object psobject
-                $object | add-member noteproperty ComputerName            $TargetSecretComputer
-                $object | add-member noteproperty ShareName               $TargetSecretShareName
-                $object | add-member noteproperty SharePath               $TargetSecretSharePath   
-                $object | add-member noteproperty UncPath                 $TargetSecretUNCPath
-                $object | add-member noteproperty FileName                $TargetSecretFile
-                $object | add-member noteproperty DataType                $TargetSecretType 
-
-                # Return object
-                $object 
-            }
-        } | select ComputerName,ShareName,SharePath,UncPath,FileName,DataType -Unique 
-
-        # Combine objects
-        $InterestingFilesAllObjects = $InterestingFilesAllSecretsObjects + $InterestingFilesAllDataObjects 
-        
-
-        # Count objects
-        $InterestingFilesAllSecretsFullCount   = $InterestingFilesAllSecretsObjects | measure | select count -ExpandProperty count 
-        $InterestingFilesAllSecretsFullCountU  = $InterestingFilesAllSecretsObjects | select FileName -Unique | measure | select count -ExpandProperty count 
-        $InterestingFilesAllDataFullcount      = $InterestingFilesAllDataObjects    | measure | select count -ExpandProperty count 
-        $InterestingFilesAllDataFullcountU     = $InterestingFilesAllDataObjects    | select FileName -Unique | measure | select count -ExpandProperty count 
-        #>
-
         # Outbout objects to file
         $InterestingFilesAllObjects | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Interesting-Files.csv"     
 
@@ -2063,13 +1946,13 @@ function Invoke-HuntSMBShares
             if($ShareRowHasWrite                        -eq  1){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightWrite         } # Write Access          
             if($ShareRowHasRead                         -eq  1){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightRead          } # Read Access                          
             if($ShareRowHasEmpty                        -eq  1){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightEmpty         } # Empty Folders
-            if($ShareRowHasStale                        -eq  1){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightStale         } # Stake Folders          
+            if($ShareRowHasStale                        -eq  1){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightStale         } # Stake Folders           
 
-            # Set Risk Score
-            If($ShareNameRiskValue -ge 11 ) { $RiskLevel = "High"}
-            If($ShareNameRiskValue -ge 20 ) { $RiskLevel = "Critical"}
-            If($ShareNameRiskValue -lt 11 ) { $RiskLevel = "Medium"}
-            If($ShareNameRiskValue -lt 4  ) { $RiskLevel = "Low"}   
+            # Check risk level - Highest wins
+            If($ShareNameRiskValue  -le 4                                    ) { $RiskLevel = "Low"}  
+            If($ShareNameRiskValue  -gt 4  -and $ShareNameRiskValue -lt 11   ) { $RiskLevel = "Medium"}
+            If($ShareNameRiskValue  -ge 11 -and $ShareNameRiskValue -lt 20   ) { $RiskLevel = "High"}   
+            If($ShareNameRiskValue  -ge 20                                   ) { $RiskLevel = "Critical"}  
 
             # Append new column to object
             $newObject = [PSCustomObject]@{
@@ -2120,7 +2003,108 @@ function Invoke-HuntSMBShares
         $RiskLevelCountLow      = $ExcessiveSharePrivsFinal | where RiskLevel -eq 'Low'      | measure | select count -ExpandProperty count
         $RiskLevelCountMedium   = $ExcessiveSharePrivsFinal | where RiskLevel -eq 'Medium'   | measure | select count -ExpandProperty count 
         $RiskLevelCountHigh     = $ExcessiveSharePrivsFinal | where RiskLevel -eq 'High'     | measure | select count -ExpandProperty count 
-        $RiskLevelCountCritical = $ExcessiveSharePrivsFinal | where RiskLevel -eq 'Critical' | measure | select count -ExpandProperty count          
+        $RiskLevelCountCritical = $ExcessiveSharePrivsFinal | where RiskLevel -eq 'Critical' | measure | select count -ExpandProperty count  
+
+        # ----------------------------------------------------------------------
+        # Create Computer Summary Information
+        # ---------------------------------------------------------------------- 
+        # TBD
+
+
+        # ----------------------------------------------------------------------
+        # Create Share Name Summary Information
+        # ----------------------------------------------------------------------  
+
+        # Get unique share name count
+        $ShareNameChartCount       = $ExcessiveSharePrivsFinal | where ShareName -ne "" | select ShareName -Unique | 
+        foreach{
+            if( ($_.sharename -ne 'SYSVOL') -and ($_.sharename -ne 'NETLOGON'))
+            {
+                $_                
+            }
+        } | measure | select count -ExpandProperty count  
+
+        # Get unique share count
+        $ShareNameChartCountUnique = $ExcessiveSharePrivsFinal | where ShareName -ne "" | 
+        foreach{
+            if( ($_.SharePath -notlike "\*SYSVOL") -and ($_.SharePath -notlike"\*NETLOGON"))
+            {
+                $_                
+            }
+        } | select SharePath -Unique | measure | select count -ExpandProperty count 
+
+        # Get share name severity
+        # Reivew ACLs for each share name, highest severity wins
+        $RiskLevelShareNameCountCritical = 0
+        $RiskLevelShareNameCountHigh     = 0
+        $RiskLevelShareNameCountMedium   = 0
+        $RiskLevelShareNameCountLow      = 0
+        $ExcessiveSharePrivsFinal | where ShareName -ne "" |
+        foreach{
+
+            # filter out sysvol and netlogon
+            if( ($_.sharename -ne 'SYSVOL') -and ($_.sharename -ne 'NETLOGON'))
+            {
+                $_                
+            }
+        } | select ShareName -Unique |
+        foreach {
+             
+             # Set target share name
+             $TargetRiskShareName = $_.ShareName
+
+             # Grab the risk level for the highest risk acl for the share name
+             $ShareNameTopACLRiskScore = $ExcessiveSharePrivsFinal | where ShareName -eq $TargetRiskShareName | select RiskScore | sort RiskScore -Descending | select -First 1  | select RiskScore -ExpandProperty RiskScore
+
+             # Check risk level - Highest wins
+             If($ShareNameTopACLRiskScore -le 4                                          ) { $RiskLevelShareNameResult = "Low"}
+             If($ShareNameTopACLRiskScore -gt 4  -and $ShareNameTopACLRiskScore -lt 11   ) { $RiskLevelShareNameResult = "Medium"} 
+             If($ShareNameTopACLRiskScore -ge 11 -and $ShareNameTopACLRiskScore -lt 20   ) { $RiskLevelShareNameResult = "High"}     
+             If($ShareNameTopACLRiskScore -ge 20                                         ) { $RiskLevelShareNameResult = "Critical"}   
+             
+             # Increment counts
+             if($RiskLevelShareNameResult -eq "Low"     ){$RiskLevelShareNameCountLow      = $RiskLevelShareNameCountLow      + 1}
+             if($RiskLevelShareNameResult -eq "Medium"  ){$RiskLevelShareNameCountMedium   = $RiskLevelShareNameCountMedium   + 1}
+             if($RiskLevelShareNameResult -eq "High"    ){$RiskLevelShareNameCountHigh     = $RiskLevelShareNameCountHigh     + 1}
+             if($RiskLevelShareNameResult -eq "Critical"){$RiskLevelShareNameCountCritical = $RiskLevelShareNameCountCritical + 1}                         
+        } 
+
+        # ----------------------------------------------------------------------
+        # Create Folder Group Summary Information
+        # ---------------------------------------------------------------------- 
+        $RiskLevelFolderGroupCountCritical = 0
+        $RiskLevelFolderGroupCountHigh     = 0
+        $RiskLevelFolderGroupCountMedium   = 0
+        $RiskLevelFolderGroupCountLow      = 0
+        $FolderGroupChartCount     = $ExcessiveSharePrivsFinal | select FileListGroup -Unique | measure | select count -ExpandProperty count # Unique folder group
+        $ExcessiveSharePrivsFinal | select FileListGroup -Unique |
+        foreach {
+             
+             # Set target share name
+             $TargetFileListGroup = $_.FileListGroup
+
+             # Grab the risk level for the highest risk acl for the share name
+             $FileListGroupTopACLRiskScore = $ExcessiveSharePrivsFinal | where FileListGroup -eq $TargetFileListGroup | select RiskScore | sort RiskScore -Descending | select -First 1  | select RiskScore -ExpandProperty RiskScore
+
+             # Check risk level - Highest wins
+             If($FileListGroupTopACLRiskScore -le 4                                              ) { $RiskLevelFileListGroupResult = "Low"}
+             If($FileListGroupTopACLRiskScore -gt 4  -and $FileListGroupTopACLRiskScore -lt 11   ) { $RiskLevelFileListGroupResult = "Medium"} 
+             If($FileListGroupTopACLRiskScore -ge 11 -and $FileListGroupTopACLRiskScore -lt 20   ) { $RiskLevelFileListGroupResult = "High"}     
+             If($FileListGroupTopACLRiskScore -ge 20                                             ) { $RiskLevelFileListGroupResult = "Critical"}   
+             
+             # Increment counts
+             if($RiskLevelFileListGroupResult -eq "Low"     ){$RiskLevelFolderGroupCountLow      = $RiskLevelFolderGroupCountLow      + 1}
+             if($RiskLevelFileListGroupResult -eq "Medium"  ){$RiskLevelFolderGroupCountMedium   = $RiskLevelFolderGroupCountMedium   + 1}
+             if($RiskLevelFileListGroupResult -eq "High"    ){$RiskLevelFolderGroupCountHigh     = $RiskLevelFolderGroupCountHigh     + 1}
+             if($RiskLevelFileListGroupResult -eq "Critical"){$RiskLevelFolderGroupCountCritical = $RiskLevelFolderGroupCountCritical + 1}                         
+        } 
+
+        # select all interance 
+
+        # ----------------------------------------------------------------------
+        # Create ACL Summary Information
+        # ---------------------------------------------------------------------- 
+        # TBD                          
 
         # ----------------------------------------------------------------------
         # Create Timeline Reports
@@ -3046,216 +3030,58 @@ function Invoke-HuntSMBShares
             # Set default
             $ShareRowCountInteresting                = "No"
 
-            # Define common image and other formats to filter out later
-            $ImageFormats = @("*.jpg", "*.jpeg", "*.png", "*.gif", "*.bmp", "*.ico", "*.svg", "*.webp", "*.mif", "*.heic", "*.msi")
+            # Check if interesting files 
+         	# For each category generate count and list
+	        $ShareNameInterestingFilesInsideHTML  = ""
+            $ShareNameInterestingFilesOutsideHTML = ""
+	        $FileNamePatternCategories | select Category -ExpandProperty Category | 
+	        foreach{
+		
+		        # Get category
+		        $ShareNameCategoryName = $_
 
-            # Check if interesting files - Secrets
-            # Files that may contain passwords, key, or other authentication tokens
-            $ShareRowInterestingFileListSecrets      = ""
-            $ShareRowInterestingFileListSecretsCount = 0
-            $ShareRowCountInterestingSecrets         = "No"            
-            $FileNamePatternsSecrets = @(
-                "*.bacpac*",
-                "*.bat*",
-                "*.config*",
-                "*.dtsx*",
-                "*.json*",
-                "*.ps1*",
-                "*.psm1*",
-                "*.UDL*",
-                "*config.php*",
-                "*Credentials*",
-                "*Creds*",
-                "*keys*",
-                "*pass*",
-                "*private*",
-                "*secret*",
-                "*secure*",
-                "*security*",
-                "*web.conf*",
-                "*htaccess*",
-                "*htpasswd*",
-                "*inetpub*",
-                "applicationhost.config*",
-                "auth*",
-                "config.xml*",
-                "context.xml*",
-                "db2cli.ini*",
-                "ftpd.*",
-                "ftpusers*",
-                "httpd.conf*",
-                "hudson.security.HudsonPrivateSecurityRealm.*",
-                "jboss-cli.xml*",
-                "jboss-logmanager.properties*",
-                "jenkins.model.JenkinsLocationConfiguration.*",
-                "machine.config*",
-                "my.*",
-                "mysql.user*",
-                "nginx.conf*",
-                "*ntds.dit*",
-                "pg_hba.conf*",
-                "php.ini*",
-                "putty.reg*",
-                "postgresql.conf*",
-                "SAM",               
-                "SAM-*",
-                "SAM_*",
-                "SYSTEM",
-                "server.xml*",
-                "shadow*",
-                "standalone.xml*",
-                "tnsnames.ora*",
-                "tomcat-users.xml*",
-                "sitemanager.xml*",
-                "users.*",
-                "*.vmx*",
-                "*.vmdk*",
-                "*.nvram*",
-                "*.vmsd*",
-                "*.vmsn*",
-                "*.vmss*",
-                "*.vmem*",
-                "*.vhd*",
-                "*.vhdx*",
-                "*.avhd*",
-                "*.avhdx*",
-                "*.vsv*",
-                "*.vbox*",
-                "*.vbox-prev*",
-                "*.vdi*",
-                "*.hdd*",
-                "*.sav*",
-                "*.pvm*",
-                "*.pvs*",
-                "*.qcow*",
-                "*.qcow2*",
-                "*.img*",
-                "*vcenter*",
-                "*vault*",
-                "*DefaultAppPool*",
-                "*WinSCP.ini*",
-                "*.kdbx",
-                "wp-config.php*"
-            )
+		        # Get list of that sharename and category
+                $ShareNameCategoryFilesBase = $InterestingFilesAllObjects | Where ShareName -eq "$ShareName" |  where Category -eq "$ShareNameCategoryName" | select FileName
+		        $ShareNameCategoryFiles = $InterestingFilesAllObjects | Where ShareName -eq "$ShareName" |  where Category -eq "$ShareNameCategoryName" | select FileName | ForEach-Object { $ASDF = $_.FileName; "$ASDF<br>" }  | out-string
 
-            # Check for matches            
-            $ShareRowInterestingFileListSecrets = foreach ($pattern in $FileNamePatternsSecrets) {
-                
-                # Parse the filenames for all shares with the target name into a list
-                # $FullFileListSim - define in above sections
-                
-                # Check if interesting file pattern matches the file name                
-                $FullFileListSim |
-                foreach {
-                    
-                    # Reset exclude flag
-                    $ExcludeThisFile = 0
+		        # Get category count
+		        $ShareNameCategoryFilesCount =  $ShareNameCategoryFilesBase | measure | select count -expandproperty count 
 
-                    # File to check
-                    $CheckThisfileOut = $_
-
-                    # Check if it should be excluded
-                    $ImageFormats | 
-                    foreach{
-                        if($CheckThisfileOut -like "$_"){
-                            $ExcludeThisFile = 1
-                        }
-                    }
-
-                    # Check if it matches pattern
-                    if ($_ -like $pattern -and $ExcludeThisFile -eq 0) {
-
-                        # v1 add file name to link
-                        "$_<br>"
-
-                        # v2 add hyperlinked sharepath that expands betwen the: file name %(count)
-                    }
+		        # Generate HTML with Category
+                if($ShareNameCategoryFilesCount -ne 0){
+		            $ShareNameInterestingFilesHTMLPrep = @" 
+                        <button class="collapsible" style="font-size: 10px;">$ShareNameCategoryFilesCount $ShareNameCategoryName</button>
+ 		                <div class="content" style="font-size: 10px; width:100px; overflow-wrap: break-word;">
+		                $ShareNameCategoryFiles
+		                </div>
+"@
+		            # Add to code block
+		            $ShareNameInterestingFilesInsideHTML = $ShareNameInterestingFilesInsideHTML + $ShareNameInterestingFilesHTMLPrep
                 }
-            } 
-            
-            $ShareRowInterestingFileListSecrets = $ShareRowInterestingFileListSecrets | select -Unique | sort
+	        }
 
-            # Count number of interesting files and update status
-            $ShareRowInterestingFileListSecretsCount = $ShareRowInterestingFileListSecrets | select -Unique | sort | Measure | select count -ExpandProperty count
-            if( $ShareRowInterestingFileListSecretsCount -gt 0){
-                $ShareRowCountInterestingSecrets         = "Yes"
-                $ShareRowCountInteresting                = "Yes"
+            # Get total for interesting files for target share name
+	        $ShareNameInterestingFilesCount = $InterestingFilesAllObjects | Where ShareName -eq "$ShareName" | measure | select count -expandproperty count 
+            if($ShareNameInterestingFilesCount -gt 0){
+                $ShareRowCountInteresting = "Yes"
+            }else{
+                 $ShareRowCountInteresting = "No"
             }
 
- 	        # Check if interesting files - Sensitive Data
-            $ShareRowInterestingFileListData         = ""
-            $ShareRowInterestingFileListDataCount    = 0
-            $ShareRowCountInterestingData            = "No"
-            $FileNamePatternsData = @(               
-                "*credit*",
-                "*card*",               
-                "*pci*",
-                "*social*",
-                "*ssn*",
-                "*database*",
-                "human*",
-                "finance*",
-                "Health*",
-                "Billing*",
-                "patient*",
-                "*.bak*",
-                "*backup*",
-                "*.sql",
-                "*.mdb",
-                "*.mdf",
-                "*.idf",
-                "*.sqlite",
-                "*ftp",
-                "*Program Files*",
-                "HR*"
-            )
+            # Get secrets count
+            $ShareRowInterestingFileListSecretsCount = $InterestingFilesAllObjects | Where ShareName -eq "$ShareName" |  Where Category -eq "Secret" | measure | select count -expandproperty count 
 
-            # Check for matches
-            $ShareRowInterestingFileListData = foreach ($pattern in $FileNamePatternsData) {
-                
-                # Parse the filenames for all shares with the target name into a list
-                # $FullFileListSim - define in above sections
-                
-                # Check if interesting file pattern matches the file name
-                $FullFileListSim | 
-                foreach {
-
-                    # Reset exclude flag
-                    $ExcludeThisFile = 0
-
-                    # File to check
-                    $CheckThisfileOut = $_
-
-                    # Check if it should be excluded
-                    $ImageFormats | 
-                    foreach{
-                        if($CheckThisfileOut -like "$_"){
-                            $ExcludeThisFile = 1
-                        }
-                    }
-
-                    if ($_ -like $pattern-and $ExcludeThisFile -eq 0) {
-
-
-                        # v1 add file name to link
-                        "$_<br>"
-
-                        # v2 add hyperlinked sharepath that expands betwen the: file name %(count)
-                    }
-                }
-            } 
+            # Get sensitive count
+            $ShareRowInterestingFileListDataCount    = $InterestingFilesAllObjects | Where ShareName -eq "$ShareName" |   Where Category -eq "Sensitive" | measure | select count -expandproperty count 
+       
+            # Build final interesting file html for share names page
+	        $ShareNameInterestingFilesOutsideHTML = @"
+		        <button class="collapsible"  style="font-size: 10px;">$ShareNameInterestingFilesCount Files</button>
+ 		        <div class="content" style="font-size: 10px;width:100px;overflow-wrap: break-word;">
+		        $ShareNameInterestingFilesInsideHTML
+		        </div>
+"@
             
-            $ShareRowInterestingFileListData = $ShareRowInterestingFileListData | select -Unique | sort
-
-            # Count number of interesting files and update status
-            $ShareRowInterestingFileListDataCount = $ShareRowInterestingFileListData | select -Unique | sort | Measure | select count -ExpandProperty count
-            if( $ShareRowInterestingFileListDataCount -gt 0){
-                $ShareRowCountInterestingData            = "Yes"
-                $ShareRowCountInteresting                = "Yes"
-            }
-
-            $ShareRowInterestingFileTotalCount = $ShareRowInterestingFileListDataCount + $ShareRowInterestingFileListSecretsCount 
-
             # Build coverage icon set
             $CoverageIcons = ""
             if($ShareRowHasHighRisk        -eq "Yes"){ $CoverageIcons = $CoverageIcons + "<div class=`"tooltip`"><div class=`"circle`">H</div><span class=`"tooltiptext`">Highly Exploitable</span></div>&nbsp;" }
@@ -3275,66 +3101,20 @@ function Invoke-HuntSMBShares
             # Calculate Risk Level
             # ----------------------------------------------------------------------
 
-            # Define Weights 
+            # Grab the risk level for the highest risk acl for the share name
+            $ShareNameTopACLRiskScore = $ExcessiveSharePrivsFinal | where ShareName -eq $ShareName | select RiskScore | sort RiskScore -Descending | select -First 1  | select RiskScore -ExpandProperty RiskScore
 
-            $RiskWeightRCE             = 11
-
-            $RiskWeightData            = 8
-            $RiskWeightDataVolume      = 1
-
-            $RiskWeightSecrets         = 2
-            $RiskWeightSecretsVolume   = 1
-
-            $RiskWeightWrite           = 4
-            $RiskWeightRead            = 3
-
-            $RiskWeightLargeVolume     = 1  
-            $RiskWeightOfficeDocs      = 1  # TBD; Placeholder    
-
-            $RiskWeightEmpty           = -1
-            $RiskWeightStale           = -1
-
-            # Calculate Actual Value
-            $ShareNameRiskValue = 0
-            if($ShareRowHasHighRisk                     -eq "Yes"){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightRCE           } # Potential RCE
-            if($ShareRowCountInterestingData            -eq "Yes"){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightData          } # Potential Sensitive Data 
-            if($ShareRowInterestingFileListDataCount    -gt  10  ){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightDataVolume    } # Potential Sensitive Data Volume            
-            if($ShareRowCountInterestingSecrets         -eq "Yes"){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightSecrets       } # Potential Password Access 
-            if($ShareRowInterestingFileListDataCount    -gt  10  ){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightSecretsVolume } # Potential Sensitive Data Volume 
-            if($ShareRowHasWrite                        -eq "Yes"){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightWrite         } # Write Access          
-            if($ShareRowHasRead                         -eq "Yes"){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightRead          } # Read Access                        
-            if($SimularityFileCommonListTopNum          -gt  100 ){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightLargeVolume   } # Large number of common files  
-            if($ShareRowHasEmpty                        -eq "Yes"){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightEmpty         } # Empty Folders
-            if($ShareRowHasStale                        -eq "Yes"){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightStale         } # Stake Folders          
-
-            # Set Risk Score
-            If($ShareNameRiskValue -ge 11 ) { $RiskLevel = "$ShareNameRiskValue High"}
-            If($ShareNameRiskValue -ge 20 ) { $RiskLevel = "$ShareNameRiskValue Very High"}
-            If($ShareNameRiskValue -lt 11 ) { $RiskLevel = "$ShareNameRiskValue Medium"}
-            If($ShareNameRiskValue -lt 4  ) { $RiskLevel = "$ShareNameRiskValue Low"}       
-
-            <#
-            # Determine Max Value
-            $ShareNameRiskMax   = $RiskWeightRCE              +
-                                  $RiskWeightData             +
-                                  $RiskWeightDataVolume       +
-                                  $RiskWeightSecrets          +
-                                  $RiskWeightSecretsVolume    +
-                                  $RiskWeightWrite            +
-                                  $RiskWeightRead             +
-                                  $RiskWeightLargeVolume
-            
-            # Calculate Score
-            $ShareNameRiskScore   = $ShareNameRiskValue / $ShareNameRiskMax
-            $ShareNameRiskScoreP1 = [math]::round(($ShareNameRiskScore.tostring("P") -replace('%','')))
-            $ShareNameRiskScoreP  = "$ShareNameRiskScoreP1%"           
-
-            # Set Risk Score            
-            If($ShareNameRiskScore -ge .80){ $RiskLevel = "$ShareNameRiskScoreP High"}
-            If($ShareNameRiskScore -ge .95){ $RiskLevel = "$ShareNameRiskScoreP Very High"}
-            If($ShareNameRiskScore -lt .80){ $RiskLevel = "$ShareNameRiskScoreP Medium"}
-            If($ShareNameRiskScore -lt .50){ $RiskLevel = "$ShareNameRiskScoreP Low"} 
-            #>
+            # Check risk level - Highest wins
+            If($ShareNameTopACLRiskScore -le 4                                          ) { $RiskLevelShareNameResult = "Low"}
+            If($ShareNameTopACLRiskScore -gt 4  -and $ShareNameTopACLRiskScore -lt 11   ) { $RiskLevelShareNameResult = "Medium"} 
+            If($ShareNameTopACLRiskScore -ge 11 -and $ShareNameTopACLRiskScore -lt 20   ) { $RiskLevelShareNameResult = "High"}     
+            If($ShareNameTopACLRiskScore -ge 20                                         ) { $RiskLevelShareNameResult = "Critical"}   
+             
+            # Set final risk level
+            if($RiskLevelShareNameResult -eq "Low"     ){$RiskLevel = "$ShareNameTopACLRiskScore Low"}
+            if($RiskLevelShareNameResult -eq "Medium"  ){$RiskLevel = "$ShareNameTopACLRiskScore Medium"}
+            if($RiskLevelShareNameResult -eq "High"    ){$RiskLevel = "$ShareNameTopACLRiskScore High"}
+            if($RiskLevelShareNameResult -eq "Critical"){$RiskLevel = "$ShareNameTopACLRiskScore Critical"}
 
             # ----------------------------------------------------------------------
             # Build UNC Path Lists
@@ -3571,25 +3351,8 @@ function Invoke-HuntSMBShares
               </div>
 	          </td> 
 	          <td style="font-size: 10px;">
-
-              <button class="collapsible" style="font-size: 10px;"><strong>$ShareRowInterestingFileTotalCount Files</strong></button>
-                  <div class="content" style="font-size: 10px;width:100px;overflow-wrap: break-word;">                 
-                          <button class="collapsible"><span style="font-size: 10px;">$ShareRowInterestingFileListSecretsCount Secrets Files</span></button>
-                          <div class="content" style="font-size: 10px;">                                         
-                              <table class="subtable" style="width:80%">
-                              $ShareRowInterestingFileListSecrets
-                              </table>
-
-                          </div>
-
-                          <button class="collapsible"><span style="font-size: 10px;">$ShareRowInterestingFileListDataCount Data Files</span></button>
-                          <div class="content" style=";font-size: 10px;">                                         
-                              <table class="subtable" style="width:80%"`>
-                              $ShareRowInterestingFileListData
-                              </table>
-                          </div>
-                 </div>           
-	          </td>          	  
+                $ShareNameInterestingFilesOutsideHTML          
+	          </td>            	  
 	          </tr>
 "@               
             $ThisRow  
@@ -4907,7 +4670,7 @@ input[type="checkbox"]:checked::before {
 							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
 								<strong>Interesting File Names Found</strong>
 							</div>												
-							<div class="LargeCardContainer" style="height:165px;text-align:center;vertical-align: middle;">	
+							<div class="LargeCardContainer" style="height:193px;text-align:center; padding-top: 30px;">	
 									<br><br>						
 								   <span class="percentagetext" style = "font-size: 50px; color:#f08c41;">                    
 									$InterestingFilesAllFilesCount                        
@@ -4938,15 +4701,14 @@ input[type="checkbox"]:checked::before {
 					<!-- /////////////// Table  -->
                     <div style="height: 125px;text-align: left;"></div>
 
-                    <div class="searchbar" style="text-align: left; display:flex;flex-direction:left;">
-                        <div style="position: relative; display: flex; align-items: center;">
-							<input type="text" id="filterInputIF" placeholder=" Search..." style="height: 25px; font-size: 14px; margin-top: 0px; margin-left: 10px; padding-left: 10px; border-radius: 3px; border: 1px solid #BDBDBD; outline: none; color: #07142A; line-height: 25px;">							
-							<div style="position: absolute; left: 200px; top: 12px; cursor: pointer;color:grey;" onmouseover="this.style.color=#07142A;" onmouseout="this.style.textDecoration='';this.style.fontWeight='normal';" onclick="document.getElementById('filterInputIF').value = '';applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF');">Clear</div>
-						</div>
-						<div id="filterCounterIF" style="margin-top:47px;height: 25px;font-size:11;text-align: left; margin-left: -194px;">Loading...</div>
-                        <div style="margin-top:47px;height: 25px;font-size:11;text-align: left; margin-left: 6px;"><a style="margin-top:46px;height: 25px;font-size:11;" href="#" onclick="extractAndDownloadCSV('InterestingFileTable', 3)">Export</a></div>						      
+                    <div class="searchbar" style="text-align:left; display: flex;" >
+							<input type="text" id="filterInputIF" placeholder=" Search..." style="margin-top: 8px; height: 25px; font-size: 14px; padding-left:3px;margin-left: 10px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
+							<div style="font-size:12;text-align: left;cursor: pointer;color:gray; margin-top: 13px; margin-left: 5px;" onmouseover="this.style.color='white';" onmouseout="this.style.textDecoration='';this.style.fontWeight='normal';this.style.color='gray';"onclick="document.getElementById('filterInputIF').value = '';applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF');">Clear</div>
+					 </div>
+					<div style="display: flex; margin-left:10px; font-size:11; text-align:left;" >	
+						<div id="filterCounterIF" style="margin-top:5px;">Loading...</div>
+                        <a style="font-size:11; margin-top: 5px; margin-left: 5px;" href="#" onclick="extractAndDownloadCSV('InterestingFileTable', 3)">Export</a>						      
                     </div>
-                    <br>
                     <table id="InterestingFileTable" class="table table-striped table-hover tabledrop" style="width: 95%;">
                       <thead>
                         <tr>
@@ -5694,25 +5456,67 @@ Below is a summary of the exposure associated with each of those groups.
 <label class="tabLabel" onClick="updateTab('ShareName',false)" for="ShareName"></label>
 <div id="tabPanel" class="tabPanel">
 <div style="margin-left:10px;margin-top:3px">
-<h2>Share Names (Top $SampleSum)</h2>
+<h2>Share Names (Top 100)</h2>
 This section contains a list of the most common SMB share names. In some cases, shares with the exact same name may be related to a single application or process.  This information can help identify the root cause associated with the excessive privileges and expedite remediation. 
 </div>
 
 <div style="border-bottom: 1px solid #DEDFE1 ;background-color:#f0f3f5; height:5px; margin-bottom:10px;"></div>
-<div class="searchbar">
-        <input type="text" id="filterInput" placeholder=" Search..." style="height: 25px; font-size: 14px;margin-left:10px;padding-left:3px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
-        <strong>&nbsp;&nbsp;Quick Filters</strong>
-        <label><input type="checkbox" class="filter-checkbox" name="h"> Highly Exploitable</label>
+
+	
+						<div class="LargeCard" style="width:20%;">	
+						
+							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
+								<strong>Shares Found</strong>
+							</div>												
+							<div class="LargeCardContainer" style="height:215px;text-align:center;">	
+                                  <br><br><br>							
+								   <span class="percentagetext" style = "font-size: 50px; color:#f08c41;heigh:100%">                    
+									$ShareNameChartCountUnique                       
+									</span><br>	($ShareNameChartCount unique share names found)									
+							</div>
+					
+					</div>
+					
+		            <div class="LargeCard" style="width:36%;">								
+							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
+								<strong>Share Name Count by Risk Level</strong>
+							</div>
+							<div class="LargeCardContainer" align="center">											
+									<div class="chart-container">
+									<div id="ChartShareNameRiska"></div>
+										<div class="chart-controls"></div>
+									</div>								  							
+							</div>
+					</div>
+					
+								
+					<div class="LargeCard" style="width:36%;">	
+							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
+								<strong>Exposed File Count by Category</strong>
+							</div>
+							<div class="LargeCardContainer" align="center" >											
+									<div class="chart-container">
+									<div id="ChartSharePageIF"></div>
+										<div class="chart-controls"></div>
+									</div>								  							
+							</div>
+					</div>
+				
+<div class="searchbar" style="margin-top:300px; text-align:left; display: flex;" >
+        <input type="text" id="filterInput" placeholder=" Search..." style="margin-top: 8px; height: 25px; margin-left: 10px;font-size: 14px;padding-left:3px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
+        <div style="margin-top: 10px; margin-left: 5px; margin-right: 5px;"><strong>Quick Filters</strong></div>
+        <label><input type="checkbox" class="filter-checkbox" name="h"> Exploitable</label>
         <label><input type="checkbox" class="filter-checkbox" name="w"> Write</label>
         <label><input type="checkbox" class="filter-checkbox" name="r"> Read</label>
         <label><input type="checkbox" class="filter-checkbox" name="i"> Interesting</label>
         <label><input type="checkbox" class="filter-checkbox" name="e"> Empty</label>
         <label><input type="checkbox" class="filter-checkbox" name="s"> Stale</label>
         <label><input type="checkbox" class="filter-checkbox" name="n"> Default</label>
-        <div id="filterCounter" style="margin-top:10px;height: 25px;font-size:11">Loading...</div>   
-        <div style="margin-top:-25px;height: 25px;font-size:11;text-align: left; margin-left: 100px;"><a style="margin-top:46px;height: 25px;font-size:11;" href="#" onclick="extractAndDownloadCSV('sharenametable', 0)">Export</a></div>						           
-</div>	
-<br>
+</div>		
+<div style="display: flex; margin-left:10px; font-size:11; text-align:left;" >		
+        <div id="filterCounter" style="margin-top:5px;">Loading...</div>      
+        <a style="font-size:11; margin-top: 5px; margin-left: 5px;" href="#" onclick="extractAndDownloadCSV('sharenametable', 0)">Export</a>
+</div>
 <table id="sharenametable" class="table table-striped table-hover tabledrop" style="width: 95%;">
   <thead>
     <tr>
@@ -5757,7 +5561,7 @@ This section contains a list of the most common SMB share names. In some cases, 
     iTHD/4Hv7s1i9NTblIwDvS+2PbHOBDYBVoN2/4+tu3WCeB/Bq60jr/WBOY+SW90tPARMLQNXFx3NHkPuNwBRp50yZAcyU9TKBaB9zP6pjwwfAv0r7m9tfdx+gBkqavlG+DgEIiUKHvd49193b39e6bd3w/VdnLO67/jCAAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0
     SU1FB+gHDA40BpbiKy8AAAEjSURBVBjTXZAxS4JhFIWfe5XqA6NIBSvK1pak2tqjvb8Q/oUImgPnqL/R7tbYVPCtUb46iKYoSUGK3tvQK0hnu889HO49Uq1eyOXVtRby+Q1VrSBSBpaBMRDMLG2GMLi/uzV5fXvPFIvFHRE5A0qAAVMgCyjQNbN6v99vyfBzVFTVc2ArprWAHrAJbANLQNts9qCqWom
     JAB/u9uzuPXd/AjqRl1T1QIEyIBGuiuiJiJwCGeArcgHZy8Zn5loHcsBL5IWF3bLGOxf1DUxEZP+feazgAfAF+OOOAGuxDQB396BmloJ3F8w5EXbjOXN1zCzVZggDM68D7dhxEttJ/mZvu1u92QyDzGw25fDoeJQkK0FExiAKTIAhkJrZY2g0urXajf0CiVl4icFa+XEAAAAASUVORK5CYII=" /><span class="tooltiptext"><strong>Interesting Files</strong><br>are filenames that<br>may be sensitive.</span></div> </th>	 	        
-      
+
     </tr>
     </thead>
 
@@ -5821,14 +5625,54 @@ This section lists the most common share owners.
 <label class="tabLabel" onClick="updateTab('ShareFolders',false)" for="ShareFolders"></label>
 <div id="tabPanel" class="tabPanel">
 <div style="margin-left:10px;margin-top:3px">
-<h2>Folder Groups (Top $SampleSum)</h2>
+<h2>Folder Groups (Top 100)</h2>
 Folder groups are SMB shares that contain the exact same file listing. Each file group has been hashed so they can be quickly correlated. In some cases, shares with the exact same file listing may be related to a single application or process.  This information can help identify the root cause associated with the excessive privileges and expedite remediation.
 </div>
 
 <div style="border-bottom: 1px solid #DEDFE1 ;  background-color:#f0f3f5; height:5px; margin-bottom:10px;"></div>
-<div class="searchbar">
-        <input type="text" id="filterInputTwo" placeholder=" Search..." style="height: 25px; font-size: 14px;margin-top:7px;margin-left:10px;padding-left:3px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
-        <div style="position: absolute; left:390px; top: 121px; cursor: pointer;color:grey;" onmouseover="this.style.color=#07142A;" onmouseout="this.style.textDecoration='';this.style.fontWeight='normal';" onclick="document.getElementById('filterInputTwo').value = '';applyFiltersAndSort('foldergrouptable', 'filterInputTwo', 'filterCounterTwo', 'paginationfg');">Clear</div>
+
+						<div class="LargeCard" style="width:20%;">	
+						
+							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
+								<strong>Folder Groups Found</strong>
+							</div>												
+							<div class="LargeCardContainer" style="height:202px;text-align:center;padding-top: 20px;">	
+                                  <br><br><br>							
+								   <span class="percentagetext" style = "font-size: 50px; color:#f08c41; padding-top: 50px; ">                    
+									$FolderGroupChartCount                        								
+							</div>
+					
+					</div>
+					
+		            <div class="LargeCard" style="width:36%;">								
+							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
+								<strong>Folder Group Count by Risk Level</strong>
+							</div>
+							<div class="LargeCardContainer" align="center">											
+									<div class="chart-container">
+									<div id="ChartFGRiska"></div>
+										<div class="chart-controls"></div>
+									</div>								  							
+							</div>
+					</div>
+					
+				
+				
+					<div class="LargeCard" style="width:36%;">	
+							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
+								<strong>Exposed File Count by Category</strong>
+							</div>
+							<div class="LargeCardContainer" align="center" >											
+									<div class="chart-container">
+									<div id="ChartFGPageIF"></div>
+										<div class="chart-controls"></div>
+									</div>								  							
+							</div>
+					</div>
+					
+<div class="searchbar" style="margin-top:300px; text-align:left; display: flex;" >
+        <input type="text" id="filterInputTwo" placeholder=" Search..." style="margin-top: 8px; height: 25px; font-size: 14px; padding-left:3px;margin-left: 10px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
+        <div style="font-size:12;text-align: left;cursor: pointer;color:gray; margin-top: 13px; margin-left: 5px;" onmouseover="this.style.color='white';" onmouseout="this.style.textDecoration='';this.style.fontWeight='normal';this.style.color='gray';" onclick="document.getElementById('filterInputTwo').value = '';applyFiltersAndSort('foldergrouptable', 'filterInputTwo', 'filterCounterTwo', 'paginationfg');">Clear</div>
         <!--
 		<strong>&nbsp;&nbsp;Quick Filters</strong>
         <label><input type="checkbox" class="filter-checkbox" name="h"> Highly Exploitable</label>
@@ -5839,16 +5683,18 @@ Folder groups are SMB shares that contain the exact same file listing. Each file
         <label><input type="checkbox" class="filter-checkbox" name="s"> Stale</label>
         <label><input type="checkbox" class="filter-checkbox" name="n"> Default</label>
 		-->
-        <div id="filterCounterTwo" style="margin-top:14px;height: 25px;font-size:11">Loading...</div> 
-        <div style="font-size:11;text-align: left; margin-left: 100px; margin-top: -25px;"><a style="font-size:11;" href="#" onclick="extractAndDownloadCSV('foldergrouptable', 1)">Export</a></div>       
+		<br><br>
+</div>		
+<div style="display: flex; margin-left:10px; font-size:11; text-align:left;" >	
+        <div id="filterCounterTwo" style="margin-top:5px;">Loading...</div>        
+        <a style="font-size:11; margin-top: 5px; margin-left: 5px;" href="#" onclick="extractAndDownloadCSV('foldergrouptable', 1)">Export</a>
 </div>	
-<br>
 <table class="table table-striped table-hover tabledrop" id="foldergrouptable" style="width:95%">
   <thead>
     <tr>  
       <th onclick="sortTable('foldergrouptable',0,'number')" align="left">Unique Share Names</th>
-      <th onclick="sortTable('foldergrouptable',1,'number')" align="left">Affected Share Count</th>      
-      <th onclick="sortTable('foldergrouptable',2,'alpha')"  align="left">File Group</th>
+      <th onclick="sortTable('foldergrouptable',1,'number')" align="left">Share Count</th>      
+      <th onclick="sortTable('foldergrouptable',2,'alpha')" align="left">File Group</th>
       <th onclick="sortTable('foldergrouptable',3,'number')" align="left">File Count</th>
 	  <th onclick="sortTable('foldergrouptable',4,'number')" align="left">Affected ACLs</th>	 	 
     </tr>
@@ -6312,7 +6158,183 @@ The left menu can be used to find summary data, the scan summary is in the table
 <script>
 
 // --------------------------
-// Dashboard - Interesting Files Chart
+// Folder Group Page: Chart - Interesting Files
+// --------------------------
+
+const datab = $IFCategoryListCount;
+const categoriesb = $ChartCategoryCatDash;
+
+const ChartFGPageIFOptions = {
+          series: [{
+          data: datab
+        }],
+          chart: {
+          type: 'bar',
+          height: 200
+        },
+        plotOptions: {
+          bar: {		 
+            borderRadius: 0,
+            borderRadiusApplication: 'end',
+            horizontal: true,
+			colors: {
+				backgroundBarColors: ['#e0e0e0'],
+				backgroundBarOpacity: 1,
+                ranges: [{
+                    from: 0,
+                    to: 1000,
+                    color: '#f08c41'
+                }]
+            }
+          }
+        },
+        dataLabels: {
+          enabled: false
+        },
+		  grid: {
+			show: false
+		  },
+        xaxis: {
+          categories: categoriesb,
+        }
+        };
+
+const ChartFGPageIF = new ApexCharts(document.querySelector("#ChartFGPageIF"), ChartFGPageIFOptions);
+ChartFGPageIF.render();
+
+// --------------------------
+// Folder Group Page: Chart - Risk Levels
+// --------------------------
+
+// Initialize ApexCharts
+const ChartFGRiskOptionsa = {
+  series: [{
+    data: [$RiskLevelFolderGroupCountCritical, $RiskLevelFolderGroupCountHigh, $RiskLevelFolderGroupCountMedium , $RiskLevelFolderGroupCountLow]
+  }],
+  chart: {
+    type: 'bar',
+    height: 200
+  },
+  plotOptions: {
+    bar: {		 
+      borderRadius: 0,
+      borderRadiusApplication: 'end',
+      horizontal: true,
+      colors: {
+        backgroundBarColors: ['#e0e0e0'],
+        backgroundBarOpacity: 1,
+        ranges: [{
+          from: 0,
+          to: 1000,
+          color: '#f08c41'
+        }]
+      }
+    }
+  },
+  dataLabels: {
+    enabled: false
+  },
+  grid: {
+    show: false
+  },
+  xaxis: {
+    categories: ['Critical','High','Medium','Low']
+  }
+};
+
+const ChartFGRiska = new ApexCharts(document.querySelector("#ChartFGRiska"), ChartFGRiskOptionsa);
+ChartFGRiska.render();
+
+// --------------------------
+// Share Names Page: Chart - Interesting Files
+// --------------------------
+
+const dataa = $IFCategoryListCount;
+const categoriesa = $ChartCategoryCatDash;
+
+const ChartSharePageIFOptions = {
+          series: [{
+          data: dataa
+        }],
+          chart: {
+          type: 'bar',
+          height: 200
+        },
+        plotOptions: {
+          bar: {		 
+            borderRadius: 0,
+            borderRadiusApplication: 'end',
+            horizontal: true,
+			colors: {
+				backgroundBarColors: ['#e0e0e0'],
+				backgroundBarOpacity: 1,
+                ranges: [{
+                    from: 0,
+                    to: 1000,
+                    color: '#f08c41'
+                }]
+            }
+          }
+        },
+        dataLabels: {
+          enabled: false
+        },
+		  grid: {
+			show: false
+		  },
+        xaxis: {
+          categories: categoriesa,
+        }
+        };
+
+const ChartSharePageIF = new ApexCharts(document.querySelector("#ChartSharePageIF"), ChartSharePageIFOptions);
+ChartSharePageIF.render();
+
+// --------------------------
+// Share Names Page: Chart - Risk Levels
+// --------------------------
+
+// Initialize ApexCharts
+const ChartShareNameRiskOptionsa = {
+  series: [{
+    data: [$RiskLevelShareNameCountCritical, $RiskLevelShareNameCountHigh, $RiskLevelShareNameCountMedium,  $RiskLevelShareNameCountLow]
+  }],
+  chart: {
+    type: 'bar',
+    height: 200
+  },
+  plotOptions: {
+    bar: {		 
+      borderRadius: 0,
+      borderRadiusApplication: 'end',
+      horizontal: true,
+      colors: {
+        backgroundBarColors: ['#e0e0e0'],
+        backgroundBarOpacity: 1,
+        ranges: [{
+          from: 0,
+          to: 1000,
+          color: '#f08c41'
+        }]
+      }
+    }
+  },
+  dataLabels: {
+    enabled: false
+  },
+  grid: {
+    show: false
+  },
+  xaxis: {
+    categories: ['Critical','High','Medium','Low']
+  }
+};
+
+const ChartShareNameRiska = new ApexCharts(document.querySelector("#ChartShareNameRiska"), ChartShareNameRiskOptionsa);
+ChartShareNameRiska.render();
+
+// --------------------------
+// Dashboard Page: Chart - Interesting Files
 // --------------------------
 
 // Data and categories
@@ -6371,7 +6393,7 @@ const ChartDashboardIF = new ApexCharts(document.querySelector("#ChartDashboardI
 ChartDashboardIF.render();
 
 // --------------------------
-// Dashboard - Risk Level chart
+// Dashboard Page: Risk Level chart
 // --------------------------
 
 // Initialize ApexCharts
@@ -6412,6 +6434,7 @@ const ChartDashboardRiskOptions = {
 
 const ChartDashboardRisk = new ApexCharts(document.querySelector("#ChartDashboardRisk"), ChartDashboardRiskOptions);
 ChartDashboardRisk.render();
+
 
 // --------------------------
 // Function to support collapsing and expanding sections
@@ -6485,7 +6508,7 @@ function updateChart() {
 const chartOptions = {
     chart: {
         type: 'bar',
-        height: 150,
+        height: 200,
         events: {
                     dataPointSelection: function(event, chartContext, config) {
                         // Get the clicked category
@@ -6496,38 +6519,30 @@ const chartOptions = {
     },
     series: [{
         name: 'Count',
-        data: [4, 3, 3]
+        data: [1, 1, 1]
     }],
     xaxis: {
         $ChartCategoryCat
         labels: {
             style: {
-                fontSize: '18px',
-                fontWeight: 'bold',
-                colors: '#f08c41'
+               // fontSize: '18px',
+               // fontWeight: 'bold',
+               // colors: '#f08c41'
             }
         }
     },
     yaxis: {
         labels: {
             style: {
-                fontSize: '14px',
-                colors: '#b3afaf'
+               // fontSize: '14px',
+               // colors: '#b3afaf'
             }
-        }
-    },
-    title: {
-        text: '',
-        align: 'left',
-        style: {
-            fontSize: '24px',
-            fontWeight: 'bold'
         }
     },
     plotOptions: {
         bar: {
             borderRadius: 0,
-            horizontal: false,
+            horizontal: true,
             colors: {
                 ranges: [{
                     from: 0,
@@ -6538,7 +6553,7 @@ const chartOptions = {
         }
     },
     dataLabels: {
-        enabled: true,
+        enabled: false,
         style: {
             fontSize: '18px',
             fontWeight: 'bold',
