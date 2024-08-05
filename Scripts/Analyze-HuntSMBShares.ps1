@@ -5,7 +5,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.56
+# Version: v1.57
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Analyze-HuntSMBShares
 {    
@@ -5034,7 +5034,7 @@ Below is a summary of the exposure associated with each of those groups.
 <label class="tabLabel" onClick="updateTab('ShareName',false)" for="ShareName"></label>
 <div id="tabPanel" class="tabPanel">
 <div style="margin-left:10px;margin-top:3px">
-<h2>Share Names (Top 100)</h2>
+<h2>Share Names</h2>
 This section contains a list of the most common SMB share names. In some cases, shares with the exact same name may be related to a single application or process.  This information can help identify the root cause associated with the excessive privileges and expedite remediation. 
 </div>
 
@@ -5203,7 +5203,7 @@ This section lists the most common share owners.
 <label class="tabLabel" onClick="updateTab('ShareFolders',false)" for="ShareFolders"></label>
 <div id="tabPanel" class="tabPanel">
 <div style="margin-left:10px;margin-top:3px">
-<h2>Folder Groups (Top 100)</h2>
+<h2>Folder Groups</h2>
 Folder groups are SMB shares that contain the exact same file listing. Each file group has been hashed so they can be quickly correlated. In some cases, shares with the exact same file listing may be related to a single application or process.  This information can help identify the root cause associated with the excessive privileges and expedite remediation.
 </div>
 
