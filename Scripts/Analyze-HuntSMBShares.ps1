@@ -5,7 +5,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.57
+# Version: v1.58
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Analyze-HuntSMBShares
 {    
@@ -3006,6 +3006,88 @@ $NewHtmlReport = @"
   <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
   <title>Report</title>
   <style>    
+        .side-menu {			
+			box-shadow: 0 2px 4px 0;
+			width: 180px;
+			height: 100%;
+			background-color:#07142A;
+			position: fixed; /* Stay in place */
+			top: 0; 
+			left: 0;
+			float:left;
+			line-height:1.15;
+			-webkit-text-size-adjust:100%;
+			-ms-text-size-adjust:100%;
+			z-index: 1;		
+			--transition: width 0.3s; /* Smooth transition when expanding/collapsing */			
+        }
+		
+		.side-menu.collapsed div,
+		.side-menu.collapsed h2,
+		.side-menu.collapsed ul,
+		.side-menu.collapsed ul li {
+			opacity: 0; /* Hide text and child divs when collapsed */
+			height: 0; /* Collapse height to prevent content from being visible */
+			overflow: hidden; /* Ensure that any overflow content is hidden */
+			transition: opacity 0.3s, height 0.3s; /* Smooth transition for hiding content */
+		}
+
+		.side-menu a {
+				width:auto;
+				cursor:initial;
+				border-bottom:2px solid transparent;
+				-webkit-box-ordinal-group:2;
+				-ms-flex-order:1;
+				order:1;
+		}		
+
+        .side-menu.collapsed {
+            width: 50px; /* Width when collapsed */
+        }		
+
+        .side-menu h2 {
+            text-align: center;
+            margin: 50px 0; /* Add margin for better spacing */
+        }
+
+        .side-menu ul {
+            list-style-type: none;
+            padding: 0;
+            transition: opacity 0.3s; /* Fade effect */
+        }
+
+        .side-menu ul li {
+            padding: 10px 0;
+            text-align: center;
+        }
+
+        .menu-button {
+            margin: 0;
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: transparent;
+            border: none;
+            color: white;
+            position: absolute;
+            right: 10px; /* Align to right when expanded */
+            top: 10px;   /* Align to top when expanded */
+            --transition: all 0.3s; /* Smooth transition for position */
+        }
+
+        .menu-button .icon {
+            font-size: 24px;
+        }
+
+        .side-menu.collapsed h2,
+        .side-menu.collapsed ul li {
+            opacity: 0; /* Hide text when collapsed */
+        }
+
+        .side-menu.collapsed .menu-button {
+            right: 18px; /* Keep the icon aligned to the right */
+            top: 10px;   /* Keep the icon aligned to the top */
+        } 
   
         .toggle-content {
             display: block; /* Set to block to be expanded by default */	
@@ -4191,18 +4273,18 @@ input[type="checkbox"]:checked::before {
 <!--  
 |||||||||| SIDE MENU
 -->
-<div class="sidenav">	
+<div class="side-menu" id="sideMenu">	
 	
-	<div style="border-bottom:1px solid #F56A00;width: 80%;display: block;margin-left:20px">			
-		<div  style="font-size: 15;font-weight:bolder;color:white;margin-bottom:5px; margin-top:28px;" align="center">
-		 <a href="https://github.com/NetSPI/PowerHuntShares" style="text-decoration: none; color:#F56A00;cursor: pointer;">POWERHUNT
-         SHARES</a>
-		</div>
+	<button onclick="toggleMenu()" class="menu-button" style="margin-top: -15px; margin-right: -10px;">
+            <span class="icon" style="font-size: 16;">☰</span>
+    </button>
+	
+    <div  style="font-weight:bolder;color:white;margin-bottom:5px; margin-top:14px; margin-left: 14px;" align="left">
+	<a href="https://github.com/NetSPI/PowerHuntShares" style="text-decoration: none; color:#F56A00;cursor: pointer;">
+	<br><SPAN style="font-size: 15;">POWERHUNT</SPAN><SPAN style="color:white;font-size: 15;">SHARES</span></a>
+    <br>
+    <SPAN style="font-size: 11;font-weight:normal;">$TargetDomain</SPAN>
 	</div>
-
-    <div style="width: 80%;display: block;margin-left:20px">			
-		<div  style="font-size: 15;font-weight:bolder;color:white;margin-bottom:10px; margin-top:10px;text-align:center;">$TargetDomain</div>			
-	</div>	
 
 	<div id="tabs" class="tabs" data-tabs-ignore-url="false">			
 		<label class="tabLabel" style="width:100%;color:#07142A;background-color:#F56A00;border-top:1px solid white;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:2px;font-weight:bolder"><Strong>Reports</Strong></label>	
@@ -4317,7 +4399,7 @@ input[type="checkbox"]:checked::before {
 		<div style="margin-left:10px;margin-top:0px">
 			<h2>Excessive Share Privileges Dashboard</h2>			
 			<div style="border-bottom: 1px solid #DEDFE1 ;background-color:#f0f3f5; height:5px; margin-bottom:10px;width:118%;margin-left:-18px;"></div>
-			<div style="width:70%;">		
+			<div style="width:70%;">	
 				<h4 style="color:gray;">Affected Assets</h4>
 				<div style="width:800;">
 				Below is a summary of the computers, shares, and ACLs associated with shares configured with excessive privileges.
@@ -5735,6 +5817,22 @@ Invoke-HuntSMBShares -Threads 20 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\
 <br>
 </div>
 <script>
+
+
+// --------------------------
+// side menu collapse function
+// --------------------------
+
+        function toggleMenu() {
+            const menu = document.getElementById('sideMenu');
+            const icon = document.querySelector('.menu-button .icon');
+            menu.classList.toggle('collapsed');
+            if (menu.classList.contains('collapsed')) {
+                icon.textContent = '☰'; // Collapsed state icon (hamburger menu)
+            } else {
+                icon.textContent = '☰'; // Expanded state icon (hamburger menu)
+            }
+        }
 
 // --------------------------
 // Folder Group Page: Chart - Interesting Files
