@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.97
+# Version: v1.98
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -4704,15 +4704,15 @@ input[type="checkbox"]:checked::before {
             <span class="icon" style="font-size: 16;">☰</span>
     </button>
 	
-    <div  style="font-weight:bolder;color:white;margin-bottom:5px; margin-top:14px; margin-left: 14px;" align="left">
+    <div  style="font-weight:bolder;color:white;margin-bottom:5px; margin-top:17px; margin-left: 14px;" align="left">
 	<a href="https://github.com/NetSPI/PowerHuntShares" style="text-decoration: none; color:#F56A00;cursor: pointer;">
 	<br><SPAN style="font-size: 15;">POWERHUNT</SPAN><SPAN style="color:white;font-size: 15;">SHARES</span></a>
     <br>
-    <SPAN style="font-size: 11;font-weight:normal;">$TargetDomain</SPAN>
+    <div style="font-size: 11;font-weight:normal;margin-top:3px;">$TargetDomain</div>
 	</div>
 
 	<div id="tabs" class="tabs" data-tabs-ignore-url="false">			
-		<label class="tabLabel" style="width:100%;color:#07142A;background-color:#F56A00;border-top:1px solid white;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:2px;font-weight:bolder"><Strong>Reports</Strong></label>	
+		<label class="tabLabel" style="width:100%;color:#07142A;background-color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:2px;font-weight:bolder"><Strong>Reports</Strong></label>
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('dashboard');radiobtn.checked = true;">Dashboard</label>		
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('computersummary');radiobtn.checked = true;">Computer Summary</label>		
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('sharesum');radiobtn.checked = true;">Share Summary</label>		
@@ -4722,12 +4722,12 @@ input[type="checkbox"]:checked::before {
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;">Share Names</label>					
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareFolders');radiobtn.checked = true;">Folder Groups</label>		
         <label href="#" class="stuff" style="width:100%;" onclick="radiobtn = document.getElementById('SubNets');radiobtn.checked = true;">Affected Subnets</label>				
-		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareOwner');radiobtn.checked = true;">Share Owners</label>
-        <label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('accounts');radiobtn.checked = true;">Group ACL Summary</label>	
+		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareOwner');radiobtn.checked = true;">Share Owners</label>	
+        <label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('accounts');radiobtn.checked = true;">Group ACL Summary</label>
 		<label class="tabLabel" style="width:100%;color:#07142A;background-color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:2px;margin-bottom:2px;"><strong>Recommendations</strong></label>
-		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Attacks');radiobtn.checked = true;">Exploit Share Access</label>		
-		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Detections');radiobtn.checked = true;">Detect Share Scans</label>
-		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Remediation');radiobtn.checked = true;">Prioritize Remediation</label>	
+		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Attacks');radiobtn.checked = true;">Exploiting Access</label>		
+		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Detections');radiobtn.checked = true;">Detecting Attacks</label>
+		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Remediation');radiobtn.checked = true;">Prioritizing Remediation</label>	
         <label href="#" class="stuff" style="width:100%;margin-top:15px" onClick="radiobtn = document.getElementById('home');radiobtn.checked = true;">HELP!</label>		
 	</div>
 </div>
@@ -4738,16 +4738,14 @@ input[type="checkbox"]:checked::before {
 -->
 		<input class="tabInput"  name="tabs" type="radio" id="InterestingFiles"/>
 		<label class="tabLabel" onClick="updateTab('InterestingFiles',false)" for="InterestingFiles"></label>
-		<div id="tabPanel" class="tabPanel">					
+		<div id="tabPanel" class="tabPanel">
+		<h2 style="margin-top: 13.5px;margin-left:10px;margin-bottom: 17px;">Interesting Files</h2>
+		<div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>			
             <div style="margin-top:3px">					
 				<div style="width:100%;">
-
-                    <div style="margin-left:10px;">
-                    <h2>Interesting Files</h2>
-                    Interesting files may contain passwords or sensitive data. They have been grouped by name in the table below, and summaryized by the $FileNamePatternCategoriesCount categories below.
+                    <div style="margin-left:10px; width:95%;">                   
+                    This section provides a list of files that may contain passwords or sensitive data, or may be abused for remote code execution.
                     </div>
-
-                    <div style="border-bottom: 1px solid #DEDFE1 ;  background-color:#f0f3f5; height:5px; margin-bottom:10px;"></div>
 
 			        <!-- /////////////// Interesting Files - Total -->					
 					<div class="LargeCard" style="width:25%; ">	
@@ -4820,10 +4818,10 @@ input[type="checkbox"]:checked::before {
 		<input class="tabInput"  name="tabs" type="radio" id="dashboard"/>
 		<label class="tabLabel" onClick="updateTab('dashboard',false)" for="dashboard"></label>
 		<div id="tabPanel" class="tabPanel">
-		<div style="min-height: 450px;margin-top:5px;">		
-		<div style="margin-left:10px;margin-top:0px">
-			<h2>Excessive Share Privileges Dashboard</h2>			
-			<div style="border-bottom: 1px solid #DEDFE1 ;background-color:#f0f3f5; height:5px; margin-bottom:10px;width:118%;margin-left:-18px;"></div>
+		<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Excessive Share Privileges Dashboard</h2>	
+		<div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>
+		<div style="min-height: 450px;">		
+		<div style="margin-left:10px;margin-top:16px;">	
 			<div style="width:70%;">		
 				<h4 style="color:gray;">Affected Assets</h4>
 				<div style="width:800;">
@@ -4832,6 +4830,9 @@ input[type="checkbox"]:checked::before {
 				</div>
 			</div>
 		</div>
+
+<!-- mini card wrapper -->
+<div style="margin-top: -10px;">
 
 <!--  
 |||||||||| CARD: COMPUTER SUMMARY
@@ -5009,6 +5010,9 @@ input[type="checkbox"]:checked::before {
 	</div>
  </div>
 
+ <!-- mini card  wrapper end  -->	
+</div>
+
  <!--  
 |||||||||| CARD: Identities Place Holder
 -->
@@ -5082,15 +5086,14 @@ $CardLastModifiedTimeLine
 <!--  
 |||||||||| PAGE: COMPUTER SUMMARY
 -->
-
 <input class="tabInput"  name="tabs" type="radio" id="computersummary"/>
 <label class="tabLabel" onClick="updateTab('computersummary',false)" for="computersummary"></label>
 <div id="tabPanel" class="tabPanel">
+<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Computer Summary</h2>		
+<div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>
 <div style="margin-left:10px;margin-top:3px">
-<h2>Computer Summary</h2>		
 Below is a summary of the domain computers that were targeted, connectivity to them, and the number that are hosting potentially insecure SMB shares.
-</div> 	
-<div style="border-bottom: 1px solid #DEDFE1 ;  background-color:#f0f3f5; height:5px; margin-bottom:10px;"></div>
+</div>
 	
 <table class="table table-striped table-hover tabledrop">
   <thead>
@@ -5177,11 +5180,11 @@ Below is a summary of the domain computers that were targeted, connectivity to t
 <input class="tabInput"  name="tabs" type="radio" id="sharesum"/>
 <label class="tabLabel" onClick="updateTab('sharesum,false)" for="sharesum"></label>
 <div id="tabPanel" class="tabPanel">
+<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Share Summary</h2>		
+<div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>
 <div style="margin-left:10px;margin-top:3px">
-<h2>Share Summary</h2>
 Below is a summary of the SMB shares discovered on domain computers that may provide excessive privileges to standard domain users.
-</div> 	
-<div style="border-bottom: 1px solid #DEDFE1 ;  background-color:#f0f3f5; height:5px; margin-bottom:10px;"></div>
+</div>
 
 <table class="table table-striped table-hover tabledrop">
   <thead>
@@ -5250,11 +5253,11 @@ Below is a summary of the SMB shares discovered on domain computers that may pro
 <input class="tabInput"  name="tabs" type="radio" id="ACLsum"/>
 <label class="tabLabel" onClick="updateTab('ACLsum',false)" for="ACLsum"></label>
 <div id="tabPanel" class="tabPanel">
+<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Share ACL Entry Summary</h2>
+<div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>
 <div style="margin-left:10px;margin-top:3px">
-<h2>Share ACL Entry Summary</h2>	
 Below is a summary of the SMB share ACL entries discovered on domain computers that may provide excessive privileges to standard domain users.
 </div> 	
-<div style="border-bottom: 1px solid #DEDFE1 ;  background-color:#f0f3f5; height:5px; margin-bottom:10px;"></div>
 
 <table class="table table-striped table-hover tabledrop">
   <thead>
@@ -5320,8 +5323,9 @@ Below is a summary of the SMB share ACL entries discovered on domain computers t
 <input class="tabInput"  name="tabs" type="radio" id="accounts"/> 
 <label class="tabLabel" onClick="updateTab('accounts',false)" for="accounts"></label>
 <div id="tabPanel" class="tabPanel">
-<div style="margin-left:10px;margin-top:3px">
-<h2>Group ACL Summary</h2>	
+<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Group ACL Summary</h2>
+<div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>
+<div style="margin-left:10px;margin-top:3px;width:90%">
 In the context of this report, excessive read and write share permissions have been defined as any network share ACL containing an explicit entry for the "Everyone", "Authenticated Users", "BUILTIN\Users", "Domain Users", or "Domain Computers" groups. All provide domain users access to the affected shares due to privilege inheritance.
 Below is a summary of the exposure associated with each of those groups. 
 </div>
@@ -5540,14 +5544,11 @@ Below is a summary of the exposure associated with each of those groups.
 <input class="tabInput"  name="tabs" type="radio" id="ShareName"/> 
 <label class="tabLabel" onClick="updateTab('ShareName',false)" for="ShareName"></label>
 <div id="tabPanel" class="tabPanel">
-<div style="margin-left:10px;margin-top:3px">
-<h2>Share Names</h2>
+<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Share Names</h2>
+<div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>
+<div style="margin-left:10px;margin-top:3px; margin-bottom: 3px;width:95%">
 This section contains a list of the most common SMB share names. In some cases, shares with the exact same name may be related to a single application or process.  This information can help identify the root cause associated with the excessive privileges and expedite remediation. 
-</div>
-
-<div style="border-bottom: 1px solid #DEDFE1 ;background-color:#f0f3f5; height:5px; margin-bottom:10px;"></div>
-
-	
+</div>		
 						<div class="LargeCard" style="width:20%;">	
 						
 							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
@@ -5664,12 +5665,12 @@ This section contains a list of the most common SMB share names. In some cases, 
 <input class="tabInput" name="tabs" type="radio" id="SubNets"> 
 <label class="tabLabel" onclick="updateTab(&#39;SubNets#39;,false)" for="SubNets"></label>
 <div id="tabPanel" class="tabPanel">
+<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Affected Subnets</h2>
+<div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>
 <div style="margin-left:10px;margin-top:3px">
-<h2>Affected Subnets</h2>
 This section contains a list of subnets hosting computers with shares that are configured with accessibe privileges. 
 </div>
 
-<div style="border-bottom: 1px solid #DEDFE1 ;  background-color:#f0f3f5; height:5px; margin-bottom:10px;"></div>
 $SubnetSummaryHTML
 </div>
 
@@ -5679,12 +5680,11 @@ $SubnetSummaryHTML
 <input class="tabInput"  name="tabs" type="radio" id="ShareOwner"/> 
 <label class="tabLabel" onClick="updateTab('ShareOwner',false)" for="ShareOwner"></label>
 <div id="tabPanel" class="tabPanel">
+<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Share Owners</h2>	
+<div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>
 <div style="margin-left:10px;margin-top:3px">
-<h2>Share Owners (Top $SampleSum)</h2>	
 This section lists the most common share owners. 
 </div>
-
-<div style="border-bottom: 1px solid #DEDFE1 ;  background-color:#f0f3f5; height:5px; margin-bottom:10px;"></div>
 
 <table class="table table-striped table-hover tabledrop">
   <thead>
@@ -5709,13 +5709,11 @@ This section lists the most common share owners.
 <input class="tabInput"  name="tabs" type="radio" id="ShareFolders"/> 
 <label class="tabLabel" onClick="updateTab('ShareFolders',false)" for="ShareFolders"></label>
 <div id="tabPanel" class="tabPanel">
-<div style="margin-left:10px;margin-top:3px">
-<h2>Folder Groups</h2>
+<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Folder Groups</h2>
+<div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>
+<div style="margin-left:10px;margin-top:3px;width:95%;">
 Folder groups are SMB shares that contain the exact same file listing. Each file group has been hashed so they can be quickly correlated. In some cases, shares with the exact same file listing may be related to a single application or process.  This information can help identify the root cause associated with the excessive privileges and expedite remediation.
 </div>
-
-<div style="border-bottom: 1px solid #DEDFE1 ;  background-color:#f0f3f5; height:5px; margin-bottom:10px;"></div>
-
 						<div class="LargeCard" style="width:20%;">	
 						
 							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
@@ -5798,12 +5796,11 @@ Folder groups are SMB shares that contain the exact same file listing. Each file
 <input class="tabInput"  name="tabs" type="radio" id="Attacks"/> 
 <label class="tabLabel" onClick="updateTab('Attacks',false)" for="Attacks"></label>
 <div id="tabPanel" class="tabPanel">
+<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Exploiting Access</h2>
+<div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>
 <div style="margin-left:10px;margin-top:7px">
-<h3>Exploit Share Accesss</h3>
 Below are some tips for getting started on exploiting share access.	
 </div>
-
-<div style="border-bottom: 1px solid #DEDFE1 ;  background-color:#f0f3f5; height:5px; margin-bottom:10px;"></div>
 
 <table class="table table-striped table-hover tabledrop">
   <thead>
@@ -5861,12 +5858,11 @@ Below are some tips for getting started on exploiting share access.
 <input class="tabInput"  name="tabs" type="radio" id="Detections"/> 
 <label class="tabLabel" onClick="updateTab('Detections',false)" for="Detections"></label>
 <div id="tabPanel" class="tabPanel">
+<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Recommendations</h2>
+<div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>
 <div style="margin-left:10px;margin-top:3px">
-<h2>Recommendations: Exploit Share Access</h2>
 Below are some tips for getting started on building detections for potentially malicious share scanning events.
 </div>
-
-<div style="border-bottom: 1px solid #DEDFE1 ;  background-color:#f0f3f5; height:5px; margin-bottom:10px;"></div>
 
 <table class="table table-striped table-hover tabledrop">
   <thead>
@@ -5927,12 +5923,11 @@ Guest access to the system should also be revoked and ensure that adequate acces
 <input class="tabInput"  name="tabs" type="radio" id="Remediation"/> 
 <label class="tabLabel" onClick="updateTab('Remediation',false)" for="Remediation"></label>
 <div id="tabPanel" class="tabPanel">
+<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Prioritizing Remediation</h2>
+<div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>	
 <div style="margin-left:10px;margin-top:3px">
-<h2>Recommendations: Prioritize Remediation</h2>	
 Below are some tips for getting started on prioritizing the remediation of shares configured with excessive privileges.
 </div>
-
-<div style="border-bottom: 1px solid #DEDFE1 ;  background-color:#f0f3f5; height:5px; margin-bottom:10px;"></div>
 
 <table class="table table-striped table-hover tabledrop">
   <thead>
@@ -5993,12 +5988,12 @@ Below are some tips for getting started on prioritizing the remediation of share
 <input class="tabInput"  name="tabs" type="radio" id="home"/> 
 <label class="tabLabel" onClick="updateTab('home',false)" for="home"></label>
 <div id="tabPanel" class="tabPanel">	
+<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">HELP!</h2>
+<div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>	
 <div style="min-height: 670px">	 
-	  <div style="margin-left:10px;margin-top:3px">
-	  <h2><span style="color:#CE112D;">HELP!</span></h2>
+	  <div style="margin-left:10px;margin-top:3px">	  
 	  This report summarizes the shares identified as being configured with excessive privileges.
-	  </div>	
-	  <div style="border-bottom: 1px solid #DEDFE1 ;  background-color:#f0f3f5; height:5px"></div>
+	  </div>
 
 <!--  
 |||||||||| CARD: SCAN SUMMARY
