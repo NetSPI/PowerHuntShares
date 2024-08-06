@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.96
+# Version: v1.97
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -3430,8 +3430,90 @@ $NewHtmlReport = @"
   <link rel="shortcut icon" src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyhpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuNi1jMTM4IDc5LjE1OTgyNCwgMjAxNi8wOS8xNC0wMTowOTowMSAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENDIDIwMTcgKE1hY2ludG9zaCkiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6QTQxQkNBNzA2OEI1MTFFNzlENkRCMzJFODY4RjgwNDMiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6QTQxQkNBNzE2OEI1MTFFNzlENkRCMzJFODY4RjgwNDMiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDpBNDFCQ0E2RTY4QjUxMUU3OUQ2REIzMkU4NjhGODA0MyIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDpBNDFCQ0E2RjY4QjUxMUU3OUQ2REIzMkU4NjhGODA0MyIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/Ptdv5vcAAAB9SURBVHjaYmTAAS4IajsCqeVQbqTB+6v7saljxKHZCUhtAWJOqNB3IPYBGrKPoAFYNDPgM4SRSM04DWEkQTNWQxhJ1IxhCCM0tLeSoBnZEG+QAS+ADHEG8sBLJgYKAciASKhzGMjwQiTlgUiVaKRKQqJKUqZKZiI1OwMEGAA7FE70gYsL4wAAAABJRU5ErkJggg==" >
   <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
   <title>Report</title>
-  <style> 
+  <style>    
+        .side-menu {			
+			box-shadow: 0 2px 4px 0;
+			width: 180px;
+			height: 100%;
+			background-color:#07142A;
+			position: fixed; /* Stay in place */
+			top: 0; 
+			left: 0;
+			float:left;
+			line-height:1.15;
+			-webkit-text-size-adjust:100%;
+			-ms-text-size-adjust:100%;
+			z-index: 1;		
+			--transition: width 0.3s; /* Smooth transition when expanding/collapsing */			
+        }
+		
+		.side-menu.collapsed div,
+		.side-menu.collapsed h2,
+		.side-menu.collapsed ul,
+		.side-menu.collapsed ul li {
+			opacity: 0; /* Hide text and child divs when collapsed */
+			height: 0; /* Collapse height to prevent content from being visible */
+			overflow: hidden; /* Ensure that any overflow content is hidden */
+			transition: opacity 0.3s, height 0.3s; /* Smooth transition for hiding content */
+		}
 
+		.side-menu a {
+				width:auto;
+				cursor:initial;
+				border-bottom:2px solid transparent;
+				-webkit-box-ordinal-group:2;
+				-ms-flex-order:1;
+				order:1;
+		}		
+
+        .side-menu.collapsed {
+            width: 50px; /* Width when collapsed */
+        }		
+
+        .side-menu h2 {
+            text-align: center;
+            margin: 50px 0; /* Add margin for better spacing */
+        }
+
+        .side-menu ul {
+            list-style-type: none;
+            padding: 0;
+            transition: opacity 0.3s; /* Fade effect */
+        }
+
+        .side-menu ul li {
+            padding: 10px 0;
+            text-align: center;
+        }
+
+        .menu-button {
+            margin: 0;
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: transparent;
+            border: none;
+            color: white;
+            position: absolute;
+            right: 10px; /* Align to right when expanded */
+            top: 10px;   /* Align to top when expanded */
+            --transition: all 0.3s; /* Smooth transition for position */
+        }
+
+        .menu-button .icon {
+            font-size: 24px;
+        }
+
+        .side-menu.collapsed h2,
+        .side-menu.collapsed ul li {
+            opacity: 0; /* Hide text when collapsed */
+        }
+
+        .side-menu.collapsed .menu-button {
+            right: 18px; /* Keep the icon aligned to the right */
+            top: 10px;   /* Keep the icon aligned to the top */
+        } 
+  
         .toggle-content {
             display: block; /* Set to block to be expanded by default */	
         }
@@ -3443,29 +3525,28 @@ $NewHtmlReport = @"
             background-color: transparent;	
 			color: white;
         } 	
-  
-    .hidden { display: none; }
 
-    button.pagination-button {
-        border: none;
-        outline: none;
-        background-color: transparent;
-        cursor: pointer;
-        padding: 5px 10px;
-        margin: 2px;	
-        border-radius:0.20rem 0.20rem 0.20rem 0.20rem;	
-        color: #07142A;			
-    }
+	.hidden { display: none; }
 
-    button.pagination-button:hover{
-        background-color: #F56A00 ;
-        color: #07142A;		
-    }
+        button.pagination-button {
+            border: none;
+            outline: none;
+            background-color: transparent;
+            cursor: pointer;
+            padding: 5px 10px;
+            margin: 2px;	
+			border-radius:0.20rem 0.20rem 0.20rem 0.20rem;	
+			color: #07142A;			
+        }
+        button.pagination-button:hover{
+            background-color: #F56A00 ;
+            color: #07142A;		
+		}
 		
-    button.pagination-button.active {
-        background-color: #07142A;
-        color: white;
-    }     	
+        button.pagination-button.active {
+            background-color: #07142A;
+            color: white;
+        }
 
     .1collapsible:after {
 	  content: '\0208A';
@@ -3506,7 +3587,7 @@ $NewHtmlReport = @"
       --max-width: 0;
 	  overflow: hidden;
 	  transition: max-height 0.2s ease-out;
-	  transition: max-width 0.2s ease-out;
+      transition: max-width 0.2s ease-out;
 	}
 
 	.tabs{
@@ -3640,7 +3721,7 @@ $NewHtmlReport = @"
 		--margin-bottom:1rem;
 		border-collapse:collapse;		
 	}
-	
+
     table th:first-child {
         --border-top-left-radius: 3px;
     }
@@ -3660,7 +3741,7 @@ $NewHtmlReport = @"
 		margin: 10px;
 		width: 90%;
 		--margin-left:10px;
-	}	
+	}
 	
 	table thead th{
 		vertical-align:bottom;
@@ -3974,7 +4055,7 @@ $NewHtmlReport = @"
 		font-weight: 700;
 		font-family:"Open Sans", sans-serif;
 		--color:#9B3722;
-		color:#CE112D;
+		color:#F56A00;
 	}
 	
 	.percentagetext2 {
@@ -4080,7 +4161,7 @@ $NewHtmlReport = @"
 		margin-top: 5px;
 		margin-right: 5px;
 		margin-bottom: 5px;
-		width: 90%		
+		--width: 90%		
 	}
 
 	.filelistparent {
@@ -4126,8 +4207,8 @@ $NewHtmlReport = @"
 	}	
 
 	.cardtitle{	
-		padding:5px;	
-		--padding-left: 20px;
+	    padding:5px;	
+		-- padding-left: 20px;
 		font-size: 20;
 		color: white;
 		font-weight:bold;
@@ -4571,7 +4652,7 @@ input[type="checkbox"]:checked {
 
 input[type="checkbox"]:checked::before {
     content: '✔';
-    color: orange;
+    color: #F56A00;
     display: block;
     text-align: center;
     line-height: 20px;
@@ -4605,6 +4686,10 @@ input[type="checkbox"]:checked::before {
 	opacity:.25; 
 	font-weight: bold;	
     z-index: 2;
+}
+
+.circle:hover {
+	opacity:.5;
 }
   </style>
 </head>
@@ -8408,91 +8493,7 @@ function Convert-DataTableToHtmlTable
     <html>
         <head>
           <title>$Title</title>
-          <style> 	
-
-        .side-menu {			
-			box-shadow: 0 2px 4px 0;
-			width: 180px;
-			height: 100%;
-			background-color:#07142A;
-			position: fixed; /* Stay in place */
-			top: 0; 
-			left: 0;
-			float:left;
-			line-height:1.15;
-			-webkit-text-size-adjust:100%;
-			-ms-text-size-adjust:100%;
-			z-index: 1;		
-			--transition: width 0.3s; /* Smooth transition when expanding/collapsing */			
-        }
-		
-		.side-menu.collapsed div,
-		.side-menu.collapsed h2,
-		.side-menu.collapsed ul,
-		.side-menu.collapsed ul li {
-			opacity: 0; /* Hide text and child divs when collapsed */
-			height: 0; /* Collapse height to prevent content from being visible */
-			overflow: hidden; /* Ensure that any overflow content is hidden */
-			transition: opacity 0.3s, height 0.3s; /* Smooth transition for hiding content */
-		}
-
-		.side-menu a {
-				width:auto;
-				cursor:initial;
-				border-bottom:2px solid transparent;
-				-webkit-box-ordinal-group:2;
-				-ms-flex-order:1;
-				order:1;
-		}		
-
-        .side-menu.collapsed {
-            width: 50px; /* Width when collapsed */
-        }		
-
-        .side-menu h2 {
-            text-align: center;
-            margin: 50px 0; /* Add margin for better spacing */
-        }
-
-        .side-menu ul {
-            list-style-type: none;
-            padding: 0;
-            transition: opacity 0.3s; /* Fade effect */
-        }
-
-        .side-menu ul li {
-            padding: 10px 0;
-            text-align: center;
-        }
-
-        .menu-button {
-            margin: 0;
-            padding: 10px;
-            font-size: 16px;
-            cursor: pointer;
-            background-color: transparent;
-            border: none;
-            color: white;
-            position: absolute;
-            right: 10px; /* Align to right when expanded */
-            top: 10px;   /* Align to top when expanded */
-            --transition: all 0.3s; /* Smooth transition for position */
-        }
-
-        .menu-button .icon {
-            font-size: 24px;
-        }
-
-        .side-menu.collapsed h2,
-        .side-menu.collapsed ul li {
-            opacity: 0; /* Hide text when collapsed */
-        }
-
-        .side-menu.collapsed .menu-button {
-            right: 18px; /* Keep the icon aligned to the right */
-            top: 10px;   /* Keep the icon aligned to the top */
-        }
-  
+          <style>   
 	        {box-sizing:border-box}
 	        body,html{
 		        font-family:"Open Sans", 
