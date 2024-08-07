@@ -5,7 +5,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.66
+# Version: v1.68
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Analyze-HuntSMBShares
 {    
@@ -3407,6 +3407,8 @@ $NewHtmlReport = @"
 		padding-bottom:5px;
 		padding-left:15px;
 		order:1;
+		border-radius: 0px;
+		margin-left:5px;
 	}
 
 	.stuff:hover{
@@ -3415,9 +3417,11 @@ $NewHtmlReport = @"
 		text-decoration: none;
 		padding-top:5px;
 		padding-bottom:5px;
+		margin-right:5px;
+		margin-left:5px;
         color: white;
-	}	
-	
+		border-radius: 5px;
+	}
 
 	.stuff:active {
 		font-weight: normal;		 
@@ -4474,22 +4478,25 @@ input[type="checkbox"]:checked::before {
     <div style="font-size: 11;font-weight:normal;margin-top:3px;">$TargetDomain</div>
 	</div>
 
-	<div id="tabs" class="tabs" data-tabs-ignore-url="false">			
-		<label class="tabLabel" style="width:100%;color:#07142A;background-color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:2px;font-weight:bolder"><Strong>Explore Data</Strong></label>
-		<label href="#" class="stuff" style="border-bottom: 0.25px dashed gray; width:100%;" onClick="radiobtn = document.getElementById('dashboard');radiobtn.checked = true;">Results Overview</label>			
+	<div id="tabs" class="tabs" data-tabs-ignore-url="false">	
+		<label href="#" class="stuff" style="text-align: center; border-bottom: 0.25px dashed gray; width:85%; margin-bottom: 4px; margin-top: -9px;"></label>	
+		<label class="tabLabel" style="width:100%;color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:2px;font-weight:bolder;"><Strong>Results</Strong></label>
+		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('dashboard');radiobtn.checked = true;">Summary</label>
+		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('home');radiobtn.checked = true;">Scan Information</label>		
+		<label class="tabLabel" style="width:100%;color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:2px;font-weight:bolder;"><Strong>Explore Data</Strong></label>
         <label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ComputerInsights');radiobtn.checked = true;">Computers</label>	  	  			
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;">Share Names</label>					
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareFolders');radiobtn.checked = true;">Folder Groups</label>
-        <label href="#" class="stuff" style="border-bottom: 0.25px dashed gray; width:100%;" onClick="radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;">Insecure ACEs</label>	
+        <label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;">Insecure ACEs</label>
+		<label href="#" class="stuff" style="text-align: center;border-bottom: 0.25px dashed gray; opacity: 0.25; width:85%; margin-bottom: 6px; margin-top:-1px;"></label>			
         <label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF');">Interesting Files</label>			
         <label href="#" class="stuff" style="width:100%;" onclick="radiobtn = document.getElementById('SubNets');radiobtn.checked = true;">Affected Subnets</label>				
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareOwner');radiobtn.checked = true;">Share Owners</label>	
         <label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('accounts');radiobtn.checked = true;">Group ACL Summary</label>
-		<label class="tabLabel" style="width:100%;color:#07142A;background-color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:2px;margin-bottom:2px;"><strong>Recommendations</strong></label>
+		<label class="tabLabel" style="width:100%;color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:2px;font-weight:bolder;"><strong>Recommendations</strong></label>
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Attacks');radiobtn.checked = true;">Exploiting Access</label>		
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Detections');radiobtn.checked = true;">Detecting Attacks</label>
-		<label href="#" class="stuff" style="border-bottom: 0.25px dashed gray;width:100%;" onClick="radiobtn = document.getElementById('Remediation');radiobtn.checked = true;">Prioritizing Remediation</label>	
-        <label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('home');radiobtn.checked = true;">Scan Information</label>		
+		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Remediation');radiobtn.checked = true;">Prioritization</label>	        		
 	</div>
 </div>
 <div id="main">
