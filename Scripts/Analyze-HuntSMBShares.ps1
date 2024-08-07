@@ -5,7 +5,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.59
+# Version: v1.63
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Analyze-HuntSMBShares
 {    
@@ -1580,10 +1580,110 @@ function Analyze-HuntSMBShares
         $RiskLevelCountCritical = $ExcessiveSharePrivsFinal | where RiskLevel -eq 'Critical' | measure | select count -ExpandProperty count  
 
         # ----------------------------------------------------------------------
-        # Create Computer Summary Information
+        # Create Computer Insight Summary Information
         # ---------------------------------------------------------------------- 
-        # TBD
 
+        # Reset global computer risk levels
+        $RiskLevelComputersCountCritical = 0
+        $RiskLevelComputersCountHigh     = 0
+        $RiskLevelComputersCountMedium   = 0
+        $RiskLevelComputersCountLow      = 0
+
+        # Rest row data
+        $ComputerTableRows = ""
+        $ComputerTableRow  = ""
+
+        # Get computer list
+        $ComputerPageComputerList = $ExcessiveSharePrivsFinal | select ComputerName -Unique
+
+        # Get computer count
+        $ComputersChartCount      = $ComputerPageComputerList | measure | select count -ExpandProperty count # Unique folder group
+
+        # Process each computer & add data to final risk counts
+        $ComputerPageComputerList |
+        foreach {
+             
+             # Set target share name
+             $TargetComputers = $_.ComputerName
+
+             # Grab the risk level for the highest risk acl for the share name
+             $ComputersTopACLRiskScore = $ExcessiveSharePrivsFinal | where ComputerName -eq $TargetComputers  | select RiskScore | sort RiskScore -Descending | select -First 1  | select RiskScore -ExpandProperty RiskScore
+
+             # Check risk level - Highest wins
+             If($ComputersTopACLRiskScore -le 4                                          ) { $RiskLevelComputersResult = "Low"}
+             If($ComputersTopACLRiskScore -gt 4  -and $ComputersTopACLRiskScore -lt 11   ) { $RiskLevelComputersResult = "Medium"} 
+             If($ComputersTopACLRiskScore -ge 11 -and $ComputersTopACLRiskScore -lt 20   ) { $RiskLevelComputersResult = "High"}     
+             If($ComputersTopACLRiskScore -ge 20                                         ) { $RiskLevelComputersResult = "Critical"}   
+             
+             # Increment counts
+             if($RiskLevelComputersResult -eq "Low"     ){$RiskLevelComputersCountLow      = $RiskLevelComputersCountLow      + 1}
+             if($RiskLevelComputersResult -eq "Medium"  ){$RiskLevelComputersCountMedium   = $RiskLevelComputersCountMedium   + 1}
+             if($RiskLevelComputersResult -eq "High"    ){$RiskLevelComputersCountHigh     = $RiskLevelComputersCountHigh     + 1}
+             if($RiskLevelComputersResult -eq "Critical"){$RiskLevelComputersCountCritical = $RiskLevelComputersCountCritical + 1} 
+             
+             # Get share count         
+             $ComputerPageShares     = $ExcessiveSharePrivsFinal | where ComputerName -eq $TargetComputers | select SharePath -Unique | ForEach-Object { $ASDF = $_.SharePath; "$ASDF<br>" }  | out-string 
+             $ComputerPageShareCount = $ExcessiveSharePrivsFinal | where ComputerName -eq $TargetComputers | select SharePath -Unique | measure | select count -ExpandProperty count 
+             $ComputerPageShareCountHTML = @"
+             <button class="collapsible" style="text-align:left;">$ComputerPageShareCount</button>
+             <div class="content" style="font-size: 10px; width:100px; overflow-wrap: break-word;">
+             $ComputerPageShares
+             </div>
+"@
+             # Check for interesting files 
+         	 # For each file category generate count and list
+	         $ComputerPageInterestingFilesInsideHTML  = ""
+             $ComputerPageInterestingFilesOutsideHTML = ""
+	         $FileNamePatternCategories | select Category -ExpandProperty Category | 
+	         foreach{
+		
+		        # Get category
+		        $ComputerPageCategoryName = $_
+
+		        # Get list of that sharename and category
+                $ComputerPageCategoryFilesBase = $InterestingFilesAllObjects | where ComputerName -eq $TargetComputers |  where Category -eq "$ComputerPageCategoryName" | select FileName
+		        $ComputerPageCategoryFiles     = $InterestingFilesAllObjects | where ComputerName -eq $TargetComputers |  where Category -eq "$ComputerPageCategoryName" | select FileName | ForEach-Object { $ASDF = $_.FileName; "$ASDF<br>" }  | out-string
+
+		        # Get category count
+		        $ComputerPageCategoryFilesCount =  $ComputerPageCategoryFilesBase | measure | select count -expandproperty count 
+
+		        # Generate HTML with Category
+                if($ComputerPageCategoryFilesCount -ne 0){
+		            $ComputerPageInterestingFilesHTMLPrep = @" 
+                        <button class="collapsible" style="font-size: 10px;">$ComputerPageCategoryFilesCount $ComputerPageCategoryName</button>
+ 		                <div class="content" style="font-size: 10px; width:100px; overflow-wrap: break-word;">
+		                $ComputerPageCategoryFiles
+		                </div>
+"@
+		            # Add to code block
+		            $ComputerPageInterestingFilesInsideHTML = $ComputerPageInterestingFilesInsideHTML + $ComputerPageInterestingFilesHTMLPrep
+                }
+	         }
+
+             # Get total for interesting files for target share name
+	         $ComputerPageInterestingFilesCount = $InterestingFilesAllObjects | where ComputerName -eq $TargetComputers | measure | select count -expandproperty count 
+       
+             # Build final interesting file html for computers page
+	         $ComputerPageInterestingFilesOutsideHTML = @"
+		        <button class="collapsible"  style="font-size: 10px;">$ComputerPageInterestingFilesCount Files</button>
+ 		        <div class="content" style="font-size: 10px; width:100px; overflow-wrap: break-word;">
+		        $ComputerPageInterestingFilesInsideHTML
+		        </div>
+"@
+             
+             # Create Row
+             $ComputerTableRow = @"
+             <tr>
+                <td>$TargetComputers</td>
+                <td>$ComputersTopACLRiskScore $RiskLevelComputersResult</td>
+                <td>$ComputerPageShareCountHTML</td>
+                <td>$ComputerPageInterestingFilesOutsideHTML</td>
+             </tr>
+"@                      
+
+            # Add row to rows    
+            $ComputerTableRows = $ComputerTableRows + $ComputerTableRow  
+        }
 
         # ----------------------------------------------------------------------
         # Create Share Name Summary Information
@@ -2652,7 +2752,7 @@ function Analyze-HuntSMBShares
             # Build final interesting file html for share names page
 	        $ShareNameInterestingFilesOutsideHTML = @"
 		        <button class="collapsible"  style="font-size: 10px;">$ShareNameInterestingFilesCount Files</button>
- 		        <div class="content" style="font-size: 10px;width:100px;overflow-wrap: break-word;">
+ 		        <div class="content" style="font-size: 10px; width:100px; overflow-wrap: break-word;">
 		        $ShareNameInterestingFilesInsideHTML
 		        </div>
 "@
@@ -4292,10 +4392,11 @@ input[type="checkbox"]:checked::before {
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('computersummary');radiobtn.checked = true;">Computer Summary</label>		
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('sharesum');radiobtn.checked = true;">Share Summary</label>		
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ACLsum');radiobtn.checked = true;">ACL Summary</label>		
-		<label class="tabLabel" style="width:100%;color:#07142A;background-color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:2px;margin-bottom:2px;"><Strong>Data Insights</Strong></label>	  	  	
-		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF');">Interesting Files</label>		
+		<label class="tabLabel" style="width:100%;color:#07142A;background-color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:2px;margin-bottom:2px;"><Strong>Data Insights</Strong></label>
+        <label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ComputerInsights');radiobtn.checked = true;">Computers</label>	  	  			
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;">Share Names</label>					
-		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareFolders');radiobtn.checked = true;">Folder Groups</label>		
+		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareFolders');radiobtn.checked = true;">Folder Groups</label>	
+        <label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF');">Interesting Files</label>			
         <label href="#" class="stuff" style="width:100%;" onclick="radiobtn = document.getElementById('SubNets');radiobtn.checked = true;">Affected Subnets</label>				
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareOwner');radiobtn.checked = true;">Share Owners</label>	
         <label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('accounts');radiobtn.checked = true;">Group ACL Summary</label>
@@ -4656,6 +4757,111 @@ $CardLastAccessTimeLine
 -->
 $CardLastModifiedTimeLine
 </div>
+</div>
+
+<!--  
+|||||||||| PAGE: COMPUTER INSIGHTS
+-->
+
+<input class="tabInput"  name="tabs" type="radio" id="ComputerInsights"/> 
+<label class="tabLabel" onClick="updateTab('ComputerInsights',false)" for="ComputerInsights"></label>
+<div id="tabPanel" class="tabPanel">
+<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Computers</h2>
+<div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>
+<div style="margin-left:10px;margin-top:3px; margin-bottom: 3px;width:95%">
+$ComputerCount computers were found in the $TargetDomain Active Directory domain. Below is a list of the computers hosting shares configured with excessive privileges. 
+</div>		
+
+		            <div class="LargeCard" style="width:20%;">	
+						
+							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
+								<strong>Live Computers Found</strong>
+							</div>												
+							<div class="LargeCardContainer" style="height:215px;text-align:center;">	
+                                  <br><br><br>							
+								   <span class="percentagetext" style = "font-size: 50px; color:#f08c41;heigh:100%">                    
+									$ComputerPingableCount                  
+								   </span><br>	($ComputerWithExcessive host shares with excessive privileges)									
+							</div>
+                    </div>
+
+            
+					<div class="LargeCard" style="width:36%;">	
+							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
+								<strong>Computer Count by Share Exposure</strong>
+							</div>
+							<div class="LargeCardContainer" align="center" >											
+									<div class="chart-container">
+									<div id="ChartComputersDisco"></div>
+										<div class="chart-controls"></div>
+									</div>								  							
+							</div>
+					</div>	
+					<div class="LargeCard" style="width:36%;">	
+							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
+								<strong>Computer Count by Risk Level</strong>
+							</div>
+							<div class="LargeCardContainer" align="center" >											
+									<div class="chart-container">
+									<div id="ChartComputersRisk"></div>
+										<div class="chart-controls"></div>
+									</div>								  							
+							</div>
+					</div>					
+				
+<div class="searchbar" style="margin-top:300px; text-align:left; display: flex;" >
+        <input type="text" id="computerfilterInput" placeholder=" Search..." style="margin-top: 8px; height: 25px; margin-left: 10px;font-size: 14px;padding-left:3px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
+        <div style="font-size:12;text-align: left;cursor: pointer;color:gray; margin-top: 13px; margin-left: 5px;" onmouseover="this.style.color='white';" onmouseout="this.style.textDecoration='';this.style.fontWeight='normal';this.style.color='gray';"onclick="document.getElementById('computerfilterInput').value = '';applyFiltersAndSort('ComputersTable', 'computerfilterInput', 'computerfilterCounter', 'computerpagination');">Clear</div>
+        <!-- <div style="margin-top: 10px; margin-left: 5px; margin-right: 5px;"><strong>Quick Filters</strong></div>
+        <label><input type="checkbox" class="filter-checkbox" name="h"> Exploitable</label>
+        <label><input type="checkbox" class="filter-checkbox" name="w"> Write</label>
+        <label><input type="checkbox" class="filter-checkbox" name="r"> Read</label>
+        <label><input type="checkbox" class="filter-checkbox" name="i"> Interesting</label>
+        <label><input type="checkbox" class="filter-checkbox" name="e"> Empty</label>
+        <label><input type="checkbox" class="filter-checkbox" name="s"> Stale</label>
+        <label><input type="checkbox" class="filter-checkbox" name="n"> Default</label>
+        -->
+</div>		
+<div style="display: flex; margin-left:10px; font-size:11; text-align:left;" >		
+        <div id="computerfilterCounter" style="margin-top:5px;">Loading...</div>      
+        <a style="font-size:11; margin-top: 5px; margin-left: 5px;" href="#" onclick="extractAndDownloadCSV('ComputersTable', 2)">Export</a>
+</div>
+<table id="ComputersTable" class="table table-striped table-hover tabledrop" style="width: 95%;">
+  <thead>
+    <tr>
+    
+    <th class="NamesTh" onclick="sortTable('ComputersTable',0,'alpha')" style="vertical-align: middle;text-align: left;">Computer<br>Name&nbsp;&nbsp;<div class="tooltip"><img src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV9TpSJVBzuIOGSoBcEuKuJYqlgEC6Wt0KqDyaVf0KQhSXFxFFwLDn4sVh1cnHV1cBUEwQ8QZwcnRRcp8X9JoUWMB8f9eHfvcfcOEJpVpp
+    o9MUDVLCOdiIu5/KoYeEUAQQxiAhGJmXoys5iF5/i6h4+vd1Ge5X3uzzGgFEwG+ETiGNMNi3iDeHbT0jnvE4dYWVKIz4knDbog8SPXZZffOJccFnhmyMim54lDxGKpi+UuZmVDJZ4hDiuqRvlCzmWF8xZntVpn7XvyFwYL2kqG6zTHkMASkkhBhIw6KqjCQpRWjRQTadqPe/hHHX+KXDK5KmDkWEANK
+    iTHD/4Hv7s1i9NTblIwDvS+2PbHOBDYBVoN2/4+tu3WCeB/Bq60jr/WBOY+SW90tPARMLQNXFx3NHkPuNwBRp50yZAcyU9TKBaB9zP6pjwwfAv0r7m9tfdx+gBkqavlG+DgEIiUKHvd49193b39e6bd3w/VdnLO67/jCAAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0
+    SU1FB+gHDA40BpbiKy8AAAEjSURBVBjTXZAxS4JhFIWfe5XqA6NIBSvK1pak2tqjvb8Q/oUImgPnqL/R7tbYVPCtUb46iKYoSUGK3tvQK0hnu889HO49Uq1eyOXVtRby+Q1VrSBSBpaBMRDMLG2GMLi/uzV5fXvPFIvFHRE5A0qAAVMgCyjQNbN6v99vyfBzVFTVc2ArprWAHrAJbANLQNts9qCqWom
+    JAB/u9uzuPXd/AjqRl1T1QIEyIBGuiuiJiJwCGeArcgHZy8Zn5loHcsBL5IWF3bLGOxf1DUxEZP+feazgAfAF+OOOAGuxDQB396BmloJ3F8w5EXbjOXN1zCzVZggDM68D7dhxEttJ/mZvu1u92QyDzGw25fDoeJQkK0FExiAKTIAhkJrZY2g0urXajf0CiVl4icFa+XEAAAAASUVORK5CYII=" /><span class="tooltiptext"><strong>Computer Name</strong><br>is the name of the computer.</span></div></th>        
+                          
+    <th class="NamesTh" onclick="sortTable('ComputersTable',1,'number')" style="vertical-align: middle;text-align: left;">Risk<br>Level&nbsp;&nbsp;<div class="tooltip"><img src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV9TpSJVBzuIOGSoBcEuKuJYqlgEC6Wt0KqDyaVf0KQhSXFxFFwLDn4sVh1cnHV1cBUEwQ8QZwcnRRcp8X9JoUWMB8f9eHfvcfcOEJpVpp
+    o9MUDVLCOdiIu5/KoYeEUAQQxiAhGJmXoys5iF5/i6h4+vd1Ge5X3uzzGgFEwG+ETiGNMNi3iDeHbT0jnvE4dYWVKIz4knDbog8SPXZZffOJccFnhmyMim54lDxGKpi+UuZmVDJZ4hDiuqRvlCzmWF8xZntVpn7XvyFwYL2kqG6zTHkMASkkhBhIw6KqjCQpRWjRQTadqPe/hHHX+KXDK5KmDkWEANK
+    iTHD/4Hv7s1i9NTblIwDvS+2PbHOBDYBVoN2/4+tu3WCeB/Bq60jr/WBOY+SW90tPARMLQNXFx3NHkPuNwBRp50yZAcyU9TKBaB9zP6pjwwfAv0r7m9tfdx+gBkqavlG+DgEIiUKHvd49193b39e6bd3w/VdnLO67/jCAAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0
+    SU1FB+gHDA40BpbiKy8AAAEjSURBVBjTXZAxS4JhFIWfe5XqA6NIBSvK1pak2tqjvb8Q/oUImgPnqL/R7tbYVPCtUb46iKYoSUGK3tvQK0hnu889HO49Uq1eyOXVtRby+Q1VrSBSBpaBMRDMLG2GMLi/uzV5fXvPFIvFHRE5A0qAAVMgCyjQNbN6v99vyfBzVFTVc2ArprWAHrAJbANLQNts9qCqWom
+    JAB/u9uzuPXd/AjqRl1T1QIEyIBGuiuiJiJwCGeArcgHZy8Zn5loHcsBL5IWF3bLGOxf1DUxEZP+feazgAfAF+OOOAGuxDQB396BmloJ3F8w5EXbjOXN1zCzVZggDM68D7dhxEttJ/mZvu1u92QyDzGw25fDoeJQkK0FExiAKTIAhkJrZY2g0urXajf0CiVl4icFa+XEAAAAASUVORK5CYII=" /><span class="tooltiptext"><strong>Risk Level</strong><br>relfects the exposure of credentials and sensitive data.</span></div></th>
+                          
+    <th class="NamesTh"  onclick="sortTable('ComputersTable',2,'number')" style="vertical-align: middle;text-align: left;">Share<br>Count&nbsp;&nbsp;<div class="tooltip"><img src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV9TpSJVBzuIOGSoBcEuKuJYqlgEC6Wt0KqDyaVf0KQhSXFxFFwLDn4sVh1cnHV1cBUEwQ8QZwcnRRcp8X9JoUWMB8f9eHfvcfcOEJpVpp
+    o9MUDVLCOdiIu5/KoYeEUAQQxiAhGJmXoys5iF5/i6h4+vd1Ge5X3uzzGgFEwG+ETiGNMNi3iDeHbT0jnvE4dYWVKIz4knDbog8SPXZZffOJccFnhmyMim54lDxGKpi+UuZmVDJZ4hDiuqRvlCzmWF8xZntVpn7XvyFwYL2kqG6zTHkMASkkhBhIw6KqjCQpRWjRQTadqPe/hHHX+KXDK5KmDkWEANK
+    iTHD/4Hv7s1i9NTblIwDvS+2PbHOBDYBVoN2/4+tu3WCeB/Bq60jr/WBOY+SW90tPARMLQNXFx3NHkPuNwBRp50yZAcyU9TKBaB9zP6pjwwfAv0r7m9tfdx+gBkqavlG+DgEIiUKHvd49193b39e6bd3w/VdnLO67/jCAAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0
+    SU1FB+gHDA40BpbiKy8AAAEjSURBVBjTXZAxS4JhFIWfe5XqA6NIBSvK1pak2tqjvb8Q/oUImgPnqL/R7tbYVPCtUb46iKYoSUGK3tvQK0hnu889HO49Uq1eyOXVtRby+Q1VrSBSBpaBMRDMLG2GMLi/uzV5fXvPFIvFHRE5A0qAAVMgCyjQNbN6v99vyfBzVFTVc2ArprWAHrAJbANLQNts9qCqWom
+    JAB/u9uzuPXd/AjqRl1T1QIEyIBGuiuiJiJwCGeArcgHZy8Zn5loHcsBL5IWF3bLGOxf1DUxEZP+feazgAfAF+OOOAGuxDQB396BmloJ3F8w5EXbjOXN1zCzVZggDM68D7dhxEttJ/mZvu1u92QyDzGw25fDoeJQkK0FExiAKTIAhkJrZY2g0urXajf0CiVl4icFa+XEAAAAASUVORK5CYII=" /><span class="tooltiptext"><strong>Share Count</strong><br>is the number of shares<br>hosted on the same computer.</span></div></th>
+      
+    <th class="NamesTh"  onclick="sortTable('ComputersTable',3,'number')" style="vertical-align: middle;text-align: left;">Interesting<br>Files&nbsp;&nbsp;<div class="tooltip"><img src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV9TpSJVBzuIOGSoBcEuKuJYqlgEC6Wt0KqDyaVf0KQhSXFxFFwLDn4sVh1cnHV1cBUEwQ8QZwcnRRcp8X9JoUWMB8f9eHfvcfcOEJpVpp
+    o9MUDVLCOdiIu5/KoYeEUAQQxiAhGJmXoys5iF5/i6h4+vd1Ge5X3uzzGgFEwG+ETiGNMNi3iDeHbT0jnvE4dYWVKIz4knDbog8SPXZZffOJccFnhmyMim54lDxGKpi+UuZmVDJZ4hDiuqRvlCzmWF8xZntVpn7XvyFwYL2kqG6zTHkMASkkhBhIw6KqjCQpRWjRQTadqPe/hHHX+KXDK5KmDkWEANK
+    iTHD/4Hv7s1i9NTblIwDvS+2PbHOBDYBVoN2/4+tu3WCeB/Bq60jr/WBOY+SW90tPARMLQNXFx3NHkPuNwBRp50yZAcyU9TKBaB9zP6pjwwfAv0r7m9tfdx+gBkqavlG+DgEIiUKHvd49193b39e6bd3w/VdnLO67/jCAAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0
+    SU1FB+gHDA40BpbiKy8AAAEjSURBVBjTXZAxS4JhFIWfe5XqA6NIBSvK1pak2tqjvb8Q/oUImgPnqL/R7tbYVPCtUb46iKYoSUGK3tvQK0hnu889HO49Uq1eyOXVtRby+Q1VrSBSBpaBMRDMLG2GMLi/uzV5fXvPFIvFHRE5A0qAAVMgCyjQNbN6v99vyfBzVFTVc2ArprWAHrAJbANLQNts9qCqWom
+    JAB/u9uzuPXd/AjqRl1T1QIEyIBGuiuiJiJwCGeArcgHZy8Zn5loHcsBL5IWF3bLGOxf1DUxEZP+feazgAfAF+OOOAGuxDQB396BmloJ3F8w5EXbjOXN1zCzVZggDM68D7dhxEttJ/mZvu1u92QyDzGw25fDoeJQkK0FExiAKTIAhkJrZY2g0urXajf0CiVl4icFa+XEAAAAASUVORK5CYII=" /><span class="tooltiptext"><strong>Interesting Files</strong><br>are filenames that<br>may be sensitive.</span></div> </th>	 	        
+
+    </tr>
+    </thead>
+
+    <tbody>
+    $ComputerTableRows
+    </tbody>
+</table>
+<div id="computerpagination" style="margin:10px;"></div>
 </div>
 
 <!--  
@@ -5121,7 +5327,7 @@ Below is a summary of the exposure associated with each of those groups.
 <h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Share Names</h2>
 <div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>
 <div style="margin-left:10px;margin-top:3px; margin-bottom: 3px;width:95%">
-This section contains a list of the most common SMB share names. In some cases, shares with the exact same name may be related to a single application or process.  This information can help identify the root cause associated with the excessive privileges and expedite remediation. 
+$AllSMBSharesCount shares were discovered across computers in the $TargetDomain Active Directory domain. $ShareNameChartCount shares were found configured with excessive privileges. Below is a summary of those shares grouped by name.
 </div>	
 						<div class="LargeCard" style="width:20%;">	
 						
@@ -5828,6 +6034,93 @@ Invoke-HuntSMBShares -Threads 20 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\
             }
         }
 
+
+// --------------------------
+// Computers Page - Computers Found
+// --------------------------
+
+// Initialize ApexCharts
+const ChartComputersDiscoOptions = {
+  series: [{
+    data:  [$ComputerPingableCount,$Computers445OpenCount,$AllComputersWithSharesCount,$ComputerwithNonDefaultCount,$ComputerWithExcessive,$ComputerWithReadCount,$ComputerWithWriteCount]
+  }],
+  chart: {
+    type: 'bar',
+    height: 200
+  },
+  plotOptions: {
+    bar: {		 
+      borderRadius: 0,
+      borderRadiusApplication: 'end',
+      horizontal: true,
+      colors: {
+        backgroundBarColors: ['#e0e0e0'],
+        backgroundBarOpacity: 1,
+        ranges: [{
+          from: 0,
+          to: 1000,
+          color: '#f08c41'
+        }]
+      }
+    }
+  },
+  dataLabels: {
+    enabled: false
+  },
+  grid: {
+    show: false
+  },
+  xaxis: {
+    categories: ['Ping Response','445Open','Host Shares','Non Default','Excessive Privs','Readable','Writable']
+  }
+};
+
+const ChartComputersDisco = new ApexCharts(document.querySelector("#ChartComputersDisco"), ChartComputersDiscoOptions);
+ChartComputersDisco.render();
+
+// --------------------------
+// Computers Page - Computers Risk Levels
+// --------------------------
+
+// Initialize ApexCharts
+const ChartComputersRiskOptionsa = {
+  series: [{
+    data: [$RiskLevelComputersCountCritical, $RiskLevelComputersCountHigh, $RiskLevelComputersCountMedium, $RiskLevelComputersCountLow]
+  }],
+  chart: {
+    type: 'bar',
+    height: 200
+  },
+  plotOptions: {
+    bar: {		 
+      borderRadius: 0,
+      borderRadiusApplication: 'end',
+      horizontal: true,
+      colors: {
+        backgroundBarColors: ['#e0e0e0'],
+        backgroundBarOpacity: 1,
+        ranges: [{
+          from: 0,
+          to: 1000,
+          color: '#f08c41'
+        }]
+      }
+    }
+  },
+  dataLabels: {
+    enabled: false
+  },
+  grid: {
+    show: false
+  },
+  xaxis: {
+    categories: ['Critical','High','Medium','Low']
+  }
+};
+
+const ChartComputersRisk = new ApexCharts(document.querySelector("#ChartComputersRisk"), ChartComputersRiskOptionsa);
+ChartComputersRisk.render();
+
 // --------------------------
 // Folder Group Page: Chart - Interesting Files
 // --------------------------
@@ -6474,6 +6767,10 @@ applyFiltersAndSort('foldergrouptable', 'filterInputTwo', 'filterCounterTwo', 'p
 document.getElementById('filterInputIF').addEventListener("keyup", () => applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF'));
 applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF');	
 
+// Initialize computers table
+document.getElementById('computerfilterInput').addEventListener("keyup", () => applyFiltersAndSort('ComputersTable', 'computerfilterInput', 'computerfilterCounter', 'computerpagination'));
+applyFiltersAndSort('ComputersTable', 'computerfilterInput', 'computerfilterCounter', 'computerpagination');	
+
 // CSV export function
 function extractAndDownloadCSV(tableId, columnIndex) {
     // Regex to match \\server\share, \\server\share folder, and \\server\share\file.ext formats, allowing spaces
@@ -6509,11 +6806,14 @@ function extractAndDownloadCSV(tableId, columnIndex) {
     let csvContent = 'data:text/csv;charset=utf-8,';
     csvContent += cleanUncPaths.join('\n');
 
+    // Set output file name
+    let CombinedName = tableId + '_unc_paths.csv' 
+
     // Create a link to download the CSV file
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', 'unc_paths.csv');
+    link.setAttribute('download', CombinedName);
     document.body.appendChild(link);
 
     // Force download the file
