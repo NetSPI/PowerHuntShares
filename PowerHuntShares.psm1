@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.100
+# Version: v1.101
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -2003,7 +2003,84 @@ function Invoke-HuntSMBShares
         $RiskLevelCountLow      = $ExcessiveSharePrivsFinal | where RiskLevel -eq 'Low'      | measure | select count -ExpandProperty count
         $RiskLevelCountMedium   = $ExcessiveSharePrivsFinal | where RiskLevel -eq 'Medium'   | measure | select count -ExpandProperty count 
         $RiskLevelCountHigh     = $ExcessiveSharePrivsFinal | where RiskLevel -eq 'High'     | measure | select count -ExpandProperty count 
-        $RiskLevelCountCritical = $ExcessiveSharePrivsFinal | where RiskLevel -eq 'Critical' | measure | select count -ExpandProperty count  
+        $RiskLevelCountCritical = $ExcessiveSharePrivsFinal | where RiskLevel -eq 'Critical' | measure | select count -ExpandProperty count 
+        
+        # Create table for ACEs page
+        $AceTableRows = $ExcessiveSharePrivsFinal | 
+        foreach {
+
+            # Risk Level
+            $AceRowRiskScore = $_.RiskScore
+            $AceRowRiskLevel = $_.RiskLevel
+
+                # Read
+                $AceRowHasRead  = $_.HasRead
+
+                # Write 
+                $AceRowHasWrite = $_.HasWrite
+
+                # HR 
+                $AceRowHasHR    = $_.HasHR
+
+                # RCE
+                $AceRowHasRCE   = $_.HasRCE
+
+                # Has sesntive secrests 
+                $AceRowHasSecrets = $_.HasSecrets
+
+                # Has sesntive data
+                $AceRowHasIF = $_.HasIF
+
+            # Computer
+            $AceRowComputer   = $_.ComputerName
+
+            # Share Name
+            $AceRowShareName  = $_.ShareName
+
+            # Share Path
+            $AceRowSharePath  = $_.SharePath
+
+            # ACE
+            $AceRowACE        = $_.FileSystemRights
+
+            # Identity
+            $AceRowIdentity   = $_.IdentityReference
+
+            # Share Owner
+            $AceRowShareOwner = $_.ShareOwner          
+
+            # Created
+            $AceRowCreated    = $_. CreationDate
+
+            # Modified 
+            $AceRowModified   = $_.LastModifiedDate
+
+            # Files 
+            $AceRowFilecount     = $_.FileCount
+            $AceRowFileList      = $_.FileList
+
+            $AceRow = @"
+                <tr>
+                    <td>$AceRowRiskScore $AceRowRiskLevel</td> <!-- Risk Level  -->
+                    <td>$AceRowComputer </td> <!-- Computer    -->
+                    <td>$AceRowShareName</td> <!-- Share Name  -->
+                    <td>$AceRowSharePath</td> <!-- Share Path  -->
+                    <td>$AceRowACE      </td> <!-- ACE         -->
+                    <td>$AceRowIdentity </td> <!-- Identity    -->
+                    <td>$AceRowShareOwner</td> <!-- Share Owner -->
+                    <td>$AceRowCreated   </td> <!-- Created     -->
+                    <td>$AceRowModified  </td> <!-- Modified    -->
+                    <td><!-- Files    -->                    
+                        <button class="collapsible"  style="font-size: 10px;">$AceRowFilecount  Files</button>
+ 		                <div class="content" style="font-size: 10px; width:100px; overflow-wrap: break-word;">
+		                $AceRowFileList
+		                </div>
+                    </td> 
+                </tr>
+"@
+            # Return row
+            $AceRow             
+        }         
 
         # ----------------------------------------------------------------------
         # Create Computer Insight Summary Information
@@ -4312,7 +4389,7 @@ $NewHtmlReport = @"
 		display:block;
 		margin:10px;
 		margin-bottom:20px;
-        --border-radius: 10px;
+        border-radius: 3px; 
 	}
 
 	.card:hover{	
@@ -4393,7 +4470,9 @@ $NewHtmlReport = @"
 		border-bottom:1px solid #ccc;	
 		--border-bottom-right-radius: 10px;
 		--border-bottom-left-radius: 10px;
-	}		
+		border-bottom-left-radius: 3px; 
+		border-bottom-right-radius: 3px; 
+	}	
 
 	.cardbarouter{
 		background:#d9d7d7;
@@ -4827,15 +4906,12 @@ input[type="checkbox"]:checked::before {
 	</div>
 
 	<div id="tabs" class="tabs" data-tabs-ignore-url="false">			
-		<label class="tabLabel" style="width:100%;color:#07142A;background-color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:2px;font-weight:bolder"><Strong>Reports</Strong></label>
-		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('dashboard');radiobtn.checked = true;">Dashboard</label>		
-		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('computersummary');radiobtn.checked = true;">Computer Summary</label>		
-		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('sharesum');radiobtn.checked = true;">Share Summary</label>		
-		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ACLsum');radiobtn.checked = true;">ACL Summary</label>		
-		<label class="tabLabel" style="width:100%;color:#07142A;background-color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:2px;margin-bottom:2px;"><Strong>Data Insights</Strong></label>
+		<label class="tabLabel" style="width:100%;color:#07142A;background-color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:2px;font-weight:bolder"><Strong>Explore Data</Strong></label>
+		<label href="#" class="stuff" style="border-bottom: 0.25px dashed gray; width:100%;" onClick="radiobtn = document.getElementById('dashboard');radiobtn.checked = true;">Results Overview</label>			
         <label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ComputerInsights');radiobtn.checked = true;">Computers</label>	  	  			
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;">Share Names</label>					
-		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareFolders');radiobtn.checked = true;">Folder Groups</label>	
+		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareFolders');radiobtn.checked = true;">Folder Groups</label>
+        <label href="#" class="stuff" style="border-bottom: 0.25px dashed gray; width:100%;" onClick="radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;">Insecure ACEs</label>	
         <label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF');">Interesting Files</label>			
         <label href="#" class="stuff" style="width:100%;" onclick="radiobtn = document.getElementById('SubNets');radiobtn.checked = true;">Affected Subnets</label>				
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareOwner');radiobtn.checked = true;">Share Owners</label>	
@@ -4843,8 +4919,8 @@ input[type="checkbox"]:checked::before {
 		<label class="tabLabel" style="width:100%;color:#07142A;background-color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:2px;margin-bottom:2px;"><strong>Recommendations</strong></label>
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Attacks');radiobtn.checked = true;">Exploiting Access</label>		
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Detections');radiobtn.checked = true;">Detecting Attacks</label>
-		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Remediation');radiobtn.checked = true;">Prioritizing Remediation</label>	
-        <label href="#" class="stuff" style="width:100%;margin-top:15px" onClick="radiobtn = document.getElementById('home');radiobtn.checked = true;">HELP!</label>		
+		<label href="#" class="stuff" style="border-bottom: 0.25px dashed gray;width:100%;" onClick="radiobtn = document.getElementById('Remediation');radiobtn.checked = true;">Prioritizing Remediation</label>	
+        <label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('home');radiobtn.checked = true;">Scan Information</label>		
 	</div>
 </div>
 <div id="main">
@@ -4934,7 +5010,7 @@ input[type="checkbox"]:checked::before {
 		<input class="tabInput"  name="tabs" type="radio" id="dashboard"/>
 		<label class="tabLabel" onClick="updateTab('dashboard',false)" for="dashboard"></label>
 		<div id="tabPanel" class="tabPanel">
-		<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Excessive Share Privileges Dashboard</h2>	
+		<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Results Overview</h2>	
 		<div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>
 		<div style="min-height: 450px;">		
 		<div style="margin-left:10px;margin-top:16px;">	
@@ -4955,7 +5031,7 @@ input[type="checkbox"]:checked::before {
 -->
  <div class="card">	
 	<div class="cardtitle" style="text-align:center;">
-		<a href="#" id="DashLink" style="text-decoration:none;color:white;font-size:18px;" onClick="radiobtn = document.getElementById('computersummary');radiobtn.checked = true;">Computers</a>
+		<a href="#" id="DashLink" style="text-decoration:none;color:white;font-size:18px;" onClick="radiobtn = document.getElementById('ComputerInsights');radiobtn.checked = true;">Computers</a>
 	</div>
 	<div class="cardcontainer" align="center" style="padding-bottom: 22px;">	
 				<span class="percentagetext" style = "color:#f08c41;">                    
@@ -5014,7 +5090,7 @@ input[type="checkbox"]:checked::before {
 
 <div class="card">	
 	<div class="cardtitle" style="text-align:center;">
-		<a href="#" id="DashLink" style="text-decoration:none;color:white;font-size:18px;" onClick="radiobtn = document.getElementById('sharesum');radiobtn.checked = true;">Shares</a>
+		<a href="#" id="DashLink" style="text-decoration:none;color:white;font-size:18px;" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;">Shares</a>
 	</div>
 	<div class="cardcontainer" align="center" style="padding-bottom: 22px;">	
 				<span class="percentagetext" style = "color:#f08c41;">                    
@@ -5073,7 +5149,7 @@ input[type="checkbox"]:checked::before {
 
 <div class="card">	
 	<div class="cardtitle" style="text-align:center;">
-		<a href="#" id="DashLink" style="text-decoration:none;color:white;font-size:18px;" onClick="radiobtn = document.getElementById('ACLsum');radiobtn.checked = true;">ACLs</a>
+		<a href="#" id="DashLink" style="text-decoration:none;color:white;font-size:18px;" onClick="radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;">ACLs</a>
 	</div>
 	<div class="cardcontainer" align="center" style="padding-bottom: 22px;">	
 				<span class="percentagetext" style = "color:#f08c41;">                    
@@ -5143,7 +5219,7 @@ input[type="checkbox"]:checked::before {
 	Below is a summary of number of share ACLs by risk level and a summary of file name counts that may contain passwords, sensitive data, or result in remote code execution. Click the titles for more detail.<Br><Br>
  </div>
 		            <div class="LargeCard" style="width:385px;">	
-							<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;" style="text-decoration:none;">
+							<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;" style="text-decoration:none;">
 							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
 								<strong>Share ACL Count by Risk Level</strong>
 							</div>
@@ -5304,6 +5380,97 @@ $ComputerCount computers were found in the $TargetDomain Active Directory domain
 <div id="computerpagination" style="margin:10px;"></div>
 </div>
 
+<!--  
+|||||||||| PAGE: ACE INSIGHTS
+-->
+
+<input class="tabInput"  name="tabs" type="radio" id="AceInsights"/> 
+<label class="tabLabel" onClick="updateTab('AceInsights',false)" for="AceInsights"></label>
+<div id="tabPanel" class="tabPanel">
+<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Insecure ACEs</h2>
+<div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>
+<div style="margin-left:10px;margin-top:3px; margin-bottom: 3px;width:95%">
+Below is a list of the ACE (access control entries) configured with excessive privileges found in the $TargetDomain Active Directory domain. 
+</div>		
+
+		            <div class="LargeCard" style="width:20%;">	
+						
+							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
+								<strong>Inescure ACEs</strong>
+							</div>												
+							<div class="LargeCardContainer" style="height:215px;text-align:center;">	
+                                  <br><br><br>							
+								   <span class="percentagetext" style = "font-size: 50px; color:#f08c41;heigh:100%">                    
+									$ExcessiveSharePrivsCount                   
+								   </span><br>								
+							</div>
+                    </div>
+
+            
+					<div class="LargeCard" style="width:36%;">	
+							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
+								<strong>ACE Count by Risk Level</strong>
+							</div>
+							<div class="LargeCardContainer" align="center" >											
+									<div class="chart-container">
+									<div id="ChartAceRisk"></div>
+										<div class="chart-controls"></div>
+									</div>								  							
+							</div>
+					</div>	
+					<div class="LargeCard" style="width:36%;">	
+							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
+								<strong>Exposed File Count by Category</strong>
+							</div>
+							<div class="LargeCardContainer" align="center" >											
+									<div class="chart-container">
+									<div id="ChartAcesIF"></div>
+										<div class="chart-controls"></div>
+									</div>								  							
+							</div>
+					</div>					
+				
+<div class="searchbar" style="margin-top:300px; text-align:left; display: flex;" >
+        <input type="text" id="acefilterInput" placeholder=" Search..." style="margin-top: 8px; height: 25px; margin-left: 10px;font-size: 14px;padding-left:3px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
+        <div style="font-size:12;text-align: left;cursor: pointer;color:gray; margin-top: 13px; margin-left: 5px;" onmouseover="this.style.color='white';" onmouseout="this.style.textDecoration='';this.style.fontWeight='normal';this.style.color='gray';"onclick="document.getElementById('acefilterInput').value = '';applyFiltersAndSort('aceTable', 'acefilterInput', 'acefilterCounter', 'acepagination');">Clear</div>
+        <!-- <div style="margin-top: 10px; margin-left: 5px; margin-right: 5px;"><strong>Quick Filters</strong></div>
+        <label><input type="checkbox" class="filter-checkbox" name="h"> Exploitable</label>
+        <label><input type="checkbox" class="filter-checkbox" name="w"> Write</label>
+        <label><input type="checkbox" class="filter-checkbox" name="r"> Read</label>
+        <label><input type="checkbox" class="filter-checkbox" name="i"> Interesting</label>
+        <label><input type="checkbox" class="filter-checkbox" name="e"> Empty</label>
+        <label><input type="checkbox" class="filter-checkbox" name="s"> Stale</label>
+        <label><input type="checkbox" class="filter-checkbox" name="n"> Default</label>
+        -->
+</div>		
+<div style="display: flex; margin-left:10px; font-size:11; text-align:left;" >		
+        <div id="acefilterCounter" style="margin-top:5px;">Loading...</div>      
+        <a style="font-size:11; margin-top: 5px; margin-left: 5px;" href="#" onclick="extractAndDownloadCSV('aceTable', 4)">Export</a>
+</div>
+<table id="aceTable" class="table table-striped table-hover tabledrop" style="width: 95%;">
+  <thead>
+    <tr>
+    
+    <th class="NamesTh" onclick="sortTable('aceTable',0,'number')" style="vertical-align: middle;text-align: left;">Risk Level</th>
+    <th class="NamesTh" onclick="sortTable('aceTable',1,'alpha')" style="vertical-align: middle;text-align: left;">Computer</th>        
+    <th class="NamesTh" onclick="sortTable('aceTable',2,'alpha')" style="vertical-align: middle;text-align: left;">Share Name</th>        
+    <th class="NamesTh" onclick="sortTable('aceTable',3,'alpha')" style="vertical-align: middle;text-align: left;">Share Path</th>        
+    <th class="NamesTh" onclick="sortTable('aceTable',4,'alpha')" style="vertical-align: middle;text-align: left;">ACE</th>        
+    <th class="NamesTh" onclick="sortTable('aceTable',5,'alpha')" style="vertical-align: middle;text-align: left;">ACE Identity</th>        
+    <th class="NamesTh" onclick="sortTable('aceTable',6,'alpha')" style="vertical-align: middle;text-align: left;">Share Owner</th>        
+    <th class="NamesTh" onclick="sortTable('aceTable',7,'number')" style="vertical-align: middle;text-align: left;">Creation Date</th>        
+    <th class="NamesTh" onclick="sortTable('aceTable',8,'number')" style="vertical-align: middle;text-align: left;">Modified Date</th>        
+    <th class="NamesTh" onclick="sortTable('aceTable',9,'number')" style="vertical-align: middle;text-align: left;">Files</th>                
+                          
+    </tr>
+    </thead>
+    
+    <tbody>
+    $AceTableRows
+    </tbody>
+</table>
+<div id="acepagination" style="margin:10px;"></div>
+</div>
 
 <!--  
 |||||||||| PAGE: COMPUTER SUMMARY
@@ -6325,7 +6492,7 @@ Below are some tips for getting started on prioritizing the remediation of share
 <input class="tabInput"  name="tabs" type="radio" id="home"/> 
 <label class="tabLabel" onClick="updateTab('home',false)" for="home"></label>
 <div id="tabPanel" class="tabPanel">	
-<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">HELP!</h2>
+<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Scan Information</h2>
 <div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>	
 <div style="min-height: 670px">	 
 	  <div style="margin-left:10px;margin-top:3px">	  
@@ -6590,6 +6757,95 @@ The left menu can be used to find summary data, the scan summary is in the table
             }
         }
 
+
+
+// --------------------------
+// ACE Page: Risk Level chart
+// --------------------------
+
+// Initialize ApexCharts
+const ChartAceRiskOptions = {
+  series: [{
+    data: [$RiskLevelCountCritical, $RiskLevelCountHigh, $RiskLevelCountMedium, $RiskLevelCountLow]
+  }],
+  chart: {
+    type: 'bar',
+    height: 200
+  },
+  plotOptions: {
+    bar: {		 
+      borderRadius: 0,
+      borderRadiusApplication: 'end',
+      horizontal: true,
+      colors: {
+        backgroundBarColors: ['#e0e0e0'],
+        backgroundBarOpacity: 1,
+        ranges: [{
+          from: 0,
+          to: 1000,
+          color: '#f08c41'
+        }]
+      }
+    }
+  },
+  dataLabels: {
+    enabled: false
+  },
+  grid: {
+    show: false
+  },
+  xaxis: {
+    categories: ['Critical','High','Medium','Low']
+  }
+};
+
+const ChartAceRisk = new ApexCharts(document.querySelector("#ChartAceRisk"), ChartAceRiskOptions);
+ChartAceRisk.render();
+
+// --------------------------
+// ACE Page: Chart - Interesting Files
+// --------------------------
+
+const datac = $IFCategoryListCount;
+const categoriesc = $ChartCategoryCatDash;
+
+const ChartAcesIFOptions = {
+          series: [{
+          data: datac
+        }],
+          chart: {
+          type: 'bar',
+          height: 200
+        },
+        plotOptions: {
+          bar: {		 
+            borderRadius: 0,
+            borderRadiusApplication: 'end',
+            horizontal: true,
+			colors: {
+				backgroundBarColors: ['#e0e0e0'],
+				backgroundBarOpacity: 1,
+                ranges: [{
+                    from: 0,
+                    to: 1000,
+                    color: '#f08c41'
+                }]
+            }
+          }
+        },
+        dataLabels: {
+          enabled: false
+        },
+		  grid: {
+			show: false
+		  },
+        xaxis: {
+          categories: categoriesc,
+        }
+        };
+
+const ChartAcesIF = new ApexCharts(document.querySelector("#ChartAcesIF"), ChartAcesIFOptions);
+ChartAcesIF.render();
 
 // --------------------------
 // Computers Page - Computers Found
@@ -7325,7 +7581,11 @@ applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 
 
 // Initialize computers table
 document.getElementById('computerfilterInput').addEventListener("keyup", () => applyFiltersAndSort('ComputersTable', 'computerfilterInput', 'computerfilterCounter', 'computerpagination'));
-applyFiltersAndSort('ComputersTable', 'computerfilterInput', 'computerfilterCounter', 'computerpagination');	
+applyFiltersAndSort('ComputersTable', 'computerfilterInput', 'computerfilterCounter', 'computerpagination');
+
+// Initialize ace table
+document.getElementById('acefilterInput').addEventListener("keyup", () => applyFiltersAndSort('aceTable', 'acefilterInput', 'acefilterCounter', 'acepagination'));
+applyFiltersAndSort('aceTable', 'acefilterInput', 'acefilterCounter', 'acepagination');	
 
 // CSV export function
 function extractAndDownloadCSV(tableId, columnIndex) {
