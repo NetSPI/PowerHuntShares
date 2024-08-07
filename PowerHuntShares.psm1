@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.99
+# Version: v1.100
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -2326,49 +2326,64 @@ function Invoke-HuntSMBShares
 		$SourceIps = (Get-NetIPAddress | where AddressState -like "*Pref*" | where AddressFamily -like "ipv4" | where ipaddress -notlike "127.0.0.1" | select IpAddress).ipaddress -join ("<br>")
 		$SourceHost = (hostname) 
 
-        # Get share list string list
+        # Get file group string list
         $CommonShareFileGroupTopString = $CommonShareFileGroupTop5 |
         foreach {
             $FileGroupName = $_.name                          
             $ThisFileBars = Get-GroupFileBar -DataTable $ExcessiveSharePrivs -Name $FileGroupName -AllComputerCount $ComputerCount -AllShareCount $AllSMBSharesCount -AllAclCount $ShareACLsCount
             $ComputerBarF = $ThisFileBars.ComputerBar
             $ShareBarF = $ThisFileBars.ShareBar
-            $AclBarF = $ThisFileBars.AclBar
+            $AclBarF = $ThisFileBars.AclBar            
             $ThisFileListPrep = $ThisFileBars.FileList 
             $ThisFileList = $ThisFileListPrep -replace "`n", "<br>"          
             $ThisFileCount = $ThisFileBars.FileCount
             $ThisFileShareCount = $ThisFileBars.Sharecount
             $ThisFileShareNameList = $ExcessiveSharePrivs | where FileListGroup -eq $FileGroupName | select ShareName -unique -expandproperty sharename | foreach { "$_ <br>"}
-            $ThisFileShareNameListUniqueCount = $ThisFileShareNameList | measure | select count -ExpandProperty count 
+            $ThisFileShareNameListUniqueCount = $ThisFileShareNameList | measure | select count -ExpandProperty count
             $ShareFileShareUnc = $ExcessiveSharePrivs | where FileListGroup -eq $FileGroupName | select SharePath -unique -expandproperty SharePath | foreach { "$_ <br>"}
+            
+            # Grab the risk level for the highest risk acl for the foldergroup
+            $FolderGroupsTopACLRiskScoreRow = $ExcessiveSharePrivsFinal | where FileListGroup -eq $FileGroupName | select RiskScore | sort RiskScore -Descending | select -First 1  | select RiskScore -ExpandProperty RiskScore
+
+            # Check risk level - Highest wins
+            If($FolderGroupsTopACLRiskScoreRow -le 4                                                ) { $RiskLevelFolderGroupResultRow = "Low"}
+            If($FolderGroupsTopACLRiskScoreRow -gt 4  -and $FolderGroupsTopACLRiskScoreRow -lt 11   ) { $RiskLevelFolderGroupResultRow = "Medium"} 
+            If($FolderGroupsTopACLRiskScoreRow -ge 11 -and $FolderGroupsTopACLRiskScoreRow -lt 20   ) { $RiskLevelFolderGroupResultRow = "High"}     
+            If($FolderGroupsTopACLRiskScoreRow -ge 20                                               ) { $RiskLevelFolderGroupResultRow = "Critical"} 
+            
+            # Set risk level for row
+            $FileGroupNameRiskLevelRow = "$FolderGroupsTopACLRiskScoreRow $RiskLevelFolderGroupResultRow"
+
             $ThisRow = @" 
 	          <tr>
 	          <td>
+                <!-- Unique Share Count -->
                 <button class="collapsible">$ThisFileShareNameListUniqueCount</button>
                 <div class="content" style="font-size:11px;width:100px;">
                     $ThisFileShareNameList
                 </div>
 	          </td>	
 	          <td>
+                <!-- Total Share Count -->    
                 <button class="collapsible">$ThisFileShareCount</button>
                 <div class="content" style="font-size:11px;width:100px;">
                 $ShareFileShareUnc
                 </div>
 	          </td>
-	          <td>
-              $FileGroupName
-	          </td>	
-	          <td>              
+	          <td> <!-- File Count -->               
                   <button class="collapsible"><span style="color:#CE112D;"></span>$ThisFileCount Files</button>
                   <div class="content" style="font-size:11px;width:100px;">
                   $ThisFileList
                   </div>
-	          </td>		   
-	          <td>
-	          $AclBarF
-	          </td>          	  
+	          </td>	
+	          <td> <!-- Risk Level -->  
+	          $FileGroupNameRiskLevelRow
+	          </td>
+	          <td> <!-- Folder Group Name -->  
+              $FileGroupName
+	          </td>		           	  
 	          </tr>
-"@                
+"@              
             $ThisRow
         }
 
@@ -6096,11 +6111,11 @@ Folder groups are SMB shares that contain the exact same file listing. Each file
 <table class="table table-striped table-hover tabledrop" id="foldergrouptable" style="width:95%">
   <thead>
     <tr>  
-      <th onclick="sortTable('foldergrouptable',0,'number')" align="left">Unique Share Names</th>
-      <th onclick="sortTable('foldergrouptable',1,'number')" align="left">Share Count</th>      
-      <th onclick="sortTable('foldergrouptable',2,'alpha')" align="left">File Group</th>
-      <th onclick="sortTable('foldergrouptable',3,'number')" align="left">File Count</th>
-	  <th onclick="sortTable('foldergrouptable',4,'number')" align="left">Affected ACLs</th>	 	 
+      <th onclick="sortTable('foldergrouptable',0,'number')" align="left" style="cursor: pointer;">Unique Share Names</th>
+      <th onclick="sortTable('foldergrouptable',1,'number')" align="left" style="cursor: pointer;">Share Count</th> 
+      <th onclick="sortTable('foldergrouptable',2,'number')" align="left" style="cursor: pointer;">File Count</th>
+      <th onclick="sortTable('foldergrouptable',3,'number')" align="left" style="cursor: pointer;">Risk Level</th>            
+      <th onclick="sortTable('foldergrouptable',4,'alpha')"  align="left" style="cursor: pointer;">File Group</th>      	 	 
     </tr>
   </thead>
   <tbody>
@@ -6109,6 +6124,7 @@ Folder groups are SMB shares that contain the exact same file listing. Each file
 </table>
 <div id="paginationfg" style="margin:10px;"></div>
 </div>
+
 
 <!--  
 |||||||||| PAGE: Exploit Shares
