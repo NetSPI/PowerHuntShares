@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.102
+# Version: v1.103
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1789,7 +1789,7 @@ function Invoke-HuntSMBShares
         }  
         
         # ----------------------------------------------------------------------
-        # Calculate risk score per acl 
+        # Calculate risk score per acl - ace insights
         # ---------------------------------------------------------------------- 
         # add interesting file flags
         # add risk score 
@@ -2057,14 +2057,18 @@ function Invoke-HuntSMBShares
 
             # Files 
             $AceRowFilecount     = $_.FileCount
-            $AceRowFileList      = $_.FileList
+            $AceRowFileList      = $_.FileList -split "`r`n" | ForEach-Object { $ASDF = $_; "$ASDF<br>" } | Out-String 
 
             $AceRow = @"
                 <tr>
-                    <td>$AceRowRiskScore $AceRowRiskLevel</td> <!-- Risk Level  -->
+                    <td style="width: 100px;">$AceRowRiskScore $AceRowRiskLevel</td> <!-- Risk Level  -->
                     <td>$AceRowComputer </td> <!-- Computer    -->
-                    <td>$AceRowShareName</td> <!-- Share Name  -->
-                    <td>$AceRowSharePath</td> <!-- Share Path  -->
+                    <td>
+                        <a href="$AceRowSharePath" style="text-decoration:none;">$AceRowShareName</a>
+                        <div class="content" style="font-size: 10px; width:100px; overflow-wrap: break-word;">
+		                $AceRowSharePath
+		                </div>
+                    </td> <!-- Share Name  -->
                     <td>$AceRowACE      </td> <!-- ACE         -->
                     <td>$AceRowIdentity </td> <!-- Identity    -->
                     <td>$AceRowShareOwner</td> <!-- Share Owner -->
@@ -2080,7 +2084,36 @@ function Invoke-HuntSMBShares
 "@
             # Return row
             $AceRow             
-        }         
+        }        
+
+        #
+        # Build ACE summary
+        #
+
+        # Get unique filesystemright Names
+        $UniqueFileSystemRights = (($ExcessiveSharePrivsFinal | Select FileSystemRights -Unique -ExpandProperty FileSystemRights | Sort)  -split("/")) -split(",") | select -Unique | sort
+
+        # Create structure for chart categories
+        $UniqueFileSystemRightsNames = ""
+        $UniqueFileSystemRightsCategories = "'" + ($UniqueFileSystemRights -join("','") ) + "'"
+
+        # Get count for each system right
+        $UniqueFileSystemRightsCounts = $UniqueFileSystemRights | 
+        foreach {
+            
+            # Set target right
+            $TargetFileSystemRight = $_
+
+            # Get count for filesystemright
+            $TargetFileSystemRightCount = $ExcessiveSharePrivsFinal | where FileSystemRights -like "*$TargetFileSystemRight*" | measure | select count -ExpandProperty count
+
+            # Append to end of string
+           $TargetFileSystemRightCount + " "
+        }
+
+        # Create structure for chart series data 
+        $UniqueFileSystemRightsSeries = "[" + ($UniqueFileSystemRightsCounts -replace(" ",",")) + "]"
+        $UniqueFileSystemRightsSeries = $UniqueFileSystemRightsSeries -replace(" ",",")
 
         # ----------------------------------------------------------------------
         # Create Computer Insight Summary Information
@@ -5401,21 +5434,19 @@ $ComputerCount computers were found in the $TargetDomain Active Directory domain
 Below is a list of the ACE (access control entries) configured with excessive privileges found in the $TargetDomain Active Directory domain. 
 </div>		
 
-		            <div class="LargeCard" style="width:20%;">	
-						
+		            <div class="LargeCard" style="width:20%;">							
 							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
-								<strong>Inescure ACEs</strong>
+								<strong>Inescure ACEs Found</strong>
 							</div>												
 							<div class="LargeCardContainer" style="height:215px;text-align:center;">	
                                   <br><br><br>							
-								   <span class="percentagetext" style = "font-size: 50px; color:#f08c41;heigh:100%">                    
+								   <div class="percentagetext" style = "font-size: 50px; color:#f08c41;heigh:100%; margin: 15px;">                         
 									$ExcessiveSharePrivsCount                   
-								   </span><br>								
+								   </div><br>								
 							</div>
                     </div>
 
-            
-					<div class="LargeCard" style="width:36%;">	
+					<div class="LargeCard" style="width:23%;">	
 							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
 								<strong>ACE Count by Risk Level</strong>
 							</div>
@@ -5425,10 +5456,23 @@ Below is a list of the ACE (access control entries) configured with excessive pr
 										<div class="chart-controls"></div>
 									</div>								  							
 							</div>
-					</div>	
-					<div class="LargeCard" style="width:36%;">	
+					</div>
+            
+					<div class="LargeCard" style="width:23%;">	
 							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
-								<strong>Exposed File Count by Category</strong>
+								<strong>ACE Type Count</strong>
+							</div>
+							<div class="LargeCardContainer" align="center" >											
+									<div class="chart-container">
+									<div id="ChartAceType"></div>
+										<div class="chart-controls"></div>
+									</div>								  							
+							</div>
+					</div>	
+
+					<div class="LargeCard" style="width:23%;">	
+							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
+								<strong>Interesting File Count</strong>
 							</div>
 							<div class="LargeCardContainer" align="center" >											
 									<div class="chart-container">
@@ -5453,7 +5497,7 @@ Below is a list of the ACE (access control entries) configured with excessive pr
 </div>		
 <div style="display: flex; margin-left:10px; font-size:11; text-align:left;" >		
         <div id="acefilterCounter" style="margin-top:5px;">Loading...</div>      
-        <a style="font-size:11; margin-top: 5px; margin-left: 5px;" href="#" onclick="extractAndDownloadCSV('aceTable', 4)">Export</a>
+        <a style="font-size:11; margin-top: 5px; margin-left: 5px;" href="#" onclick="extractAndDownloadCSV('aceTable', 2)">Export</a>
 </div>
 <table id="aceTable" class="table table-striped table-hover tabledrop" style="width: 95%;">
   <thead>
@@ -5461,13 +5505,12 @@ Below is a list of the ACE (access control entries) configured with excessive pr
     
     <th class="NamesTh" onclick="sortTable('aceTable',0,'number')" style="vertical-align: middle;text-align: left;">Risk Level</th>
     <th class="NamesTh" onclick="sortTable('aceTable',1,'alpha')" style="vertical-align: middle;text-align: left;">Computer</th>        
-    <th class="NamesTh" onclick="sortTable('aceTable',2,'alpha')" style="vertical-align: middle;text-align: left;">Share Name</th>        
-    <th class="NamesTh" onclick="sortTable('aceTable',3,'alpha')" style="vertical-align: middle;text-align: left;">Share Path</th>        
-    <th class="NamesTh" onclick="sortTable('aceTable',4,'alpha')" style="vertical-align: middle;text-align: left;">ACE</th>        
-    <th class="NamesTh" onclick="sortTable('aceTable',5,'alpha')" style="vertical-align: middle;text-align: left;">ACE Identity</th>        
+    <th class="NamesTh" onclick="sortTable('aceTable',2,'alpha')" style="vertical-align: middle;text-align: left;">Share Name</th>                
+    <th class="NamesTh" onclick="sortTable('aceTable',4,'alpha')" style="vertical-align: middle;text-align: left;">FileSystemRight</th>        
+    <th class="NamesTh" onclick="sortTable('aceTable',5,'alpha')" style="vertical-align: middle;text-align: left;">Identity</th>        
     <th class="NamesTh" onclick="sortTable('aceTable',6,'alpha')" style="vertical-align: middle;text-align: left;">Share Owner</th>        
     <th class="NamesTh" onclick="sortTable('aceTable',7,'number')" style="vertical-align: middle;text-align: left;">Creation Date</th>        
-    <th class="NamesTh" onclick="sortTable('aceTable',8,'number')" style="vertical-align: middle;text-align: left;">Modified Date</th>        
+    <th class="NamesTh" onclick="sortTable('aceTable',8,'number')" style="vertical-align: middle;text-align: left;">Last Modified</th>        
     <th class="NamesTh" onclick="sortTable('aceTable',9,'number')" style="vertical-align: middle;text-align: left;">Files</th>                
                           
     </tr>
@@ -6290,7 +6333,7 @@ Folder groups are SMB shares that contain the exact same file listing. Each file
       <th onclick="sortTable('foldergrouptable',1,'number')" align="left" style="cursor: pointer;">Share Count</th> 
       <th onclick="sortTable('foldergrouptable',2,'number')" align="left" style="cursor: pointer;">File Count</th>
       <th onclick="sortTable('foldergrouptable',3,'number')" align="left" style="cursor: pointer;">Risk Level</th>            
-      <th onclick="sortTable('foldergrouptable',4,'alpha')"  align="left" style="cursor: pointer;">File Group</th>      	 	 
+      <th onclick="sortTable('foldergrouptable',4,'alpha')"  align="left" style="cursor: pointer;">Folder Group</th>      	 	 
     </tr>
   </thead>
   <tbody>
@@ -6766,6 +6809,48 @@ The left menu can be used to find summary data, the scan summary is in the table
         }
 
 
+// --------------------------
+// ACE Page: Type chart
+// --------------------------
+
+// Initialize ApexCharts
+const ChartAceTypeOptions = {
+  series: [{
+    data: $UniqueFileSystemRightsSeries
+  }],
+  chart: {
+    type: 'bar',
+    height: 200
+  },
+  plotOptions: {
+    bar: {		 
+      borderRadius: 0,
+      borderRadiusApplication: 'end',
+      horizontal: true,
+      colors: {
+        backgroundBarColors: ['#e0e0e0'],
+        backgroundBarOpacity: 1,
+        ranges: [{
+          from: 0,
+          to: 1000,
+          color: '#f08c41'
+        }]
+      }
+    }
+  },
+  dataLabels: {
+    enabled: false
+  },
+  grid: {
+    show: false
+  },
+  xaxis: {
+    categories: [$UniqueFileSystemRightsCategories]
+  }
+};
+
+const ChartAceType = new ApexCharts(document.querySelector("#ChartAceType"), ChartAceTypeOptions);
+ChartAceType.render();
 
 // --------------------------
 // ACE Page: Risk Level chart
