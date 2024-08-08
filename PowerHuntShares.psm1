@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.106
+# Version: v1.107
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -5133,11 +5133,11 @@ input[type="checkbox"]:checked::before {
 		<div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>
 		<div style="min-height: 450px;">		
 		<div style="margin-left:10px;margin-top:16px;">			
-			<div style="width:70%;">	
+			<div style="width:90%;">	
 				<h4 style="color:gray;">Affected Assets</h4>
-				<div style="width:800;">
+				<div>
 				Below is a summary of the computers, shares, and <a href="https://en.wikipedia.org/wiki/Security_descriptor">ACEs (Access Control Entries)</a> associated with shares configured with excessive privileges.
-	            $ExcessiveSharePrivsCount ACL entries, on $ExcessiveSharesCount shares, hosted by $ComputerWithExcessive computers were found configured with excessive privileges on the $TargetDomain domain.  Click the "Exposure Summary" or the titles on the cards below to explore the details.<Br><Br>
+	            $ExcessiveSharePrivsCount ACL entries, on $ExcessiveSharesCount shares, hosted by $ComputerWithExcessive computers were found configured with excessive privileges on the $TargetDomain domain. Overall, $IdentityReferenceListCount identities were assigned excessive privileges. Click the "Exposure Summary" or the titles on the cards below to explore the details.<Br><Br>
 				</div>
 			</div>
 		</div>
@@ -5148,7 +5148,7 @@ input[type="checkbox"]:checked::before {
 <!--  
 |||||||||| CARD: COMPUTER SUMMARY
 -->
- <div class="card">	
+ <div class="card" style="width: 22%">	
 	<div class="cardtitle" style="text-align:center;">
 		<a href="#" id="DashLink" style="text-decoration:none;color:white;font-size:18px;" onClick="radiobtn = document.getElementById('ComputerInsights');radiobtn.checked = true;">Computers</a>
 	</div>
@@ -5207,7 +5207,7 @@ input[type="checkbox"]:checked::before {
 |||||||||| CARD: SHARE SUMMARY
 -->
 
-<div class="card">	
+<div class="card" style="width: 22%">	
 	<div class="cardtitle" style="text-align:center;">
 		<a href="#" id="DashLink" style="text-decoration:none;color:white;font-size:18px;" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;">Shares</a>
 	</div>
@@ -5266,7 +5266,7 @@ input[type="checkbox"]:checked::before {
 |||||||||| CARD: ACL SUMMARY
 -->
 
-<div class="card">	
+<div class="card" style="width: 22%">	
 	<div class="cardtitle" style="text-align:center;">
 		<a href="#" id="DashLink" style="text-decoration:none;color:white;font-size:18px;" onClick="radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;">ACEs</a>
 	</div>
@@ -5321,6 +5321,30 @@ input[type="checkbox"]:checked::before {
 	</div>
  </div>
 
+ <!--  
+|||||||||| CARD: IDENTITY SUMMARY
+-->
+
+<div class="card" style="width: 22%">	
+	<div class="cardtitle" style="text-align:center;">
+		<a href="#" id="DashLink" style="text-decoration:none;color:white;font-size:18px;" onClick="radiobtn = document.getElementById('IdentityInsights');radiobtn.checked = true;">Identities</a>
+	</div>
+	<div class="cardcontainer" align="center" style="padding-bottom: 22px;">	
+				<span class="percentagetext" style = "color:#f08c41;">                    
+					$IdentityReferenceListCount                    
+				</span>	
+			<Br>
+			<button class="collapsible" style="text-align:left;font-size:10px;">Exposure Summary</button>
+			<div class="content">
+			    <div class="filelistparent" style="font-size: 10px;">		  
+			        <div>
+	                Coming soon.
+                    </div>   
+			    </div>
+			</div> 			  
+	</div>
+ </div>
+
  <!-- mini card  wrapper end  -->	
 </div>
 
@@ -5333,11 +5357,11 @@ input[type="checkbox"]:checked::before {
 <!--  
 |||||||||| CARD: RISK AND INTERESTING FILE SUMMARY
 -->
- <div style="margin-left: 10px; width:800;">
+ <div style="margin-left: 10px; width: 90%;">
 	<h4 style="color:gray;">Exposure Summary</h4>
 	In total, $RiskLevelCountCritical critical, $RiskLevelCountHigh high, $RiskLevelCountMedium medium, and  $RiskLevelCountLow low risk ACE configurations were discovered across shares in the $TargetDomain Active Directory domain. The affected shares were found hosting $InterestingFilesAllObjectsSecretCount files that may contain passwords and $InterestingFilesAllObjectsSensitiveCount files that may contain sensitive data. Overall, $InterestingFilesAllFilesCount interesting files were found that could potentially lead to unauthorized data access or remote code execution. Click the chart titles below to explore the details.<Br><Br>
  </div>
-		            <div class="LargeCard" style="width:385px;">	
+		            <div class="LargeCard" style="width:45.75%;">	
 							<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;" style="text-decoration:none;">
 							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
 								<strong>Share ACL Count by Risk Level</strong>
@@ -5353,7 +5377,7 @@ input[type="checkbox"]:checked::before {
 					
 				
 				
-					<div class="LargeCard" style="width:385px;">	
+					<div class="LargeCard" style="width: 45.75%;">	
 							<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;" style="text-decoration:none;">
 							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
 								<strong>Interesting Files Count</strong>
@@ -5373,7 +5397,7 @@ input[type="checkbox"]:checked::before {
 -->
  <div style="height:.5px;width:100%;position:relative;float:left;"></div>
  <div style="height:130px;"></div>
-	<div style="margin-left: 10px; width:800;">
+	<div style="margin-left: 10px; width: 95%">
 	<h4 style="color:gray;">Timelines</h4>
 	Below are charts to help illustrate the share creation and last write timelines.<Br><Br>
  </div>
@@ -8233,7 +8257,7 @@ $HighestTypeCount = $TypeCounts | Sort-Object {[int]$_} -Descending | select -Fi
 
 # Start Table
 $HTML1 = @"
-<div class="LargeCard">	
+<div class="LargeCard" style="width: 93%;">	
 	<div class="LargeCardTitle" style = "background-color: #07142A">
 		Share Creation Timeline<br>
 		<span class="LargeCardSubtitle2">for share ACLs configured with excessive privileges</span>
@@ -8803,7 +8827,7 @@ function Get-CardLastModified
 
     # Start Table
     $HTML1 = @"
-    <div class="LargeCard">	
+    <div class="LargeCard" style="width: 93%;">	
 	    <div class="LargeCardTitle" style = "background-color: #07142A">
 		    Last Write Timeline<br>
 		    <span class="LargeCardSubtitle2">for share ACLs configured with excessive privileges</span>
