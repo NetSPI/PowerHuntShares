@@ -5,7 +5,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.72
+# Version: v1.73
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Analyze-HuntSMBShares
 {    
@@ -1702,6 +1702,74 @@ function Analyze-HuntSMBShares
         # Create structure for chart series data 
         $UniqueFileSystemRightsSeries = "[" + ($UniqueFileSystemRightsCounts -replace(" ",",")) + "]"
         $UniqueFileSystemRightsSeries = $UniqueFileSystemRightsSeries -replace(" ",",")
+
+        # ----------------------------------------------------------------------
+        # Create Identity Insight Summary Information
+        # ---------------------------------------------------------------------- 
+
+        # Get share owners 
+        [array]$IdentityOwnerList      = $ExcessiveSharePrivsFinal | select ShareOwner -Unique -ExpandProperty ShareOwner
+        $IdentityOwnerListCount        = $IdentityOwnerList | measure | select count -ExpandProperty count 
+
+        # Get identity references
+        [array]$IdentityReferenceList  = $ExcessiveSharePrivsFinal | select IdentityReference -Unique -ExpandProperty IdentityReference
+        $IdentityReferenceListCount    = $IdentityReferenceList  | measure | select count -ExpandProperty count 
+
+        # Combine identity lists
+        [array]$IdentityCombinedList   = $IdentityOwnerList + $IdentityReferenceList | sort | select -Unique
+        $IdentityCombinedListCount     = $IdentityCombinedList | measure | select count -ExpandProperty count 
+
+        # Process each identity
+        $IdentityTableRows = $IdentityCombinedList |
+        foreach {           
+
+            # Set target identity
+            $TargetIdentity = $_
+
+            # Get share owner count
+            $TargetIdentityOwnerCount        = $ExcessiveSharePrivsFinal | where ShareOwner -eq "$TargetIdentity" | select SharePath | measure | select count -ExpandProperty count 
+
+            # Get share access count
+            $TargetIdentityShareAccessCount  = $ExcessiveSharePrivsFinal | where IdentityReference -eq "$TargetIdentity" | select SharePath -Unique | measure | select count -ExpandProperty count 
+            $TargetIdentityShareAccess       = $ExcessiveSharePrivsFinal | where IdentityReference -eq "$TargetIdentity" | select SharePath -Unique -ExpandProperty SharePath | ForEach-Object { $ASDF = $_; "$ASDF<br>" } | Out-String  
+
+            # Get ACE low risk
+            $TargetIdentityLowRiskCount      = $ExcessiveSharePrivsFinal | where IdentityReference -eq "$TargetIdentity" | where RiskLevel -eq "Low" | select SharePath -Unique |measure | select count -ExpandProperty count     
+            #$TargetIdentityLowRisk           = $ExcessiveSharePrivsFinal | where IdentityReference -eq "$TargetIdentity" | where RiskLevel -eq "Low" | select SharePath -Unique | ForEach-Object { $ASDF = $_; "$ASDF<br>" } | Out-String 
+
+            # Get ACE medium risk
+            $TargetIdentityMediumRiskrCount  = $ExcessiveSharePrivsFinal | where IdentityReference -eq "$TargetIdentity" | where RiskLevel -eq "Medium" | select SharePath -Unique | measure | select count -ExpandProperty count 
+            #$TargetIdentityMediumRisk        = $ExcessiveSharePrivsFinal | where IdentityReference -eq "$TargetIdentity" | where RiskLevel -eq "Medium" | select SharePath -Unique | ForEach-Object { $ASDF = $_; "$ASDF<br>" } | Out-String 
+
+            # Get ACE high risk
+            $TargetIdentityHighRiskCount     = $ExcessiveSharePrivsFinal | where IdentityReference -eq "$TargetIdentity" | where RiskLevel -eq "High" | select SharePath -Unique | measure | select count -ExpandProperty count 
+            #$TargetIdentityHighRisk          = $ExcessiveSharePrivsFinal | where IdentityReference -eq "$TargetIdentity" | where RiskLevel -eq "High" | select SharePath -Unique | ForEach-Object { $ASDF = $_; "$ASDF<br>" } | Out-String 
+
+            # Get ACE critical risk
+            $TargetIdentityCriticalRiskCount = $ExcessiveSharePrivsFinal | where IdentityReference -eq "$TargetIdentity" | where RiskLevel -eq "Critical" | select SharePath -Unique | measure | select count -ExpandProperty count 
+            #$TargetIdentityCriticalRisk      = $ExcessiveSharePrivsFinal | where IdentityReference -eq "$TargetIdentity" | where RiskLevel -eq "Critical" | select SharePath -Unique | ForEach-Object { $ASDF = $_; "$ASDF<br>" } | Out-String 
+
+            # Get interesting files count (same as share names)
+            $TargetIdentityInterestingFiles  = "tbd"
+
+            $BuildIdentityTableRows = @"
+             <tr>
+                <td>$TargetIdentity</td>
+                <td>$TargetIdentityOwnerCount</td>
+                <td>
+                    <button class="collapsible" style="text-align:left;">$TargetIdentityShareAccessCount</button>
+                    <div class="content" style="font-size: 10px; width:100px; overflow-wrap: break-word;">
+                    $TargetIdentityShareAccess
+                    </div>               
+                </td>
+                <td>$TargetIdentityLowRiskCount</td>
+                <td>$TargetIdentityMediumRiskrCount</td>
+                <td>$TargetIdentityHighRiskCount</td>
+                <td>$TargetIdentityCriticalRiskCount </td>
+             </tr>
+"@
+            $BuildIdentityTableRows
+        }
 
 
         # ----------------------------------------------------------------------
@@ -4536,10 +4604,9 @@ input[type="checkbox"]:checked::before {
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;">Share Names</label>					
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareFolders');radiobtn.checked = true;">Folder Groups</label>
         <label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;">Insecure ACEs</label>
+        <label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('IdentityInsights');radiobtn.checked = true;">Identities</label>
 		<label href="#" class="stuff" style="text-align: center;border-bottom: 0.25px dashed gray; opacity: 0.25; width:85%; margin-bottom: 6px; margin-top:-1px;"></label>			
         <label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF');">Interesting Files</label>			        			
-		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareOwner');radiobtn.checked = true;">Share Owners</label>	
-        <label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('accounts');radiobtn.checked = true;">Group ACL Summary</label>
 		<label class="tabLabel" style="width:100%;color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:2px;font-weight:bolder;"><strong>Recommendations</strong></label>
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Attacks');radiobtn.checked = true;">Exploiting Access</label>		
 		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Detections');radiobtn.checked = true;">Detecting Attacks</label>
@@ -5003,6 +5070,99 @@ $ComputerCount computers were found in the $TargetDomain Active Directory domain
 <div id="computerpagination" style="margin:10px;"></div>
 </div>
 
+<!--  
+|||||||||| PAGE: IDENTITY INSIGHTS
+-->
+
+<input class="tabInput"  name="tabs" type="radio" id="IdentityInsights"/> 
+<label class="tabLabel" onClick="updateTab('IdentityInsights',false)" for="IdentityInsights"></label>
+<div id="tabPanel" class="tabPanel">
+<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Identities</h2>
+<div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>
+<div style="margin-left:10px;margin-top:3px; margin-bottom: 3px;width:95%">
+$IdentityCombinedListCount identities were discovered across shares in the $TargetDomain Active Directory domain. $IdentityOwnerListCount were owners and $IdentityReferenceListCount were assigned privileges. 
+</div>		     
+
+		            <div class="LargeCard" style="width:30%;">	
+						
+							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
+								<strong>Identities Found</strong>
+							</div>												
+							<div class="LargeCardContainer" style="height:100px;text-align:center;">	
+                                  <br>						
+								   <div class="percentagetext" style = "font-size: 50px; color:#f08c41; height:100%; margin-top: 0px;">                    
+									$IdentityCombinedListCount                  
+								   </div>									
+							</div>
+                    </div>
+                    
+		            <div class="LargeCard" style="width:30%;">	
+						
+							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
+								<strong>Identities Assigned Ownership</strong>
+							</div>												
+							<div class="LargeCardContainer" style="height:100px;text-align:center;">	
+                                  <br>							
+								   <div class="percentagetext" style = "font-size: 50px; color:#f08c41; height:100%; margin-top: 0px;">                    
+									$IdentityOwnerListCount                  
+								   </div>									
+							</div>
+                    </div>
+                    
+		            <div class="LargeCard" style="width:30%;">	
+						
+							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
+								<strong>Identities Assigned Privileges</strong>
+							</div>												
+							<div class="LargeCardContainer" style="height:100px;text-align:center;">	
+                                  <br>							
+								   <div class="percentagetext" style = "font-size: 50px; color:#f08c41; height:100%; margin-top: 0px;">                    
+									$IdentityReferenceListCount                 
+								   </div>									
+							</div>
+                    </div>   
+<br> 					
+<div style="margin-top: 160px; margin-left: 10px; width="90%">
+Note: Within the context of this report, all read and write access the "Everyone", "Authenticated Users", "BUILTIN\Users", "Domain Users", or "Domain Computers" groups are considered excessive privileges, because all provide domain users access to the affected shares due to privilege inheritance. 				
+</div>
+<div class="searchbar" style="margin-top:12px; text-align:left; display: flex;" >
+        <input type="text" id="IdentityfilterInput" placeholder=" Search..." style="margin-top: 8px; height: 25px; margin-left: 10px;font-size: 14px;padding-left:3px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
+        <div style="font-size:12;text-align: left;cursor: pointer;color:gray; margin-top: 13px; margin-left: 5px;" onmouseover="this.style.color='white';" onmouseout="this.style.textDecoration='';this.style.fontWeight='normal';this.style.color='gray';"onclick="document.getElementById('IdentityfilterInput').value = '';applyFiltersAndSort('IdentityTable', 'IdentityfilterInput', 'IdentityfilterCounter', 'Identitypagination');">Clear</div>
+        <!-- <div style="margin-top: 10px; margin-left: 5px; margin-right: 5px;"><strong>Quick Filters</strong></div>
+        <label><input type="checkbox" class="filter-checkbox" name="h"> Exploitable</label>
+        <label><input type="checkbox" class="filter-checkbox" name="w"> Write</label>
+        <label><input type="checkbox" class="filter-checkbox" name="r"> Read</label>
+        <label><input type="checkbox" class="filter-checkbox" name="i"> Interesting</label>
+        <label><input type="checkbox" class="filter-checkbox" name="e"> Empty</label>
+        <label><input type="checkbox" class="filter-checkbox" name="s"> Stale</label>
+        <label><input type="checkbox" class="filter-checkbox" name="n"> Default</label>
+        -->
+</div>		
+<div style="display: flex; margin-left:20px; font-size:11; text-align:left;" >		
+        <div id="IdentityfilterCounter" style="margin-top:5px; margin-left: -10px;">Loading...</div>      
+        <a style="font-size:11; margin-top: 5px; margin-left: 5px;" href="#" onclick="extractAndDownloadCSV('IdentityTable', 2)">Export</a>
+</div>
+<table id="IdentityTable" class="table table-striped table-hover tabledrop" style="width: 95%;">
+  <thead>
+    <tr>
+    
+    <th class="NamesTh" onclick="sortTable('IdentityTable',0,'alpha')" style="vertical-align: middle;text-align: left;">Identity</th>
+    <th class="NamesTh" onclick="sortTable('IdentityTable',0,'alpha')" style="vertical-align: middle;text-align: left;">Owned Shares</th> 
+    <th class="NamesTh" onclick="sortTable('IdentityTable',0,'alpha')" style="vertical-align: middle;text-align: left;">Accessible Shares</th> 
+    <th class="NamesTh" onclick="sortTable('IdentityTable',0,'alpha')" style="vertical-align: middle;text-align: left;">Low Risk Shares</th> 
+    <th class="NamesTh" onclick="sortTable('IdentityTable',0,'alpha')" style="vertical-align: middle;text-align: left;">Medium Risk Shares</th> 
+    <th class="NamesTh" onclick="sortTable('IdentityTable',0,'alpha')" style="vertical-align: middle;text-align: left;">High Risk Shares</th> 
+    <th class="NamesTh" onclick="sortTable('IdentityTable',0,'alpha')" style="vertical-align: middle;text-align: left;">Critical Risk Shares</th>         
+                          
+    </tr>
+    </thead>
+
+    <tbody>
+    $IdentityTableRows
+    </tbody>
+</table>
+<div id="Identitypagination" style="margin:10px;"></div>
+</div>
 
 <!--  
 |||||||||| PAGE: ACE INSIGHTS
@@ -7047,6 +7207,10 @@ applyFiltersAndSort('ComputersTable', 'computerfilterInput', 'computerfilterCoun
 // Initialize ace table
 document.getElementById('acefilterInput').addEventListener("keyup", () => applyFiltersAndSort('aceTable', 'acefilterInput', 'acefilterCounter', 'acepagination'));
 applyFiltersAndSort('aceTable', 'acefilterInput', 'acefilterCounter', 'acepagination');	
+
+// Initialize identity table
+document.getElementById('IdentityfilterInput').addEventListener("keyup", () => applyFiltersAndSort('IdentityTable', 'IdentityfilterInput', 'IdentityfilterCounter', 'Identitypagination'));
+applyFiltersAndSort('IdentityTable', 'IdentityfilterInput', 'IdentityfilterCounter', 'Identitypagination');	
 
 // CSV export function
 function extractAndDownloadCSV(tableId, columnIndex) {
