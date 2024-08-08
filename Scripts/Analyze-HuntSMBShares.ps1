@@ -5,7 +5,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.70
+# Version: v1.71
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Analyze-HuntSMBShares
 {    
@@ -749,11 +749,12 @@ function Analyze-HuntSMBShares
         ForEach-Object {
     
             # Create a value contain row data
+            # Read = yellow, write = orange, highrisk = red (if value >0)
             $CurrentRow = $_
             $PrintRow = ""
             $MyCsvColumns | 
             ForEach-Object{
-
+                
                 try{
                     $GetValue = $CurrentRow | Select-Object $_ -ExpandProperty $_ -ErrorAction SilentlyContinue
                     if($PrintRow -eq ""){
@@ -1080,7 +1081,7 @@ function Analyze-HuntSMBShares
        
         # Add rows to data table - Files containing passwords
         $FileNamePatternsAll.Rows.Add("Bootstrap.ini*","Used for Windows Deployment services (WDS) PXE installation and may contain credentials.","None.","Secret","")                                 | Out-Null
-        $FileNamePatternsAll.Rows.Add(".bcd*","","None.","Secret","")                                        | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.bcd","","None.","Secret","")                                        | Out-Null
         $FileNamePatternsAll.Rows.Add("context.xml*","","None.","Secret","")                                 | Out-Null
         $FileNamePatternsAll.Rows.Add("db2cli.ini*","","None.","Secret","")                                  | Out-Null
         $FileNamePatternsAll.Rows.Add("ftpd.*","","None.","Secret","")                                       | Out-Null
@@ -1138,6 +1139,13 @@ function Analyze-HuntSMBShares
         $FileNamePatternsAll.Rows.Add("*Drives.xml*","Group policy file that may contain passwords.","None.","Secret","")                             | Out-Null
         $FileNamePatternsAll.Rows.Add("*unattend*","","None.","Secret","")                                   | Out-Null
         $FileNamePatternsAll.Rows.Add("*sysprep*","","None.","Secret","")                                    | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.key","","None.","Secret","")                                        | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.private","","None.","Secret","")                                    | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.pem","","None.","Secret","")                                        | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.p12","","None.","Secret","")                                        | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.pfx","","None.","Secret","")                                        | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.crt","","None.","Secret","")                                        | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.ppk","","None.","Secret","")                                        | Out-Null
 
         # Add rows to data table - System/VM Images
         $FileNamePatternsAll.Rows.Add("*.img*","","None.","SystemImage","")                                                                            | Out-Null
@@ -1191,6 +1199,8 @@ function Analyze-HuntSMBShares
         $FileNamePatternsAll.Rows.Add("*.dll","","None.","Binaries","")                                      | Out-Null
         $FileNamePatternsAll.Rows.Add("*.exe","","None.","Binaries","")                                      | Out-Null
         $FileNamePatternsAll.Rows.Add("*.msi","","None.","Binaries","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.jar","","None.","Binaries","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.war","","None.","Binaries","")                                      | Out-Null
         $FileNamePatternsAll.Rows.Add("*Program Files*","This is an application directory.","None.","Binaries","") | Out-Null
 
         # Use keyword from define file instead
