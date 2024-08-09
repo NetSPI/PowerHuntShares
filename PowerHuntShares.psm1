@@ -3732,6 +3732,7 @@ $NewHtmlReport = @"
 <html>
 <head>
   <link rel="shortcut icon" src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyhpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuNi1jMTM4IDc5LjE1OTgyNCwgMjAxNi8wOS8xNC0wMTowOTowMSAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENDIDIwMTcgKE1hY2ludG9zaCkiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6QTQxQkNBNzA2OEI1MTFFNzlENkRCMzJFODY4RjgwNDMiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6QTQxQkNBNzE2OEI1MTFFNzlENkRCMzJFODY4RjgwNDMiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDpBNDFCQ0E2RTY4QjUxMUU3OUQ2REIzMkU4NjhGODA0MyIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDpBNDFCQ0E2RjY4QjUxMUU3OUQ2REIzMkU4NjhGODA0MyIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/Ptdv5vcAAAB9SURBVHjaYmTAAS4IajsCqeVQbqTB+6v7saljxKHZCUhtAWJOqNB3IPYBGrKPoAFYNDPgM4SRSM04DWEkQTNWQxhJ1IxhCCM0tLeSoBnZEG+QAS+ADHEG8sBLJgYKAciASKhzGMjwQiTlgUiVaKRKQqJKUqZKZiI1OwMEGAA7FE70gYsL4wAAAABJRU5ErkJggg==" >
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
   <title>Report</title>
   <style>    
@@ -3748,7 +3749,8 @@ $NewHtmlReport = @"
 			-webkit-text-size-adjust:100%;
 			-ms-text-size-adjust:100%;
 			z-index: 1;		
-			--transition: width 0.3s; /* Smooth transition when expanding/collapsing */			
+			--transition: width 0.3s; /* Smooth transition when expanding/collapsing */		
+			background: linear-gradient(to bottom, #07142A 80%, rgba(0, 0, 0, 1) 98%, black 100%);			
         }
 		
 		.side-menu.collapsed div,
@@ -3954,33 +3956,32 @@ $NewHtmlReport = @"
 		margin-left:5px;
 	}
 
-	.stuff:hover{
-		font-weight: normal;
-		background-color:#17405A;
-		text-decoration: none;
-		padding-top:5px;
-		padding-bottom:5px;
-		margin-right:5px;
-		margin-left:5px;
-        color: white;
-		border-radius: 5px;
-	}
-	
+		.stuff:hover{
+			font-weight: normal;
+			background-color:#17405A;
+			text-decoration: none;
+			padding-top:5px;
+			padding-bottom:5px;
+			margin-right:5px;
+			margin-left:5px;
+			color: white;
+			border-radius: 5px;
+			--box-shadow: inset 0 0 0 0.25px white;
+			--outline: 1px solid #F56A00; /* Adjust thickness and color */
+			outline: 1px ridge #cfcfd4; /* Adjust thickness and color */
+			transition: color 0.3s ease;
+			transition: background-color 0.3s ease;
+			--background: linear-gradient(to bottom, #17405A, #FFFFFF);
+		}
 
-	.stuff:active {
-		font-weight: normal;		 
-		background-color:#25648C;		
-		width:auto;		
-		padding-left: 15px;	
-        color: white;
-	}	
-	
-	.stuff:visited {
-		font-weight: normal;
-		color:#C4C4C8;	
-		width:auto;		
-		padding-left: 15px;			
-	}		
+		.stuff:active {
+			font-weight: normal;		 
+			background-color:#25648C;		
+			width:auto;		
+			padding-left: 15px;	
+			color: white;
+			transition: background-color 0.2s ease;
+		}			
 
 	.tabLabel:hover{
 		background-color:#555555;		
@@ -4506,7 +4507,7 @@ $NewHtmlReport = @"
 		display:block;
 		margin:10px;
 		margin-bottom:20px;
-        border-radius: 3px; 
+        border-radius: 3px;
 	}
 
 	.card:hover{	
@@ -5004,7 +5005,7 @@ input[type="checkbox"]:checked::before {
 }
   </style>
 </head>
-<body onload="radiobtn = document.getElementById('dashboard');radiobtn.checked = true;">
+<body onload="radiobtn = document.getElementById('dashboard');radiobtn.checked = true;updateLabelColors('tabs', 'btnsummary');">
 
 <!--  
 |||||||||| SIDE MENU
@@ -5012,34 +5013,34 @@ input[type="checkbox"]:checked::before {
 <div class="side-menu" id="sideMenu">	
 	
 	<button onclick="toggleMenu()" class="menu-button" style="margin-top: -15px; margin-right: -10px;">
-            <span class="icon" style="font-size: 16;">☰</span>
+            <span class="icon" style="font-size: 16px; color:#F56A00; transition: color 0.3s ease;" onmouseover="this.style.color='white'" onmouseout="this.style.color='#F56A00'"><i class="fas fa-times"></i></span>
     </button>
 	
     <div  style="font-weight:bolder;color:white;margin-bottom:5px; margin-top:17px; margin-left: 14px;" align="left">
 	<a href="https://github.com/NetSPI/PowerHuntShares" style="text-decoration: none; color:#F56A00;cursor: pointer;">
 	<br><SPAN style="font-size: 15;">POWERHUNT</SPAN><SPAN style="color:white;font-size: 15;">SHARES</span></a>
     <br>
-    <div style="font-size: 11;font-weight:normal;margin-top:3px;">$TargetDomain</div>
+    <div style="font-size: 11;font-weight:normal;margin-top:3px;margin-left: 1px;">$TargetDomain</div>
 	</div>
 
 	<div id="tabs" class="tabs" data-tabs-ignore-url="false">	
-		<label href="#" class="stuff" style="text-align: center; border-bottom: 0.25px dashed gray; width:85%; margin-bottom: 4px; margin-top: -9px;"></label>	
-		<label class="tabLabel" style="width:100%;color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:2px;font-weight:bolder;"><Strong>Results</Strong></label>
-		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('dashboard');radiobtn.checked = true;">Summary Report</label>
-		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('home');radiobtn.checked = true;">Scan Information</label>		
-		<label class="tabLabel" style="width:100%;color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:2px;font-weight:bolder;"><Strong>Explore Data</Strong></label>
-        <label href="#" class="stuff" style="width:100%;" onclick="radiobtn = document.getElementById('SubNets');radiobtn.checked = true;">Networks</label>	
-        <label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ComputerInsights');radiobtn.checked = true;">Computers</label>	  	  			
-		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;">Share Names</label>					
-		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareFolders');radiobtn.checked = true;">Folder Groups</label>
-        <label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;">Insecure ACEs</label>
-        <label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('IdentityInsights');radiobtn.checked = true;">Identities</label>
-		<label href="#" class="stuff" style="text-align: center;border-bottom: 0.25px dashed gray; opacity: 0.25; width:85%; margin-bottom: 6px; margin-top:-1px;"></label>			
-        <label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF');">Interesting Files</label>			        			
-		<label class="tabLabel" style="width:100%;color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:2px;font-weight:bolder;"><strong>Recommendations</strong></label>
-		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Attacks');radiobtn.checked = true;">Exploiting Access</label>		
-		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Detections');radiobtn.checked = true;">Detecting Attacks</label>
-		<label href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Remediation');radiobtn.checked = true;">Prioritization</label>	        		
+		<label id="noactionmenubar1" href="#" class="stuff" style="background-color: transparent;text-align: center; border-bottom: 0.25px dashed gray; width:85%; margin-bottom: 4px; margin-top: -9px; border-radius: 0px;outline:none;"></label>	
+		<label id="noactionmenuheader1"class="tabLabel" style="background-color: transparent; width:100%;color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:2px;font-weight:bolder;"><Strong>Results</Strong></label>
+		<label id="btnsummary" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('dashboard');radiobtn.checked = true;updateLabelColors('tabs', 'btnsummary');">Summary Report</label>
+		<label id="btnscaninfo" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('home');radiobtn.checked = true;updateLabelColors('tabs', 'btnscaninfo');">Scan Information</label>		
+		<label id="noactionmenuheader2"class="tabLabel" style="background-color: transparent;width:100%;color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:2px;font-weight:bolder;"><Strong>Explore Data</Strong></label>
+        <label id="btnnetworks" href="#" class="stuff" style="width:100%;" onclick="radiobtn = document.getElementById('SubNets');radiobtn.checked = true;updateLabelColors('tabs', 'btnnetworks');">Networks</label>	
+        <label id="btncomputers" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ComputerInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btncomputers');">Computers</label>	  	  			
+		<label id="btnshares" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;updateLabelColors('tabs', 'btnshares');">Share Names</label>					
+		<label id="btnfgs" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareFolders');radiobtn.checked = true;updateLabelColors('tabs', 'btnfgs');">Folder Groups</label>
+        <label id="btnaces" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnaces');">Insecure ACEs</label>
+        <label id="btnidentities" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('IdentityInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnidentities');">Identities</label>
+		<label id="noactionmenubar2" href="#" class="stuff" style="background-color: transparent;border-bottom: 0.25px dashed gray; opacity: 0.25; width:85%; margin-bottom: 6px; margin-top:-1px;border-radius: 0px;outline: none;"></label>			
+        <label id="btnif" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF');updateLabelColors('tabs', 'btnif');">Interesting Files</label>			        			
+		<label id="noactionmenuheader3"class="tabLabel" style="background-color: transparent;width:100%;color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:2px;font-weight:bolder;"><strong>Recommendations</strong></label>
+		<label id="btnexploit" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Attacks');radiobtn.checked = true;updateLabelColors('tabs', 'btnexploit');">Exploiting Access</label>		
+		<label id="btndetect" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Detections');radiobtn.checked = true;updateLabelColors('tabs', 'btndetect');">Detecting Attacks</label>
+		<label id="btnprioritize" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Remediation');radiobtn.checked = true;updateLabelColors('tabs', 'btnprioritize');">Prioritization</label>	        		
 	</div>
 </div>
 <div id="main">
@@ -5150,7 +5151,7 @@ input[type="checkbox"]:checked::before {
 -->
  <div class="card" style="width: 22%">	
 	<div class="cardtitle" style="text-align:center;">
-		<a href="#" id="DashLink" style="text-decoration:none;color:white;font-size:18px;" onClick="radiobtn = document.getElementById('ComputerInsights');radiobtn.checked = true;">Computers</a>
+		<a href="#" id="DashLink" style="text-decoration:none;color:white;font-size:18px;" onClick="radiobtn = document.getElementById('ComputerInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btncomputers');">Computers</a>
 	</div>
 	<div class="cardcontainer" align="center" style="padding-bottom: 22px;">	
 				<span class="percentagetext" style = "color:#f08c41;">                    
@@ -5209,7 +5210,7 @@ input[type="checkbox"]:checked::before {
 
 <div class="card" style="width: 22%">	
 	<div class="cardtitle" style="text-align:center;">
-		<a href="#" id="DashLink" style="text-decoration:none;color:white;font-size:18px;" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;">Shares</a>
+		<a href="#" id="DashLink" style="text-decoration:none;color:white;font-size:18px;" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;updateLabelColors('tabs', 'btnshares');">Shares</a>
 	</div>
 	<div class="cardcontainer" align="center" style="padding-bottom: 22px;">	
 				<span class="percentagetext" style = "color:#f08c41;">                    
@@ -5268,7 +5269,7 @@ input[type="checkbox"]:checked::before {
 
 <div class="card" style="width: 22%">	
 	<div class="cardtitle" style="text-align:center;">
-		<a href="#" id="DashLink" style="text-decoration:none;color:white;font-size:18px;" onClick="radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;">ACEs</a>
+		<a href="#" id="DashLink" style="text-decoration:none;color:white;font-size:18px;" onClick="radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnaces');">ACEs</a>
 	</div>
 	<div class="cardcontainer" align="center" style="padding-bottom: 22px;">	
 				<span class="percentagetext" style = "color:#f08c41;">                    
@@ -5327,7 +5328,7 @@ input[type="checkbox"]:checked::before {
 
 <div class="card" style="width: 22%">	
 	<div class="cardtitle" style="text-align:center;">
-		<a href="#" id="DashLink" style="text-decoration:none;color:white;font-size:18px;" onClick="radiobtn = document.getElementById('IdentityInsights');radiobtn.checked = true;">Identities</a>
+		<a href="#" id="DashLink" style="text-decoration:none;color:white;font-size:18px;" onClick="radiobtn = document.getElementById('IdentityInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnidentities');">Identities</a>
 	</div>
 	<div class="cardcontainer" align="center" style="padding-bottom: 22px;">	
 				<span class="percentagetext" style = "color:#f08c41;">                    
@@ -5362,7 +5363,7 @@ input[type="checkbox"]:checked::before {
 	In total, $RiskLevelCountCritical critical, $RiskLevelCountHigh high, $RiskLevelCountMedium medium, and  $RiskLevelCountLow low risk ACE configurations were discovered across shares in the $TargetDomain Active Directory domain. The affected shares were found hosting $InterestingFilesAllObjectsSecretCount files that may contain passwords and $InterestingFilesAllObjectsSensitiveCount files that may contain sensitive data. Overall, $InterestingFilesAllFilesCount interesting files were found that could potentially lead to unauthorized data access or remote code execution. Click the chart titles below to explore the details.<Br><Br>
  </div>
 		            <div class="LargeCard" style="width:45.75%;">	
-							<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;" style="text-decoration:none;">
+							<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnaces');" style="text-decoration:none;">
 							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
 								<strong>Share ACL Count by Risk Level</strong>
 							</div>
@@ -5378,7 +5379,7 @@ input[type="checkbox"]:checked::before {
 				
 				
 					<div class="LargeCard" style="width: 45.75%;">	
-							<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;" style="text-decoration:none;">
+							<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;updateLabelColors('tabs', 'btnif');" style="text-decoration:none;">
 							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
 								<strong>Interesting Files Count</strong>
 							</div>
@@ -6892,17 +6893,16 @@ Invoke-HuntSMBShares -Threads 20 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\
 // side menu collapse function
 // --------------------------
 
-        function toggleMenu() {
+	    function toggleMenu() {
             const menu = document.getElementById('sideMenu');
             const icon = document.querySelector('.menu-button .icon');
             menu.classList.toggle('collapsed');
-            if (menu.classList.contains('collapsed')) {
-                icon.textContent = '☰'; // Collapsed state icon (hamburger menu)
-            } else {
-                icon.textContent = '☰'; // Expanded state icon (hamburger menu)
-            }
+			if (menu.classList.contains('collapsed')) {
+				icon.innerHTML = '<span style="font-size: 16px; color:#F56A00; transition: color 0.3s ease;" onmouseover="this.style.color=\'white\'" onmouseout="this.style.color=\'#F56A00\'">☰</span>';
+			} else {
+				icon.innerHTML = '<span style="font-size: 16px; color:#F56A00; transition: color 0.3s ease;" onmouseover="this.style.color=\'white\'" onmouseout="this.style.color=\'#F56A00\'"><i class="fas fa-times"></i></span>';
+			}	
         }
-
 
 // --------------------------
 // ACE Page: Type chart
@@ -7831,6 +7831,82 @@ function extractAndDownloadCSV(tableId, columnIndex) {
     document.body.removeChild(link);
 }
 
+function updateLabelColors(divId, objectId) {
+    // Get the div element by its ID
+    var divElement = document.getElementById(divId);
+
+	// Check if the div element exists
+    if (divElement) {
+        // Get all label elements that are children of the div
+        var labels = divElement.getElementsByTagName('label');
+        
+		// Loop through all label elements
+        for (var i = 0; i < labels.length; i++) {
+            var label = labels[i];
+
+            // Check if the ID does not start with "noactionmenu"
+            if (!label.id.startsWith("noactionmenu")) {
+                // Reset the styles for labels that do not start with "noactionmenu"
+                label.style.fontWeight = '';
+                label.style.color = '';
+                label.style.backgroundColor = '';
+                label.style.transition = '';
+                label.style.textDecoration = '';
+                label.style.paddingLeft = '';
+                label.style.borderRadius = '';
+                label.style.paddingTop = '';
+                label.style.paddingBottom = '';
+                label.style.marginRight = '';
+                label.style.marginLeft = '';
+            }
+        }
+    } else {
+        console.error("Div with id '" + divId + "' not found.");
+    }
+	
+    // Check if the div element exists
+    if (divElement) {
+        // Get all label elements that are children of the div
+        var labels = divElement.getElementsByTagName('label');
+        
+        // Loop through all label elements and clear their classes and inline styles, then reapply
+        for (var i = 0; i < labels.length; i++) {
+            // Save the class name and inline styles
+            var className = labels[i].className;
+            var style = labels[i].style.cssText;
+
+            // Remove all classes and inline styles
+            labels[i].className = '';
+            labels[i].style.cssText = '';
+
+            // Reapply the saved class name and inline styles
+            labels[i].className = className;
+            labels[i].style.cssText = style;
+        }
+    } else {
+        console.error("Div with id '" + divId + "' not found.");
+    }
+
+    // Get the element by its object ID and set its background color to #25648C
+    var objectElement = document.getElementById(objectId);
+
+    if (objectElement) {
+        // Apply the desired styles
+        objectElement.style.fontWeight = 'normal';
+        objectElement.style.color = 'white';
+        objectElement.style.backgroundColor = '#17405A';
+        objectElement.style.transition = 'background-color 0.9s ease, color 0.3s ease';
+        objectElement.style.textDecoration = 'none';
+        objectElement.style.paddingLeft = '15px';
+        objectElement.style.borderRadius = '5px';
+        objectElement.style.paddingTop = '5px';
+        objectElement.style.paddingBottom = '5px';
+        objectElement.style.marginRight = '5px';
+        objectElement.style.marginLeft = '5px';
+    } else {
+        console.error("Element with id '" + objectId + "' not found.");
+    }
+}
 	
 </script>
 </div>
