@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.107
+# Version: v1.108
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -4029,45 +4029,39 @@ $NewHtmlReport = @"
 		width:100%;
 		max-width:100%;
 		--margin-bottom:1rem;
-		border-collapse:collapse;		
+		border-collapse:collapse;	
+		border:.5px solid lightgray;	
 	}
-
-    table th:first-child {
-        --border-top-left-radius: 3px;
-    }
-
-    table th:last-child {
-        --border-top-right-radius: 3px;
-    }
 		
 	.tabledrop {
-		outline-right:.5px solid #BEDFE1;
-		outline-left:.5px solid #BEDFE1;
-		outline-bottom:.5px solid #BEDFE1;
-		--border:1px solid #757575;
-		--border-top:1.5px solid #757575;
-		--box-shadow: 0 0 0 0;
-		box-shadow: 0 2px 4px 0 #DEDFE1;
+		box-shadow: 0 2px 4px 0 lightgray;
 		margin: 10px;
 		width: 90%;
-		--margin-left:10px;
 	}
+	
+	.tabledrop:hover {
+		box-shadow: 0 6px 12px 0 lightgray;
+	}	
 	
 	table thead th{
 		vertical-align:bottom;
-		background-color: #07142A;
-		color:white;
-		border:1px solid #3D3935;
+		background-color: white;
+		color:#4A4A4A;
+		border:.5px solid lightgray;
+		--border-top-right-radius: 10px;	
 	}
 	
 	table tbody tr{
 		background-color:white;	
-		--font-weight: bold;		
 	}	
 
-	table tbody td:nth-child(1){	 
-	  --font-weight: bold;
+	table thead th:nth-child(1){	 
+		--border-top-left-radius: 10px;	
 	}	
+	
+	table thead th:nth-child(last){	 
+		--border-top-right-radius: 10px;	
+	}
 	
 	table tbody tr:nth-of-type(odd){
 		--background-color:#F0E8E8;
@@ -4494,10 +4488,11 @@ $NewHtmlReport = @"
 	}
 
 	.card {
-		width: 250px;
+		padding:10px;
+		text-align: right;
 		box-shadow: 0 2px 4px 0 #DEDFE1;	
 		transition:0.3s;
-		background-color: #07142A;
+		background-color: white;
 		font-family:"Open Sans", sans-serif;
 		font-size: 12;
 		font-weight: 2;
@@ -4507,24 +4502,19 @@ $NewHtmlReport = @"
 		display:block;
 		margin:10px;
 		margin-bottom:20px;
-        border-radius: 3px;
+		border:.5px solid lightgray;		
+       		 border-radius: 3px;
 	}
 
 	.card:hover{	
-		box-shadow: 0 8px 16px 0;
+		box-shadow: 0 6px 12px 0 lightgray;
 		--box-shadow: 0 8px 16px 0 #DEDFE1;
 		
-	}	
+	}
 
-	.cardtitle{	
-	    padding:5px;	
-		-- padding-left: 20px;
-		font-size: 20;
-		color: white;
-		font-weight:bold;
-		font-family:"Open Sans", sans-serif;
-		border-bottom:1.5px solid transparent;
-		border-bottom-color:#07142A;
+    .cardtitle{		
+		font-size: 18;
+		text-align: left;
 	}
 
 	.cardsubtitle {
@@ -4863,37 +4853,27 @@ $NewHtmlReport = @"
 	margin-top:58px;	
 }
 
-.LargeCard {
-	width: 788px;
-	box-shadow: 0 2px 4px 0 #DEDFE1;	
+.LargeCard {                              
+	padding: 10px;
+	background-color: white;
 	transition:0.3s;
-	--background-color: #07142A;
 	font-family:"Open Sans", sans-serif;
-	font-size: 12;
-	font-weight: 2;
-	font-color: black;
 	float: left;
 	display:block;
 	margin:10px;
 	margin-bottom:20px;
+	border:.5px solid lightgray;
 	border-radius: 3px;   
+	box-shadow: 0 2px 4px 0 #DEDFE1;
 }
 
 .LargeCard:hover{	
-	box-shadow: 0 2px 16px 0;	
-}	
+	box-shadow: 0 6px 12px lightgray;	
+}
 
 .LargeCardtitle{	
-	padding:5px;	
-	padding-left: 20px;
-	font-size: 20;
-	color: white;
-	font-weight:bold;
-	font-family:"Open Sans", sans-serif;
-	border-bottom:1.5px solid transparent;
-	border-bottom-color:#757575;
-	border-top-right-radius: 3px;  
-	border-top-left-radius: 3px;   
+		font-size: 18;
+		text-align: left;  
 }
 
 .LargeCardSubtitle2 {
@@ -5045,6 +5025,7 @@ input[type="checkbox"]:checked::before {
 </div>
 <div id="main">
 
+
 <!--  
 |||||||||| PAGE: Interesting Files 
 -->
@@ -5060,36 +5041,29 @@ input[type="checkbox"]:checked::before {
                     </div>
 
 			        <!-- /////////////// Interesting Files - Total -->					
-					<div class="LargeCard" style="width:25%; ">	
-						
-							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
-								<strong>Interesting File Names Found</strong>
-							</div>												
-							<div class="LargeCardContainer" style="height:193px;text-align:center; padding-top: 30px;">	
-									<br><br>						
-								   <span class="percentagetext" style = "font-size: 50px; color:#f08c41;">                    
-									$InterestingFilesAllFilesCount                        
-									</span>	
-									<br>
-									($InterestingFilesAllFilesCountU unique file names)										
-							</div>
-					
-					</div>	
+
+                    <div class="card" style="width: 20%">	
+	                    <div class="cardtitle" style="color:gray;font-size: 16px; font-weight: bold;">
+		                   Interesting File Names Found
+	                    </div>		
+                                    <br><br>
+				                    <span class="percentagetext" style = "color:#f08c41;">                    
+					                    $InterestingFilesAllFilesCount&nbsp;                     
+				                    </span>	
+			                    <Br>
+                                <div style="padding-right: 10px;">
+                                ($InterestingFilesAllFilesCountU unique file names)	
+                                </div>
+                    </div>
 
 
 					<!-- /////////////// Interesting Files - Chart -->
-					<div class="LargeCard" style="width:68.5%">	
-						
-							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
-								<strong>File Name Category Distribution</strong>
-							</div>
-						
-							<div class="LargeCardContainer" align="center">											
+					<div class="LargeCard" style="width:69.25%">	
+	
 									<div class="chart-container">
 									<div id="chart"></div>
 										<div class="chart-controls"></div>
 									</div>								  							
-							</div>
 					</div>	
 									
 
@@ -5135,9 +5109,9 @@ input[type="checkbox"]:checked::before {
 		<div style="min-height: 450px;">		
 		<div style="margin-left:10px;margin-top:16px;">			
 			<div style="width:90%;">	
-				<h4 style="color:gray;">Affected Assets</h4>
+				<h4 style="color:#4A4A4A;">Affected Assets</h4>
 				<div>
-				Below is a summary of the computers, shares, and <a href="https://en.wikipedia.org/wiki/Security_descriptor">ACEs (Access Control Entries)</a> associated with shares configured with excessive privileges.
+				Below is a summary of the computers, shares, and <a style="font-weight: normal;" href="https://en.wikipedia.org/wiki/Security_descriptor">ACEs (Access Control Entries)</a> associated with shares configured with excessive privileges.
 	            $ExcessiveSharePrivsCount ACL entries, on $ExcessiveSharesCount shares, hosted by $ComputerWithExcessive computers were found configured with excessive privileges on the $TargetDomain domain. Overall, $IdentityReferenceListCount identities were assigned excessive privileges. Click the "Exposure Summary" or the titles on the cards below to explore the details.<Br><Br>
 				</div>
 			</div>
@@ -5149,13 +5123,12 @@ input[type="checkbox"]:checked::before {
 <!--  
 |||||||||| CARD: COMPUTER SUMMARY
 -->
- <div class="card" style="width: 22%">	
-	<div class="cardtitle" style="text-align:center;">
-		<a href="#" id="DashLink" style="text-decoration:none;color:white;font-size:18px;" onClick="radiobtn = document.getElementById('ComputerInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btncomputers');">Computers</a>
-	</div>
-	<div class="cardcontainer" align="center" style="padding-bottom: 22px;">	
+ <div class="card" style="width: 20%">	
+	<div class="cardtitle">
+		<a href="#" id="DashLink" style="text-decoration:none;" onClick="radiobtn = document.getElementById('ComputerInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btncomputers');">COMPUTERS</a>
+	</div>		
 				<span class="percentagetext" style = "color:#f08c41;">                    
-					$ComputerWithExcessive                    
+					$ComputerWithExcessive&nbsp;                     
 				</span>	
 			<Br>
 			<button class="collapsible" style="text-align:left;font-size:10px;">Exposure Summary</button>
@@ -5201,20 +5174,18 @@ input[type="checkbox"]:checked::before {
                 </div>	   
 			</div>
 			</div> 			  
-	</div>
  </div>
 
 <!--  
 |||||||||| CARD: SHARE SUMMARY
 -->
 
-<div class="card" style="width: 22%">	
-	<div class="cardtitle" style="text-align:center;">
-		<a href="#" id="DashLink" style="text-decoration:none;color:white;font-size:18px;" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;updateLabelColors('tabs', 'btnshares');">Shares</a>
-	</div>
-	<div class="cardcontainer" align="center" style="padding-bottom: 22px;">	
+<div class="card" style="width: 20%">	
+	<div class="cardtitle">
+		<a href="#" id="DashLink" style="text-decoration:none;" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;updateLabelColors('tabs', 'btnshares');">SHARES</a>
+	</div>	
 				<span class="percentagetext" style = "color:#f08c41;">                    
-					$ExcessiveSharesCount                    
+					$ExcessiveSharesCount&nbsp;                      
 				</span>	
 			<Br>
 			<button class="collapsible" style="text-align:left;font-size:10px;">Exposure Summary</button>
@@ -5260,20 +5231,18 @@ input[type="checkbox"]:checked::before {
                 </div>	   
 			</div>
 			</div> 			  
-	</div>
  </div>
 
 <!--  
 |||||||||| CARD: ACL SUMMARY
 -->
 
-<div class="card" style="width: 22%">	
-	<div class="cardtitle" style="text-align:center;">
-		<a href="#" id="DashLink" style="text-decoration:none;color:white;font-size:18px;" onClick="radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnaces');">ACEs</a>
-	</div>
-	<div class="cardcontainer" align="center" style="padding-bottom: 22px;">	
+<div class="card" style="width: 20%">	
+	<div class="cardtitle">
+		<a href="#" id="DashLink" style="text-decoration:none;" onClick="radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnaces');">ACES</a>
+	</div>	
 				<span class="percentagetext" style = "color:#f08c41;">                    
-					$ExcessiveSharePrivsCount                    
+					$ExcessiveSharePrivsCount&nbsp;                   
 				</span>	
 			<Br>
 			<button class="collapsible" style="text-align:left;font-size:10px;">Exposure Summary</button>
@@ -5319,20 +5288,18 @@ input[type="checkbox"]:checked::before {
                 </div>	   
 			</div>
 			</div> 			  
-	</div>
  </div>
 
  <!--  
 |||||||||| CARD: IDENTITY SUMMARY
 -->
 
-<div class="card" style="width: 22%">	
-	<div class="cardtitle" style="text-align:center;">
-		<a href="#" id="DashLink" style="text-decoration:none;color:white;font-size:18px;" onClick="radiobtn = document.getElementById('IdentityInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnidentities');">Identities</a>
-	</div>
-	<div class="cardcontainer" align="center" style="padding-bottom: 22px;">	
+<div class="card" style="width: 20%">	
+	<div class="cardtitle">
+		<a href="#" id="DashLink" style="text-decoration:none;" onClick="radiobtn = document.getElementById('IdentityInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnidentities');">IDENTITIES</a>
+	</div>	
 				<span class="percentagetext" style = "color:#f08c41;">                    
-					$IdentityReferenceListCount                    
+					$IdentityReferenceListCount&nbsp;                      
 				</span>	
 			<Br>
 			<button class="collapsible" style="text-align:left;font-size:10px;">Exposure Summary</button>
@@ -5343,7 +5310,6 @@ input[type="checkbox"]:checked::before {
                     </div>   
 			    </div>
 			</div> 			  
-	</div>
  </div>
 
  <!-- mini card  wrapper end  -->	
@@ -5359,37 +5325,31 @@ input[type="checkbox"]:checked::before {
 |||||||||| CARD: RISK AND INTERESTING FILE SUMMARY
 -->
  <div style="margin-left: 10px; width: 90%;">
-	<h4 style="color:gray;">Exposure Summary</h4>
+	<h4 style="color:#4A4A4A;">Exposure Summary</h4>
 	In total, $RiskLevelCountCritical critical, $RiskLevelCountHigh high, $RiskLevelCountMedium medium, and  $RiskLevelCountLow low risk ACE configurations were discovered across shares in the $TargetDomain Active Directory domain. The affected shares were found hosting $InterestingFilesAllObjectsSecretCount files that may contain passwords and $InterestingFilesAllObjectsSensitiveCount files that may contain sensitive data. Overall, $InterestingFilesAllFilesCount interesting files were found that could potentially lead to unauthorized data access or remote code execution. Click the chart titles below to explore the details.<Br><Br>
  </div>
-		            <div class="LargeCard" style="width:45.75%;">	
+		            <div class="LargeCard" style="width:43.75%;">	
 							<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnaces');" style="text-decoration:none;">
-							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
-								<strong>Share ACL Count by Risk Level</strong>
-							</div>
 							</a>
-							<div class="LargeCardContainer" align="center">											
+																	
 									<div class="chart-container">
 									<div id="ChartDashboardRisk"></div>
 										<div class="chart-controls"></div>
 									</div>								  							
-							</div>
+							
 					</div>
 					
 				
 				
-					<div class="LargeCard" style="width: 45.75%;">	
+					<div class="LargeCard" style="width: 43.75%;">	
 							<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;updateLabelColors('tabs', 'btnif');" style="text-decoration:none;">
-							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
-								<strong>Interesting Files Count</strong>
-							</div>
 							</a>
-							<div class="LargeCardContainer" align="center">											
+																	
 									<div class="chart-container">
 									<div id="ChartDashboardIF"></div>
 										<div class="chart-controls"></div>
 									</div>								  							
-							</div>
+							
 					</div>
 
 
@@ -5399,7 +5359,7 @@ input[type="checkbox"]:checked::before {
  <div style="height:.5px;width:100%;position:relative;float:left;"></div>
  <div style="height:130px;"></div>
 	<div style="margin-left: 10px; width: 95%">
-	<h4 style="color:gray;">Timelines</h4>
+	<h4 style="color:#4A4A4A;">Timelines</h4>
 	Below are charts to help illustrate the share creation and last write timelines.<Br><Br>
  </div>
 $CardCreationTimeLine
@@ -5432,44 +5392,41 @@ $CardLastModifiedTimeLine
 $ComputerCount computers were found in the $TargetDomain Active Directory domain. Below is a list of the computers hosting shares configured with excessive privileges. 
 </div>		
 
-		            <div class="LargeCard" style="width:20%;">	
-						
-							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
-								<strong>Live Computers Found</strong>
-							</div>												
-							<div class="LargeCardContainer" style="height:215px;text-align:center;">	
-                                  <br><br><br>							
-								   <span class="percentagetext" style = "font-size: 50px; color:#f08c41;heigh:100%">                    
-									$ComputerPingableCount                  
-								   </span><br>	($ComputerWithExcessive host shares with excessive privileges)									
-							</div>
+		    
+
+                    <div class="card" style="width: 20%">	
+	                    <div class="cardtitle" style="color:gray;font-size: 16px; font-weight: bold;">
+		                    Live Computers Found
+	                    </div>		
+                                    <br><br>
+				                    <span class="percentagetext" style = "color:#f08c41;">                    
+					                    $ComputerPingableCount&nbsp;                     
+				                    </span>	
+			                    <Br>
+                                <div style="padding-right: 10px;">
+                                ($ComputerWithExcessive host shares with excessive privileges)
+                                </div>
                     </div>
 
             
-					<div class="LargeCard" style="width:36%;">	
-							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
-								<strong>Computer Count by Share Exposure</strong>
-							</div>
-							<div class="LargeCardContainer" align="center" >											
+					<div class="LargeCard" style="width:32.75%;">	
+																	
 									<div class="chart-container">
 									<div id="ChartComputersDisco"></div>
 										<div class="chart-controls"></div>
 									</div>								  							
-							</div>
+						
 					</div>	
-					<div class="LargeCard" style="width:36%;">	
-							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
-								<strong>Computer Count by Risk Level</strong>
-							</div>
-							<div class="LargeCardContainer" align="center" >											
+					<div class="LargeCard" style="width:32.75%;">	
+																	
 									<div class="chart-container">
 									<div id="ChartComputersRisk"></div>
 										<div class="chart-controls"></div>
 									</div>								  							
-							</div>
+							
 					</div>					
 				
-<div class="searchbar" style="margin-top:300px; text-align:left; display: flex;" >
+<div class="searchbar" style="margin-top:270px; text-align:left; display: flex;" >
         <input type="text" id="computerfilterInput" placeholder=" Search..." style="margin-top: 8px; height: 25px; margin-left: 10px;font-size: 14px;padding-left:3px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
         <div style="font-size:12;text-align: left;cursor: pointer;color:gray; margin-top: 13px; margin-left: 5px;" onmouseover="this.style.color='white';" onmouseout="this.style.textDecoration='';this.style.fontWeight='normal';this.style.color='gray';"onclick="document.getElementById('computerfilterInput').value = '';applyFiltersAndSort('ComputersTable', 'computerfilterInput', 'computerfilterCounter', 'computerpagination');">Clear</div>
         <!-- <div style="margin-top: 10px; margin-left: 5px; margin-right: 5px;"><strong>Quick Filters</strong></div>
@@ -5537,46 +5494,41 @@ $ComputerCount computers were found in the $TargetDomain Active Directory domain
 $IdentityCombinedListCount identities were discovered across shares in the $TargetDomain Active Directory domain. $IdentityOwnerListCount were owners and $IdentityReferenceListCount were assigned privileges. 
 </div>		     
 
-		            <div class="LargeCard" style="width:30%;">	
-						
-							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
-								<strong>Identities Found</strong>
-							</div>												
-							<div class="LargeCardContainer" style="height:100px;text-align:center;">	
-                                  <br>						
-								   <div class="percentagetext" style = "font-size: 50px; color:#f08c41; height:100%; margin-top: 0px;">                    
-									$IdentityCombinedListCount                  
-								   </div>									
-							</div>
+
+                    <div class="card" style="width: 28%">	
+	                    <div class="cardtitle" style="color:gray;font-size: 16px; font-weight: bold;">
+		                   Identities Found
+	                    </div>		
+                                    <br><br>
+				                    <span class="percentagetext" style = "color:#f08c41;">                    
+					                    $IdentityCombinedListCount&nbsp;                     
+				                    </span>	
+			                    <Br>
+                    </div>
+
+                    <div class="card" style="width: 28%">	
+	                    <div class="cardtitle" style="color:gray;font-size: 16px; font-weight: bold;">
+		                   Identities Assigned Ownership
+	                    </div>		
+                                    <br><br>
+				                    <span class="percentagetext" style = "color:#f08c41;">                    
+					                    $IdentityOwnerListCount&nbsp;                     
+				                    </span>	
+			                    <Br>
                     </div>
                     
-		            <div class="LargeCard" style="width:30%;">	
-						
-							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
-								<strong>Identities Assigned Ownership</strong>
-							</div>												
-							<div class="LargeCardContainer" style="height:100px;text-align:center;">	
-                                  <br>							
-								   <div class="percentagetext" style = "font-size: 50px; color:#f08c41; height:100%; margin-top: 0px;">                    
-									$IdentityOwnerListCount                  
-								   </div>									
-							</div>
-                    </div>
-                    
-		            <div class="LargeCard" style="width:30%;">	
-						
-							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
-								<strong>Identities Assigned Privileges</strong>
-							</div>												
-							<div class="LargeCardContainer" style="height:100px;text-align:center;">	
-                                  <br>							
-								   <div class="percentagetext" style = "font-size: 50px; color:#f08c41; height:100%; margin-top: 0px;">                    
-									$IdentityReferenceListCount                 
-								   </div>									
-							</div>
-                    </div>   
+                    <div class="card" style="width: 28%">	
+	                    <div class="cardtitle" style="color:gray;font-size: 16px; font-weight: bold;">
+		                   Identities Assigned Privileges
+	                    </div>		
+                                    <br><br>
+				                    <span class="percentagetext" style = "color:#f08c41;">                    
+					                    $IdentityReferenceListCount&nbsp;                     
+				                    </span>	
+			                    <Br>
+                    </div>                     
 <br> 					
-<div style="margin-top: 160px; margin-left: 10px; width="90%"">
+<div style="margin-top: 125px; margin-left: 10px; width="85%">
 Note: Within the context of this report, all read and write access the "Everyone", "Authenticated Users", "BUILTIN\Users", "Domain Users", or "Domain Computers" groups are considered excessive privileges, because all provide domain users access to the affected shares due to privilege inheritance. 				
 </div>
 <div class="searchbar" style="margin-top:12px; text-align:left; display: flex;" >
@@ -5631,55 +5583,40 @@ Note: Within the context of this report, all read and write access the "Everyone
 Below is a list of the ACE (access control entries) configured with excessive privileges found in the $TargetDomain Active Directory domain. 
 </div>		
 
-		            <div class="LargeCard" style="width:20%;">							
-							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
-								<strong>Inescure ACEs Found</strong>
-							</div>												
-							<div class="LargeCardContainer" style="height:215px;text-align:center;">	
-                                  <br><br><br>							
-								   <div class="percentagetext" style = "font-size: 50px; color:#f08c41;heigh:100%; margin: 15px;">                         
-									$ExcessiveSharePrivsCount                   
-								   </div><br>								
-							</div>
+                    <div class="card" style="width: 20%">	
+	                    <div class="cardtitle" style="color:gray;font-size: 16px; font-weight: bold;">
+		                   Inescure ACEs Found
+	                    </div>		
+                                    <br><br>
+				                    <span class="percentagetext" style = "color:#f08c41;">                    
+					                    $ExcessiveSharePrivsCount &nbsp;                     
+				                    </span>	
                     </div>
 
+
 					<div class="LargeCard" style="width:23%;">	
-							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
-								<strong>ACE Count by Risk Level</strong>
-							</div>
-							<div class="LargeCardContainer" align="center" >											
+										
 									<div class="chart-container">
 									<div id="ChartAceRisk"></div>
 										<div class="chart-controls"></div>
 									</div>								  							
-							</div>
 					</div>
             
-					<div class="LargeCard" style="width:23%;">	
-							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
-								<strong>ACE Type Count</strong>
-							</div>
-							<div class="LargeCardContainer" align="center" >											
+					<div class="LargeCard" style="width:18%;">									
 									<div class="chart-container">
 									<div id="ChartAceType"></div>
 										<div class="chart-controls"></div>
 									</div>								  							
-							</div>
 					</div>	
 
-					<div class="LargeCard" style="width:23%;">	
-							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
-								<strong>Interesting File Count</strong>
-							</div>
-							<div class="LargeCardContainer" align="center" >											
+					<div class="LargeCard" style="width:20.5%;">												
 									<div class="chart-container">
 									<div id="ChartAcesIF"></div>
 										<div class="chart-controls"></div>
 									</div>								  							
-							</div>
 					</div>					
 				
-<div class="searchbar" style="margin-top:300px; text-align:left; display: flex;" >
+<div class="searchbar" style="margin-top:270px; text-align:left; display: flex;" >
         <input type="text" id="acefilterInput" placeholder=" Search..." style="margin-top: 8px; height: 25px; margin-left: 10px;font-size: 14px;padding-left:3px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
         <div style="font-size:12;text-align: left;cursor: pointer;color:gray; margin-top: 13px; margin-left: 5px;" onmouseover="this.style.color='white';" onmouseout="this.style.textDecoration='';this.style.fontWeight='normal';this.style.color='gray';"onclick="document.getElementById('acefilterInput').value = '';applyFiltersAndSort('aceTable', 'acefilterInput', 'acefilterCounter', 'acepagination');">Clear</div>
         <!-- <div style="margin-top: 10px; margin-left: 5px; margin-right: 5px;"><strong>Quick Filters</strong></div>
@@ -5703,12 +5640,12 @@ Below is a list of the ACE (access control entries) configured with excessive pr
     <th class="NamesTh" onclick="sortTable('aceTable',0,'number')" style="vertical-align: middle;text-align: left;">Risk Level</th>
     <th class="NamesTh" onclick="sortTable('aceTable',1,'alpha')" style="vertical-align: middle;text-align: left;">Computer</th>        
     <th class="NamesTh" onclick="sortTable('aceTable',2,'alpha')" style="vertical-align: middle;text-align: left;">Share Name</th>                
-    <th class="NamesTh" onclick="sortTable('aceTable',4,'alpha')" style="vertical-align: middle;text-align: left;">FileSystemRight</th>        
-    <th class="NamesTh" onclick="sortTable('aceTable',5,'alpha')" style="vertical-align: middle;text-align: left;">Identity</th>        
-    <th class="NamesTh" onclick="sortTable('aceTable',6,'alpha')" style="vertical-align: middle;text-align: left;">Share Owner</th>        
-    <th class="NamesTh" onclick="sortTable('aceTable',7,'number')" style="vertical-align: middle;text-align: left;">Creation Date</th>        
-    <th class="NamesTh" onclick="sortTable('aceTable',8,'number')" style="vertical-align: middle;text-align: left;">Last Modified</th>        
-    <th class="NamesTh" onclick="sortTable('aceTable',9,'number')" style="vertical-align: middle;text-align: left;">Files</th>                
+    <th class="NamesTh" onclick="sortTable('aceTable',3,'alpha')" style="vertical-align: middle;text-align: left;">FileSystemRight</th>        
+    <th class="NamesTh" onclick="sortTable('aceTable',4,'alpha')" style="vertical-align: middle;text-align: left;">Identity</th>        
+    <th class="NamesTh" onclick="sortTable('aceTable',5,'alpha')" style="vertical-align: middle;text-align: left;">Share Owner</th>        
+    <th class="NamesTh" onclick="sortTable('aceTable',6,'number')" style="vertical-align: middle;text-align: left;">Creation Date</th>        
+    <th class="NamesTh" onclick="sortTable('aceTable',7,'number')" style="vertical-align: middle;text-align: left;">Last Modified</th>        
+    <th class="NamesTh" onclick="sortTable('aceTable',8,'number')" style="vertical-align: middle;text-align: left;">Files</th>                
                           
     </tr>
     </thead>
@@ -5723,6 +5660,7 @@ Below is a list of the ACE (access control entries) configured with excessive pr
 <!--  
 |||||||||| PAGE: COMPUTER SUMMARY
 -->
+
 <input class="tabInput"  name="tabs" type="radio" id="computersummary"/>
 <label class="tabLabel" onClick="updateTab('computersummary',false)" for="computersummary"></label>
 <div id="tabPanel" class="tabPanel">
@@ -5748,7 +5686,7 @@ Below is a summary of the domain computers that were targeted, connectivity to t
 	  <td><div class="divbarDomain"><div class="divbarDomainInside" style="width: 100%;"></div></div></td>
 	  <td>100.00%</td>
 	  <td>$ComputerCount</td>
-      <td><a href="$OutputDirectory/$DomainComputersFile"><span class="cardsubtitle">CSV</a> | </span><a href="$OutputDirectory/$DomainComputersFileH"><span class="cardsubtitle">HTML</span></a></td>	  
+      <td><a href="$SubDir/$DomainComputersFile"><span class="cardsubtitle">CSV</a> | </span><a href="$SubDir/$DomainComputersFileH"><span class="cardsubtitle">HTML</span></a></td>	  
     </tr>
     <tr>
       <td>PING RESPONSE</td>
@@ -5967,8 +5905,6 @@ In the context of this report, excessive read and write share permissions have b
 Below is a summary of the exposure associated with each of those groups. 
 </div>
 
-<div style="border-bottom: 1px solid #DEDFE1 ;  background-color:#f0f3f5; height:5px; margin-bottom:10px;"></div>
-
 <table class="table table-striped table-hover tabledrop">
   <thead>
     <tr>
@@ -6185,47 +6121,38 @@ Below is a summary of the exposure associated with each of those groups.
 <div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>
 <div style="margin-left:10px;margin-top:3px; margin-bottom: 3px;width:95%">
 $AllSMBSharesCount shares were discovered across computers in the $TargetDomain Active Directory domain. $ShareNameChartCount shares were found configured with excessive privileges. Below is a summary of those shares grouped by name.
-</div>		
-						<div class="LargeCard" style="width:20%;">	
-						
-							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
-								<strong>Shares Found</strong>
-							</div>												
-							<div class="LargeCardContainer" style="height:215px;text-align:center;">	
-                                  <br><br><br>							
-								   <span class="percentagetext" style = "font-size: 50px; color:#f08c41;heigh:100%">                    
-									$ShareNameChartCountUnique                       
-									</span><br>	($ShareNameChartCount unique share names found)									
-							</div>
+</div>	
+
+                    <div class="card" style="width: 20%">	
+	                    <div class="cardtitle" style="color:gray;font-size: 16px; font-weight: bold;">
+		                   Shares Found
+	                    </div>		
+                                    <br><br>
+				                    <span class="percentagetext" style = "color:#f08c41;">                    
+					                    $ShareNameChartCountUnique  &nbsp;                     
+				                    </span>	
+			                    <Br>
+                                <div style="padding-right: 10px;">
+                                ($ShareNameChartCount unique share names found)	
+                                </div>
+                    </div>
 					
-					</div>
-					
-		            <div class="LargeCard" style="width:36%;">								
-							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
-								<strong>Share Name Count by Risk Level</strong>
-							</div>
-							<div class="LargeCardContainer" align="center">											
+		            <div class="LargeCard" style="width:32.5%;">																
 									<div class="chart-container">
 									<div id="ChartShareNameRiska"></div>
 										<div class="chart-controls"></div>
 									</div>								  							
-							</div>
 					</div>
 					
 								
-					<div class="LargeCard" style="width:36%;">	
-							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
-								<strong>Exposed File Count by Category</strong>
-							</div>
-							<div class="LargeCardContainer" align="center" >											
+					<div class="LargeCard" style="width:32.5%;">										
 									<div class="chart-container">
 									<div id="ChartSharePageIF"></div>
 										<div class="chart-controls"></div>
 									</div>								  							
-							</div>
 					</div>
 				
-<div class="searchbar" style="margin-top:300px; text-align:left; display: flex;" >
+<div class="searchbar" style="margin-top:270px; text-align:left; display: flex;" >
         <input type="text" id="filterInput" placeholder=" Search..." style="margin-top: 8px; height: 25px; margin-left: 10px;font-size: 14px;padding-left:3px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
         <div style="margin-top: 10px; margin-left: 5px; margin-right: 5px;"><strong>Quick Filters</strong></div>
         <label><input type="checkbox" class="filter-checkbox" name="h"> Exploitable</label>
@@ -6296,120 +6223,6 @@ $AllSMBSharesCount shares were discovered across computers in the $TargetDomain 
 </div>
 
 <!--  
-|||||||||| PAGE: COMPUTER INSIGHTS
--->
-
-<input class="tabInput"  name="tabs" type="radio" id="ComputerInsights"/> 
-<label class="tabLabel" onClick="updateTab('ComputerInsights',false)" for="ComputerInsights"></label>
-<div id="tabPanel" class="tabPanel">
-<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Computers</h2>
-<div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>
-<div style="margin-left:10px;margin-top:3px; margin-bottom: 3px;width:95%">
-This section contains a list of the computers hosting shares configured with excessive privileges. 
-</div>		
-						<div class="LargeCard" style="width:20%;">	
-						
-							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
-								<strong>Shares Found</strong>
-							</div>												
-							<div class="LargeCardContainer" style="height:215px;text-align:center;">	
-                                  <br><br><br>							
-								   <span class="percentagetext" style = "font-size: 50px; color:#f08c41;heigh:100%">                    
-									$ComputerNameChartCountUnique                       									
-							</div>
-					
-					</div>
-					
-		            <div class="LargeCard" style="width:36%;">								
-							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
-								<strong>Computer Count by Risk Level</strong>
-							</div>
-							<div class="LargeCardContainer" align="center">											
-									<div class="chart-container">
-									<div id="ChartComputersRiska"></div>
-										<div class="chart-controls"></div>
-									</div>								  							
-							</div>
-					</div>
-					
-								
-					<div class="LargeCard" style="width:36%;">	
-							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
-								<strong>Exposed File Count by Category</strong>
-							</div>
-							<div class="LargeCardContainer" align="center" >											
-									<div class="chart-container">
-									<div id="ChartSharePageIF"></div>
-										<div class="chart-controls"></div>
-									</div>								  							
-							</div>
-					</div>
-				
-<div class="searchbar" style="margin-top:300px; text-align:left; display: flex;" >
-        <input type="text" id="filterInput" placeholder=" Search..." style="margin-top: 8px; height: 25px; margin-left: 10px;font-size: 14px;padding-left:3px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
-        <div style="margin-top: 10px; margin-left: 5px; margin-right: 5px;"><strong>Quick Filters</strong></div>
-        <label><input type="checkbox" class="filter-checkbox" name="h"> Exploitable</label>
-        <label><input type="checkbox" class="filter-checkbox" name="w"> Write</label>
-        <label><input type="checkbox" class="filter-checkbox" name="r"> Read</label>
-        <label><input type="checkbox" class="filter-checkbox" name="i"> Interesting</label>
-        <label><input type="checkbox" class="filter-checkbox" name="e"> Empty</label>
-        <label><input type="checkbox" class="filter-checkbox" name="s"> Stale</label>
-        <label><input type="checkbox" class="filter-checkbox" name="n"> Default</label>
-</div>		
-<div style="display: flex; margin-left:10px; font-size:11; text-align:left;" >		
-        <div id="filterCounter" style="margin-top:5px;">Loading...</div>      
-        <a style="font-size:11; margin-top: 5px; margin-left: 5px;" href="#" onclick="extractAndDownloadCSV('sharenametable', 0)">Export</a>
-</div>
-<table id="sharenametable" class="table table-striped table-hover tabledrop" style="width: 95%;">
-  <thead>
-    <tr>
-    
-    <th class="NamesTh" onclick="sortTable('sharenametable',1,'alpha')" style="vertical-align: middle;text-align: left;">Share<br>Name&nbsp;&nbsp;<div class="tooltip"><img src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV9TpSJVBzuIOGSoBcEuKuJYqlgEC6Wt0KqDyaVf0KQhSXFxFFwLDn4sVh1cnHV1cBUEwQ8QZwcnRRcp8X9JoUWMB8f9eHfvcfcOEJpVpp
-    o9MUDVLCOdiIu5/KoYeEUAQQxiAhGJmXoys5iF5/i6h4+vd1Ge5X3uzzGgFEwG+ETiGNMNi3iDeHbT0jnvE4dYWVKIz4knDbog8SPXZZffOJccFnhmyMim54lDxGKpi+UuZmVDJZ4hDiuqRvlCzmWF8xZntVpn7XvyFwYL2kqG6zTHkMASkkhBhIw6KqjCQpRWjRQTadqPe/hHHX+KXDK5KmDkWEANK
-    iTHD/4Hv7s1i9NTblIwDvS+2PbHOBDYBVoN2/4+tu3WCeB/Bq60jr/WBOY+SW90tPARMLQNXFx3NHkPuNwBRp50yZAcyU9TKBaB9zP6pjwwfAv0r7m9tfdx+gBkqavlG+DgEIiUKHvd49193b39e6bd3w/VdnLO67/jCAAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0
-    SU1FB+gHDA40BpbiKy8AAAEjSURBVBjTXZAxS4JhFIWfe5XqA6NIBSvK1pak2tqjvb8Q/oUImgPnqL/R7tbYVPCtUb46iKYoSUGK3tvQK0hnu889HO49Uq1eyOXVtRby+Q1VrSBSBpaBMRDMLG2GMLi/uzV5fXvPFIvFHRE5A0qAAVMgCyjQNbN6v99vyfBzVFTVc2ArprWAHrAJbANLQNts9qCqWom
-    JAB/u9uzuPXd/AjqRl1T1QIEyIBGuiuiJiJwCGeArcgHZy8Zn5loHcsBL5IWF3bLGOxf1DUxEZP+feazgAfAF+OOOAGuxDQB396BmloJ3F8w5EXbjOXN1zCzVZggDM68D7dhxEttJ/mZvu1u92QyDzGw25fDoeJQkK0FExiAKTIAhkJrZY2g0urXajf0CiVl4icFa+XEAAAAASUVORK5CYII=" /><span class="tooltiptext"><strong>Computer Name</strong><br>is the name of the computer.</span></div></th>        
-                          
-    <th class="NamesTh" onclick="sortTable('sharenametable',2,'number')" style="vertical-align: middle;text-align: left;">Risk<br>Level&nbsp;&nbsp;<div class="tooltip"><img src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV9TpSJVBzuIOGSoBcEuKuJYqlgEC6Wt0KqDyaVf0KQhSXFxFFwLDn4sVh1cnHV1cBUEwQ8QZwcnRRcp8X9JoUWMB8f9eHfvcfcOEJpVpp
-    o9MUDVLCOdiIu5/KoYeEUAQQxiAhGJmXoys5iF5/i6h4+vd1Ge5X3uzzGgFEwG+ETiGNMNi3iDeHbT0jnvE4dYWVKIz4knDbog8SPXZZffOJccFnhmyMim54lDxGKpi+UuZmVDJZ4hDiuqRvlCzmWF8xZntVpn7XvyFwYL2kqG6zTHkMASkkhBhIw6KqjCQpRWjRQTadqPe/hHHX+KXDK5KmDkWEANK
-    iTHD/4Hv7s1i9NTblIwDvS+2PbHOBDYBVoN2/4+tu3WCeB/Bq60jr/WBOY+SW90tPARMLQNXFx3NHkPuNwBRp50yZAcyU9TKBaB9zP6pjwwfAv0r7m9tfdx+gBkqavlG+DgEIiUKHvd49193b39e6bd3w/VdnLO67/jCAAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0
-    SU1FB+gHDA40BpbiKy8AAAEjSURBVBjTXZAxS4JhFIWfe5XqA6NIBSvK1pak2tqjvb8Q/oUImgPnqL/R7tbYVPCtUb46iKYoSUGK3tvQK0hnu889HO49Uq1eyOXVtRby+Q1VrSBSBpaBMRDMLG2GMLi/uzV5fXvPFIvFHRE5A0qAAVMgCyjQNbN6v99vyfBzVFTVc2ArprWAHrAJbANLQNts9qCqWom
-    JAB/u9uzuPXd/AjqRl1T1QIEyIBGuiuiJiJwCGeArcgHZy8Zn5loHcsBL5IWF3bLGOxf1DUxEZP+feazgAfAF+OOOAGuxDQB396BmloJ3F8w5EXbjOXN1zCzVZggDM68D7dhxEttJ/mZvu1u92QyDzGw25fDoeJQkK0FExiAKTIAhkJrZY2g0urXajf0CiVl4icFa+XEAAAAASUVORK5CYII=" /><span class="tooltiptext"><strong>Risk Level</strong><br>relfects the exposure of credentials and sensitive data.</span></div></th>
-                          
-    <th class="NamesTh"  onclick="sortTable('sharenametable',0,'number')" style="vertical-align: middle;text-align: left;">Share<br>Count&nbsp;&nbsp;<div class="tooltip"><img src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV9TpSJVBzuIOGSoBcEuKuJYqlgEC6Wt0KqDyaVf0KQhSXFxFFwLDn4sVh1cnHV1cBUEwQ8QZwcnRRcp8X9JoUWMB8f9eHfvcfcOEJpVpp
-    o9MUDVLCOdiIu5/KoYeEUAQQxiAhGJmXoys5iF5/i6h4+vd1Ge5X3uzzGgFEwG+ETiGNMNi3iDeHbT0jnvE4dYWVKIz4knDbog8SPXZZffOJccFnhmyMim54lDxGKpi+UuZmVDJZ4hDiuqRvlCzmWF8xZntVpn7XvyFwYL2kqG6zTHkMASkkhBhIw6KqjCQpRWjRQTadqPe/hHHX+KXDK5KmDkWEANK
-    iTHD/4Hv7s1i9NTblIwDvS+2PbHOBDYBVoN2/4+tu3WCeB/Bq60jr/WBOY+SW90tPARMLQNXFx3NHkPuNwBRp50yZAcyU9TKBaB9zP6pjwwfAv0r7m9tfdx+gBkqavlG+DgEIiUKHvd49193b39e6bd3w/VdnLO67/jCAAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0
-    SU1FB+gHDA40BpbiKy8AAAEjSURBVBjTXZAxS4JhFIWfe5XqA6NIBSvK1pak2tqjvb8Q/oUImgPnqL/R7tbYVPCtUb46iKYoSUGK3tvQK0hnu889HO49Uq1eyOXVtRby+Q1VrSBSBpaBMRDMLG2GMLi/uzV5fXvPFIvFHRE5A0qAAVMgCyjQNbN6v99vyfBzVFTVc2ArprWAHrAJbANLQNts9qCqWom
-    JAB/u9uzuPXd/AjqRl1T1QIEyIBGuiuiJiJwCGeArcgHZy8Zn5loHcsBL5IWF3bLGOxf1DUxEZP+feazgAfAF+OOOAGuxDQB396BmloJ3F8w5EXbjOXN1zCzVZggDM68D7dhxEttJ/mZvu1u92QyDzGw25fDoeJQkK0FExiAKTIAhkJrZY2g0urXajf0CiVl4icFa+XEAAAAASUVORK5CYII=" /><span class="tooltiptext"><strong>Share Count</strong><br>is the number of unique shares with<br>the same name.</span></div></th>
-      
-    <th class="NamesTh"  onclick="sortTable('sharenametable',6,'number')" style="vertical-align: middle;text-align: left;">Interesting<br>Files&nbsp;&nbsp;<div class="tooltip"><img src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAsAAAALCAYAAACprHcmAAABhGlDQ1BJQ0MgcHJvZmlsZQAAKJF9kT1Iw0AcxV9TpSJVBzuIOGSoBcEuKuJYqlgEC6Wt0KqDyaVf0KQhSXFxFFwLDn4sVh1cnHV1cBUEwQ8QZwcnRRcp8X9JoUWMB8f9eHfvcfcOEJpVpp
-    o9MUDVLCOdiIu5/KoYeEUAQQxiAhGJmXoys5iF5/i6h4+vd1Ge5X3uzzGgFEwG+ETiGNMNi3iDeHbT0jnvE4dYWVKIz4knDbog8SPXZZffOJccFnhmyMim54lDxGKpi+UuZmVDJZ4hDiuqRvlCzmWF8xZntVpn7XvyFwYL2kqG6zTHkMASkkhBhIw6KqjCQpRWjRQTadqPe/hHHX+KXDK5KmDkWEANK
-    iTHD/4Hv7s1i9NTblIwDvS+2PbHOBDYBVoN2/4+tu3WCeB/Bq60jr/WBOY+SW90tPARMLQNXFx3NHkPuNwBRp50yZAcyU9TKBaB9zP6pjwwfAv0r7m9tfdx+gBkqavlG+DgEIiUKHvd49193b39e6bd3w/VdnLO67/jCAAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0
-    SU1FB+gHDA40BpbiKy8AAAEjSURBVBjTXZAxS4JhFIWfe5XqA6NIBSvK1pak2tqjvb8Q/oUImgPnqL/R7tbYVPCtUb46iKYoSUGK3tvQK0hnu889HO49Uq1eyOXVtRby+Q1VrSBSBpaBMRDMLG2GMLi/uzV5fXvPFIvFHRE5A0qAAVMgCyjQNbN6v99vyfBzVFTVc2ArprWAHrAJbANLQNts9qCqWom
-    JAB/u9uzuPXd/AjqRl1T1QIEyIBGuiuiJiJwCGeArcgHZy8Zn5loHcsBL5IWF3bLGOxf1DUxEZP+feazgAfAF+OOOAGuxDQB396BmloJ3F8w5EXbjOXN1zCzVZggDM68D7dhxEttJ/mZvu1u92QyDzGw25fDoeJQkK0FExiAKTIAhkJrZY2g0urXajf0CiVl4icFa+XEAAAAASUVORK5CYII=" /><span class="tooltiptext"><strong>Interesting Files</strong><br>are filenames that<br>may be sensitive.</span></div> </th>	 	        
-
-    </tr>
-    </thead>
-
-    <tbody>
-    <tr>
-        <td>1</td>
-        <td>1</td>
-        <td>1</td>
-        <td>1</td>
-    </tr> 
-    <tr>
-        <td>1</td>
-        <td>1</td>
-        <td>1</td>
-        <td>1</td>
-    </tr> 
-    </tbody>
-</table>
-<div id="pagination" style="margin:10px;"></div>
-</div>
-
-<!--  
 |||||||||| PAGE: Affected Networks
 -->
 
@@ -6465,46 +6278,35 @@ This section lists the most common share owners.
 <div style="margin-left:10px;margin-top:3px;width:95%;">
 Folder groups are SMB shares that contain the exact same file listing. Each folder group has been hashed so they can be quickly correlated. In some cases, shares with the exact same file listing may be related to a single application or process.  This information can help identify the root cause associated with the excessive privileges and expedite remediation.
 </div>
-						<div class="LargeCard" style="width:20%;">	
-						
-							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
-								<strong>Folder Groups Found</strong>
-							</div>												
-							<div class="LargeCardContainer" style="height:202px;text-align:center;padding-top: 20px;">	
-                                  <br><br><br>							
-								   <span class="percentagetext" style = "font-size: 50px; color:#f08c41; padding-top: 50px; ">                    
-									$FolderGroupChartCount                        								
-							</div>
+
+                    <div class="card" style="width: 20%">	
+	                    <div class="cardtitle" style="color:gray;font-size: 16px; font-weight: bold;">
+		                   Folder Groups Found
+	                    </div>		
+                                    <br><br>
+				                    <span class="percentagetext" style = "color:#f08c41;">                    
+					                    $FolderGroupChartCount &nbsp;                     
+				                    </span>	
+			                    <Br>
+                    </div>
 					
-					</div>
-					
-		            <div class="LargeCard" style="width:36%;">								
-							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
-								<strong>Folder Group Count by Risk Level</strong>
-							</div>
-							<div class="LargeCardContainer" align="center">											
+		            <div class="LargeCard" style="width:32.5%;">																		
 									<div class="chart-container">
 									<div id="ChartFGRiska"></div>
 										<div class="chart-controls"></div>
 									</div>								  							
-							</div>
 					</div>
 					
 				
 				
-					<div class="LargeCard" style="width:36%;">	
-							<div class="LargeCardTitle" style = "font-size: 15px; background-color: #07142A">
-								<strong>Exposed File Count by Category</strong>
-							</div>
-							<div class="LargeCardContainer" align="center" >											
+					<div class="LargeCard" style="width:32.5%;">											
 									<div class="chart-container">
 									<div id="ChartFGPageIF"></div>
 										<div class="chart-controls"></div>
 									</div>								  							
-							</div>
 					</div>
 					
-<div class="searchbar" style="margin-top:300px; text-align:left; display: flex;" >
+<div class="searchbar" style="margin-top:270px; text-align:left; display: flex;" >
         <input type="text" id="filterInputTwo" placeholder=" Search..." style="margin-top: 8px; height: 25px; font-size: 14px; padding-left:3px;margin-left: 10px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
         <div style="font-size:12;text-align: left;cursor: pointer;color:gray; margin-top: 13px; margin-left: 5px;" onmouseover="this.style.color='white';" onmouseout="this.style.textDecoration='';this.style.fontWeight='normal';this.style.color='gray';" onclick="document.getElementById('filterInputTwo').value = '';applyFiltersAndSort('foldergrouptable', 'filterInputTwo', 'filterCounterTwo', 'paginationfg');">Clear</div>
         <!--
@@ -6523,7 +6325,7 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
         <div id="filterCounterTwo" style="margin-top:5px;">Loading...</div>        
         <a style="font-size:11; margin-top: 5px; margin-left: 5px;" href="#" onclick="extractAndDownloadCSV('foldergrouptable', 1)">Export</a>
 </div>	
-<table class="table table-striped table-hover tabledrop" id="foldergrouptable" style="width:95%">
+<table class="table table-striped table-hover tabledrop" id="foldergrouptable" style="width:95%;">
   <thead>
     <tr>  
       <th onclick="sortTable('foldergrouptable',0,'number')" align="left" style="cursor: pointer;">Unique Share Names</th>
@@ -6744,8 +6546,8 @@ Below are some tips for getting started on prioritizing the remediation of share
 <div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>	
 <div style="min-height: 670px">	 
 	  <div style="margin-left:10px;margin-top:3px">	  
-	  This report summarizes the shares identified as being configured with excessive privileges.
-	  </div>
+	  The <a href="https://github.com/netspi/powerhuntshares">PowerHuntShares</a> audit script was run against the $TargetDomain Active Directory domain to collect SMB Share data, generate this HTML summary report, and generate the associated csv files that detail potentially excessive share configurations. Below is a the scan summary and an overview of how to use this report.
+	  </div>	
 
 <!--  
 |||||||||| CARD: SCAN SUMMARY
@@ -6754,72 +6556,70 @@ Below are some tips for getting started on prioritizing the remediation of share
  <a href="#" id="DashLink" onClick="radiobtn = document.getElementById('dashboard');radiobtn.checked = true;">
  <div class="card" style="position:absolute;margin-top:20px;width:270px;">	
 	<div class="cardtitle" align="left">
-		<div style="margin-left: 5px; margin-top: 15px;">Scan Summary</div>
+		<div style="margin-left: 5px; margin-top: 15px; color:#4A4A4A; font-size: 18px; font-weight: bold;">SCAN SUMMARY</div>
 		<img style="vertical-align:top;float: right;clear:both;" src="data:image/png;base64, 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IgogICB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOjQ5MjcwMDI1LWE0MDItNDY2Zi04ZTc3LWIxMjE5MzhjMTg1ZiIKICAgeG1wTU06T3JpZ2luYWxEb2N1bWVudElEPSJ4bXAuZGlkOmJjNmYyOGRlLWYxOTQtNDBhMS04YjlkLTRhOTBjMTMwMTc5NCIKICAgZGM6Rm9ybWF0PSJpbWFnZS9wbmciCiAgIEdJTVA6QVBJPSIyLjAiCiAgIEdJTVA6UGxhdGZvcm09IldpbmRvd3MiCiAgIEdJTVA6VGltZVN0YW1wPSIxNjQzMzAwNDg4OTM2NjQ4IgogICBHSU1QOlZlcnNpb249IjIuMTAuMjgiCiAgIHRpZmY6T3JpZW50YXRpb249IjEiCiAgIHhtcDpDcmVhdG9yVG9vbD0iR0lNUCAyLjEwIj4KICAgPHhtcE1NOkhpc3Rvcnk+CiAgICA8cmRmOlNlcT4KICAgICA8cmRmOmxpCiAgICAgIHN0RXZ0OmFjdGlvbj0ic2F2ZWQiCiAgICAgIHN0RXZ0OmNoYW5nZWQ9Ii8iCiAgICAgIHN0RXZ0Omluc3RhbmNlSUQ9InhtcC5paWQ6OWIzMWFhMDMtMTM5ZC00MTYwLWI2MzUtNDE5NTc2MjIxODFjIgogICAgICBzdEV2dDpzb2Z0d2FyZUFnZW50PSJHaW1wIDIuMTAgKFdpbmRvd3MpIgogICAgICBzdEV2dDp3aGVuPSIyMDIyLTAxLTI3VDEwOjIxOjI4Ii8+CiAgICA8L3JkZjpTZXE+CiAgIDwveG1wTU06SGlzdG9yeT4KICA8L3JkZjpEZXNjcmlwdGlvbj4KIDwvcmRmOlJERj4KPC94OnhtcG1ldGE+CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAg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" />
 		<span class="cardsubtitle2"><br></span>
-	</div>
-	<div class="cardcontainer" align="left">	
-	<span align="left">The scan context and run time information have been provided below.</span>			
+        <div style="text-align:left; font-size: 12px; margin-left: 5px;">The scan context and run time information have been provided below.</div>	
+	</div>		
 	<table>
 		 <tr>
 			<td class="cardsubtitle" style="vertical-align:top">Domain</td>
 			<td >					
-				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">$TargetDomain</span>				
+				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">ad.biola.edu</span>				
 			</td>
 		 </tr>
 		 <tr>
 			<td class="cardsubtitle" style="vertical-align:top">DC</td>
 			<td >					
-				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">$DomainController</span>				
+				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;"></span>				
 			</td>
 		 </tr>	
 		 <tr>
 			<td class="cardsubtitle" style="vertical-align: top;">Start Time</td>
 			<td>					
-				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">$StartTime</span>				
+				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">08/08/2024 11:35:16</span>				
 			</td>
 		 </tr>
 		 <tr>
 			<td class="cardsubtitle" style="vertical-align:top">Stop Time</td>
 			<td >					
-				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">$EndTime</span>				
+				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">08/08/2024 11:35:31</span>				
 			</td>
 		 </tr>
 		 <tr>
 			<td class="cardsubtitle" style="vertical-align:top">Duration</td>
 			<td >					
-				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">$RunTime</span>				
+				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">00:00:15.3406613</span>				
 			</td>
 		 </tr>
 		 <tr>
 			<td class="cardsubtitle" style="vertical-align:top">Src Host</td>
 			<td >					
-				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">$SourceHost</span>				
+				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">DESKTOP-AQP11SR</span>				
 			</td>
 		 </tr>
 		 <tr>
 			<td class="cardsubtitle" style="vertical-align:top">Src IPs</td>
 			<td >					
-				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">$SourceIps</span>				
+				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">192.168.208.1<br>172.17.128.1<br>192.168.33.1<br>192.168.40.1<br>10.128.1.99<br>192.168.1.38</span>				
 			</td>
 		 </tr>		
 		 <tr>
 			<td class="cardsubtitle" style="vertical-align:top">Src User</td>
 			<td >					
-				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">$username</span>				
+				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">netspi\ssutherland</span>				
 			</td>
 		 </tr>		 
 		</table> 		  
-	</div>
  </div>
 </a>
 
 <!-- home text -->
-<div style="margin-left:300px;"> 
+<div style="margin-left:320px;"> 
 <br>
 <div style="float:left;display:block;position:relative;">
 <h4>How do I use this report?</h4>
-Follow the guidance below to get the most out of this report.
+Follow the guidance below to get the most out of this report. Click each step for more information.
 <br><br>
 <button class="collapsible"><span style="color:#CE112D;">1</span> | Review Reports and Insights</button>
 <div class="content">
@@ -6885,6 +6685,9 @@ Invoke-HuntSMBShares -Threads 20 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\
 </div>
 </div>
 </div>
+<Br>
+<br>
+</div>
 <br>
 <script>
 
@@ -6941,7 +6744,17 @@ const ChartAceTypeOptions = {
   },
   xaxis: {
     categories: [$UniqueFileSystemRightsCategories]
-  }
+  },
+		  title: {
+			text: 'ACE Type Count',
+			align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
+			margin: 10, // Adjusts the space between the title and the chart
+			style: {
+			  fontSize: '16px',
+			  fontWeight: 'bold',
+			  color: 'gray'
+			}
+		  }
 };
 
 const ChartAceType = new ApexCharts(document.querySelector("#ChartAceType"), ChartAceTypeOptions);
@@ -6984,7 +6797,17 @@ const ChartAceRiskOptions = {
   },
   xaxis: {
     categories: ['Critical','High','Medium','Low']
-  }
+  },
+		  title: {
+			text: 'ACE Count by Risk Level',
+			align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
+			margin: 10, // Adjusts the space between the title and the chart
+			style: {
+			  fontSize: '16px',
+			  fontWeight: 'bold',
+			  color: 'gray'
+			}
+		  }
 };
 
 const ChartAceRisk = new ApexCharts(document.querySelector("#ChartAceRisk"), ChartAceRiskOptions);
@@ -7029,7 +6852,17 @@ const ChartAcesIFOptions = {
 		  },
         xaxis: {
           categories: categoriesc,
-        }
+        },
+		  title: {
+			text: 'Interesting File Count',
+			align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
+			margin: 10, // Adjusts the space between the title and the chart
+			style: {
+			  fontSize: '16px',
+			  fontWeight: 'bold',
+			  color: 'gray'
+			}
+		  }
         };
 
 const ChartAcesIF = new ApexCharts(document.querySelector("#ChartAcesIF"), ChartAcesIFOptions);
@@ -7072,7 +6905,17 @@ const ChartComputersDiscoOptions = {
   },
   xaxis: {
     categories: ['Ping Response','445Open','Host Shares','Non Default','Excessive Privs','Readable','Writable']
-  }
+  },
+		  title: {
+			text: 'Computer Count by Share Exposure',
+			align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
+			margin: 10, // Adjusts the space between the title and the chart
+			style: {
+			  fontSize: '16px',
+			  fontWeight: 'bold',
+			  color: 'gray'
+			}
+		  }
 };
 
 const ChartComputersDisco = new ApexCharts(document.querySelector("#ChartComputersDisco"), ChartComputersDiscoOptions);
@@ -7115,7 +6958,17 @@ const ChartComputersRiskOptionsa = {
   },
   xaxis: {
     categories: ['Critical','High','Medium','Low']
-  }
+  },
+		  title: {
+			text: 'Computer Count by Risk Level',
+			align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
+			margin: 10, // Adjusts the space between the title and the chart
+			style: {
+			  fontSize: '16px',
+			  fontWeight: 'bold',
+			  color: 'gray'
+			}
+		  }
 };
 
 const ChartComputersRisk = new ApexCharts(document.querySelector("#ChartComputersRisk"), ChartComputersRiskOptionsa);
@@ -7160,7 +7013,17 @@ const ChartFGPageIFOptions = {
 		  },
         xaxis: {
           categories: categoriesb,
-        }
+        },
+		  title: {
+			text: 'Exposed File Count by Category',
+			align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
+			margin: 10, // Adjusts the space between the title and the chart
+			style: {
+			  fontSize: '16px',
+			  fontWeight: 'bold',
+			  color: 'gray'
+			}
+		  }
         };
 
 const ChartFGPageIF = new ApexCharts(document.querySelector("#ChartFGPageIF"), ChartFGPageIFOptions);
@@ -7203,7 +7066,17 @@ const ChartFGRiskOptionsa = {
   },
   xaxis: {
     categories: ['Critical','High','Medium','Low']
-  }
+  },
+		  title: {
+			text: 'Folder Group Count by Risk Level',
+			align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
+			margin: 10, // Adjusts the space between the title and the chart
+			style: {
+			  fontSize: '16px',
+			  fontWeight: 'bold',
+			  color: 'gray'
+			}
+		  }
 };
 
 const ChartFGRiska = new ApexCharts(document.querySelector("#ChartFGRiska"), ChartFGRiskOptionsa);
@@ -7248,7 +7121,17 @@ const ChartSharePageIFOptions = {
 		  },
         xaxis: {
           categories: categoriesa,
-        }
+        },
+		  title: {
+			text: 'Exposed File Count by Category',
+			align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
+			margin: 10, // Adjusts the space between the title and the chart
+			style: {
+			  fontSize: '16px',
+			  fontWeight: 'bold',
+			  color: 'gray'
+			}
+		  }
         };
 
 const ChartSharePageIF = new ApexCharts(document.querySelector("#ChartSharePageIF"), ChartSharePageIFOptions);
@@ -7291,7 +7174,17 @@ const ChartShareNameRiskOptionsa = {
   },
   xaxis: {
     categories: ['Critical','High','Medium','Low']
-  }
+  },
+		  title: {
+			text: 'Share Name Count by Risk Level',
+			align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
+			margin: 10, // Adjusts the space between the title and the chart
+			style: {
+			  fontSize: '16px',
+			  fontWeight: 'bold',
+			  color: 'gray'
+			}
+		  }
 };
 
 const ChartShareNameRiska = new ApexCharts(document.querySelector("#ChartShareNameRiska"), ChartShareNameRiskOptionsa);
@@ -7350,7 +7243,17 @@ const ChartDashboardIFOptions = {
 		  },
         xaxis: {
           categories: categories,
-        }
+        },
+  title: {
+    text: 'Interesting Files Count',
+    align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
+    margin: 10, // Adjusts the space between the title and the chart
+    style: {
+      fontSize: '16px',
+      fontWeight: 'bold',
+      color: 'gray'
+    }
+  }
         };
 
 const ChartDashboardIF = new ApexCharts(document.querySelector("#ChartDashboardIF"), ChartDashboardIFOptions);
@@ -7393,6 +7296,16 @@ const ChartDashboardRiskOptions = {
   },
   xaxis: {
     categories: ['Critical','High','Medium','Low']
+  },
+  title: {
+    text: 'Share ACL Count by Risk Level',
+    align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
+    margin: 10, // Adjusts the space between the title and the chart
+    style: {
+      fontSize: '16px',
+      fontWeight: 'bold',
+      color: 'gray'
+    }
   }
 };
 
@@ -7537,7 +7450,17 @@ const chartOptions = {
                 return '' + val;
             }
         }
-    }
+    },
+		  title: {
+			text: 'File Name Category Distribution',
+			align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
+			margin: 10, // Adjusts the space between the title and the chart
+			style: {
+			  fontSize: '16px',
+			  fontWeight: 'bold',
+			  color: 'gray'
+			}
+		  }
 };
 
 const chart = new ApexCharts(document.querySelector("#chart"), chartOptions);
@@ -8333,12 +8256,9 @@ $HighestTypeCount = $TypeCounts | Sort-Object {[int]$_} -Descending | select -Fi
 
 # Start Table
 $HTML1 = @"
-<div class="LargeCard" style="width: 93%;">	
-	<div class="LargeCardTitle" style = "background-color: #07142A">
-		Share Creation Timeline<br>
-		<span class="LargeCardSubtitle2">for share ACLs configured with excessive privileges</span>
-	</div>
-	<div class="LargeCardContainer" align="center">			
+<div class="LargeCard" style="width: 90.75%;">	
+<span style="margin-left: 50px; font-size:18px;font-weight:bold;color:gray;">Share Creation Timeline</span><br>
+		<span style="margin-left: 50px;">for share ACLs configured with excessive privileges</span><br>		
 
 <div class="container" style="position: relative;float:left;bottom:0;left:0;height:195px;width:50px;">
   <div style="top:5;position:absolute;color:#757575;width:100%;font-size:10;" align="right">$HighestAclCountinMonth <span style="color: #ccc">-</span> </div>
@@ -8496,7 +8416,6 @@ foreach {
   
 
 $HTMLEND = @'
-</div>
 </div>
 </div>
 '@
@@ -8903,13 +8822,9 @@ function Get-CardLastModified
 
     # Start Table
     $HTML1 = @"
-    <div class="LargeCard" style="width: 93%;">	
-	    <div class="LargeCardTitle" style = "background-color: #07142A">
-		    Last Write Timeline<br>
-		    <span class="LargeCardSubtitle2">for share ACLs configured with excessive privileges</span>
-	    </div>
-	    <div class="LargeCardContainer" align="center">			
-
+    <div class="LargeCard" style="width: 90.75%;">	
+	    <span style="margin-left: 50px; font-size:18px;font-weight:bold;color:gray;">Last Modified Timeline</span><br>
+		<span style="margin-left: 50px;">for share ACLs configured with excessive privileges</span><br>	 		
     <div class="container" style="position: relative;float:left;bottom:0;left:0;height:195px;width:50px;">
       <div style="top:5;position:absolute;color:#757575;width:100%;font-size:10;" align="right">$HighestAclCountinMonth <span style="color: #ccc">-</span> </div>
       <div style="bottom: 98;position:absolute;color:#757575;border-bottom:1px solid #ccc;width:100%;font-size:10;padding-right:1px;" align="right">0 <span style="color: #ccc">-</span></div>
@@ -9068,7 +8983,6 @@ function Get-CardLastModified
     # End Page
 
     $HTMLEND = @'
-    </div>
     </div>
     </div>
 '@
