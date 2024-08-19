@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.108
+# Version: v1.110
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -2361,6 +2361,7 @@ function Invoke-HuntSMBShares
         # ----------------------------------------------------------------------
         # Create Folder Group Summary Information
         # ---------------------------------------------------------------------- 
+
         $RiskLevelFolderGroupCountCritical = 0
         $RiskLevelFolderGroupCountHigh     = 0
         $RiskLevelFolderGroupCountMedium   = 0
@@ -2388,12 +2389,100 @@ function Invoke-HuntSMBShares
              if($RiskLevelFileListGroupResult -eq "Critical"){$RiskLevelFolderGroupCountCritical = $RiskLevelFolderGroupCountCritical + 1}                         
         } 
 
-        # select all interance 
-
         # ----------------------------------------------------------------------
-        # Create ACL Summary Information
+        # Create ShareGraph Nodes and Edges
         # ---------------------------------------------------------------------- 
-        # TBD                          
+        $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+        Write-Output " [*][$Time] Creating ShareGraph nodes and edges..."  
+
+        # Create hashsets to track added nodes and edges
+        $addedNodes = @{}
+        $addedEdges = @{}
+
+        # Iterate through each row in the CSV
+        foreach ($row in $ExcessiveSharePrivsFinal) {
+
+            # Replace single backslashes with double backslashes for SharePath, ShareName, ShareOwner, and IdentityReference
+            $escapedSharePath = $row.SharePath -replace '\\', '\\'
+            $escapedShareName = $row.ShareName -replace '\\', '\\'
+            $escapedShareOwner = $row.ShareOwner -replace '\\', '\\'
+            $escapedIdentityReference = $row.IdentityReference -replace '\\', '\\'
+
+            # Create and add nodes if they don't exist
+            $ownerNode = "{ data: { id: '$escapedShareOwner', label: '$escapedShareOwner', type: 'owner', IdentitySID: '$($row.IdentitySID)' } },"
+            if (-not $addedNodes.ContainsKey($escapedShareOwner)) {
+                $ShareGraphNodes += $ownerNode
+                $addedNodes[$escapedShareOwner] = $true
+            }
+
+            $userNode = "{ data: { id: '$escapedIdentityReference', label: '$escapedIdentityReference', type: 'user', IdentitySID: '$($row.IdentitySID)' } },"
+            if (-not $addedNodes.ContainsKey($escapedIdentityReference)) {
+                $ShareGraphNodes += $userNode
+                $addedNodes[$escapedIdentityReference] = $true
+            }
+
+            $computerNode = "{ data: { id: '$($row.ComputerName)', label: '$($row.ComputerName)', type: 'computer', ipaddress: '$($row.IpAddress)' } },"
+            if (-not $addedNodes.ContainsKey($row.ComputerName)) {
+                $ShareGraphNodes += $computerNode
+                $addedNodes[$row.ComputerName] = $true
+            }
+
+            $folderGroupNode = "{ data: { id: '$($row.FileListGroup)', label: '$($row.FileListGroup)', type: 'Folder Group' } },"
+            if (-not $addedNodes.ContainsKey($row.FileListGroup)) {
+                $ShareGraphNodes += $folderGroupNode
+                $addedNodes[$row.FileListGroup] = $true
+            }
+
+            # Check if the ShareName node already exists
+            if (-not $addedNodes.ContainsKey($escapedShareName)) {
+                $shareNameNode = "{ data: { id: '$escapedShareName', label: '$escapedShareName', type: 'sharename' } },"
+                $ShareGraphNodes += $shareNameNode
+                $addedNodes[$escapedShareName] = $true
+            }
+
+            # Check if SharePath node already exists
+            if (-not $addedNodes.ContainsKey($escapedSharePath)) {
+                $sharePathNode = "{ data: { id: '$escapedSharePath', label: '$escapedSharePath', type: 'sharepath', RiskLevel: '$($row.RiskLevel)', RiskScore: '$($row.RiskScore)', creationDate: '$($row.CreationDate)', lastModifiedDate: '$($row.LastModifiedDate)', fileCount: $($row.FileCount), owner: '$escapedShareOwner', IsDefault: '$($row.IsDefault)', IsEmpty: '$($row.IsEmpty)', IsStale: '$($row.IsStale)', IsHR: '$($row.HasHR)', HasWrite: '$($row.HasWrite)', HasRead: '$($row.HasRead)', HasRCE: '$($row.HasRCE)', InterestingFiles: '$($row.HasIF)', ShareName: '$escapedShareName', ShareDescription: '$($row.ShareDescription)' } },"
+                $ShareGraphNodes += $sharePathNode
+                $addedNodes[$escapedSharePath] = $true
+            }
+
+            # Ensure the edge between ShareName and SharePath exists
+            $shareNameEdge = "{ data: { source: '$escapedShareName', target: '$escapedSharePath', label: 'child_of' } },"
+            if (-not $addedEdges.ContainsKey("child_of_$escapedShareName_$escapedSharePath")) {
+                $ShareGraphEdges += $shareNameEdge
+                $addedEdges["child_of_$escapedShareName_$escapedSharePath"] = $true
+            }
+
+            # Create and add other edges if they don't exist
+            $ownerEdge = "{ data: { source: '$escapedShareOwner', target: '$escapedSharePath', label: 'owner_of' } },"
+            if (-not $addedEdges.ContainsKey("owner_of_$escapedShareOwner_$escapedSharePath")) {
+                $ShareGraphEdges += $ownerEdge
+                $addedEdges["owner_of_$escapedShareOwner_$escapedSharePath"] = $true
+            }
+
+            $privilegeEdge = "{ data: { source: '$escapedIdentityReference', target: '$escapedSharePath', label: 'has_privilege_on', filesystemrights: '$($row.FileSystemRights)' } },"
+            if (-not $addedEdges.ContainsKey("has_privilege_on_$escapedIdentityReference_$escapedSharePath")) {
+                $ShareGraphEdges += $privilegeEdge
+                $addedEdges["has_privilege_on_$escapedIdentityReference_$escapedSharePath"] = $true
+            }
+
+            $folderGroupEdge = "{ data: { source: '$($row.FileListGroup)', target: '$escapedSharePath', label: 'hosted_on' } },"
+            if (-not $addedEdges.ContainsKey("hosted_on_$($row.FileListGroup)_$escapedSharePath")) {
+                $ShareGraphEdges += $folderGroupEdge
+                $addedEdges["hosted_on_$($row.FileListGroup)_$escapedSharePath"] = $true
+            }
+
+            $computerEdge = "{ data: { source: '$escapedSharePath', target: '$($row.ComputerName)', label: 'hosted_on' } },"
+            if (-not $addedEdges.ContainsKey("hosted_on_$escapedSharePath_$($row.ComputerName)")) {
+                $ShareGraphEdges += $computerEdge
+                $addedEdges["hosted_on_$escapedSharePath_$($row.ComputerName)"] = $true
+            }
+        }
+
+        # Reference $ShareGraphNodesFinal and $ShareGraphEdgesFinal in Cytoscape JavaScript   
+        $ShareGraphNodesFinal = $ShareGraphNodes | select -Unique
+        $ShareGraphEdgesFinal = $ShareGraphEdges | select -Unique                                        
 
         # ----------------------------------------------------------------------
         # Create Timeline Reports
@@ -3734,8 +3823,193 @@ $NewHtmlReport = @"
   <link rel="shortcut icon" src="data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyhpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuNi1jMTM4IDc5LjE1OTgyNCwgMjAxNi8wOS8xNC0wMTowOTowMSAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENDIDIwMTcgKE1hY2ludG9zaCkiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6QTQxQkNBNzA2OEI1MTFFNzlENkRCMzJFODY4RjgwNDMiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6QTQxQkNBNzE2OEI1MTFFNzlENkRCMzJFODY4RjgwNDMiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDpBNDFCQ0E2RTY4QjUxMUU3OUQ2REIzMkU4NjhGODA0MyIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDpBNDFCQ0E2RjY4QjUxMUU3OUQ2REIzMkU4NjhGODA0MyIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/Ptdv5vcAAAB9SURBVHjaYmTAAS4IajsCqeVQbqTB+6v7saljxKHZCUhtAWJOqNB3IPYBGrKPoAFYNDPgM4SRSM04DWEkQTNWQxhJ1IxhCCM0tLeSoBnZEG+QAS+ADHEG8sBLJgYKAciASKhzGMjwQiTlgUiVaKRKQqJKUqZKZiI1OwMEGAA7FE70gYsL4wAAAABJRU5ErkJggg==" >
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.21.0/cytoscape.min.js"></script>
+  <script src="https://kit.fontawesome.com/a076d05399.js"></script> <!-- Font Awesome -->
+  <script src="https://unpkg.com/dagre/dist/dagre.min.js"></script>
+  <script src="https://unpkg.com/cytoscape-dagre/cytoscape-dagre.js"></script>
+  <script src="https://unpkg.com/cytoscape-euler/cytoscape-euler.js"></script>
+  <script src="https://unpkg.com/klayjs/klay.js"></script>
+  <script src="https://unpkg.com/cytoscape-klay/cytoscape-klay.js"></script>  
   <title>Report</title>
   <style>    
+
+ .modern-input {
+            width: 150px;
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            background-color: #f9f9f9;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: box-shadow 0.2s ease;
+        }
+
+        .modern-input:focus {
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+            border-color: #25648C;
+            outline: none;
+        }
+
+        .modern-button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #fff;
+            background-color: #17405A;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            margin: 4px 2px;
+        }
+
+        .modern-button:hover {
+            background-color: #25648C;
+        }
+
+        .modern-dropdown {
+            width: 158px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            background-color: #f9f9f9;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .modern-dropdown-item {
+            display: block;
+            padding: 8px;
+            color: #333;
+            text-decoration: none;
+            transition: background-color 0.2s ease;
+        }
+
+        .modern-dropdown-item:hover {
+            background-color: #f0f0f0;
+        }
+
+        .modern-slider {
+            -webkit-appearance: none;
+            width: 100px;
+            height: 6px;
+            background: #ddd;
+            border-radius: 5px;
+            outline: none;
+            transition: background 0.3s ease;
+        }
+
+        .modern-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #07142A;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .modern-slider::-webkit-slider-thumb:hover {
+            background: #0056b3;
+        }
+
+        .modern-popup {
+            display: none;
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 40%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-left: 2px solid #ccc;
+            box-shadow: -5px 0 15px rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            overflow-y: auto;
+            z-index: 9999;
+            border-radius: 4px;
+        }
+
+        .modern-resizer {
+            width: 5px;
+            height: 100%;
+            background-color: #ddd;
+            position: absolute;
+            left: 0;
+            top: 0;
+            cursor: ew-resize;
+        }
+  
+     #cy {
+            width: 100%;
+            height: 100%;
+            display: block;
+            background-color: #f0f3f5;
+        }
+
+        /* The container <div> - needed to position the dropdown content */
+        .dropdown {
+            position: relative;
+            display: inline-block;
+            align-items: center;
+            text-align: left;
+        }
+
+        /* Dropdown Content (Hidden by Default) */
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #f1f1f1;
+            min-width: 120px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1;
+            right: 0px;
+            left: 0px;
+            top: 32px;
+        }
+
+        /* Links inside the dropdown */
+        .dropdown-content a {
+            color: black;
+            padding: 5px 5px;
+            text-decoration: none;
+            display: block;
+        }
+
+        .ToolBarButton {
+            --border-radius: 8px;
+            --color: #7F7F7F;
+            --padding-top: 0px;
+            --padding-bottom: 0px;
+            --padding-right: 11px;
+            --padding-left: 10px;
+            --padding-top: 12px;
+            --padding-bottom: 0px;
+            --margin-top: 2px;
+            --margin-bottom: 2px;
+            padding-top: 15px;
+            padding-bottom: 3px;
+            padding-right: 5px;
+            padding-left: 5px;
+        }
+
+        #nodemenu a:hover {
+            background-color: gray;
+            color: white; /* Optional: changes the text color to white for better contrast */
+        }
+
+        .slider-container {
+            text-align: center;
+        }
+
+        .slider {
+            width: 300px;
+            margin: 20px 0;
+        }
+
+        .slider-value {
+            font-size: 24px;
+            color: #333;
+        }
+
         .side-menu {			
 			box-shadow: 0 2px 4px 0;
 			width: 180px;
@@ -5017,6 +5291,7 @@ input[type="checkbox"]:checked::before {
         <label id="btnidentities" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('IdentityInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnidentities');">Identities</label>
 		<label id="noactionmenubar2" href="#" class="stuff" style="background-color: transparent;border-bottom: 0.25px dashed gray; opacity: 0.25; width:85%; margin-bottom: 6px; margin-top:-1px;border-radius: 0px;outline: none;"></label>			
         <label id="btnif" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF');updateLabelColors('tabs', 'btnif');">Interesting Files</label>			        			
+        <label id="btnShareGraph" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareGraph');radiobtn.checked = true;updateLabelColors('tabs', 'btnShareGraph');">ShareGraph</label>	
 		<label id="noactionmenuheader3"class="tabLabel" style="background-color: transparent;width:100%;color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:2px;font-weight:bolder;"><strong>Recommendations</strong></label>
 		<label id="btnexploit" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Attacks');radiobtn.checked = true;updateLabelColors('tabs', 'btnexploit');">Exploiting Access</label>		
 		<label id="btndetect" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Detections');radiobtn.checked = true;updateLabelColors('tabs', 'btndetect');">Detecting Attacks</label>
@@ -6342,6 +6617,1842 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
 <div id="paginationfg" style="margin:10px;"></div>
 </div>
 
+<!--  
+|||||||||| PAGE: ShareGraph
+-->
+
+<input class="tabInput" name="tabs" type="radio" id="ShareGraph"/> 
+<label class="tabLabel" onClick="updateTab('ShareGraph',false)" for="ShareGraph"></label>
+<div id="tabPanel" class="tabPanel">
+    <h2 style="margin-top: 6px; margin-left: 10px; margin-bottom: 17px;">ShareGraph</h2>
+    <div style="border-bottom: 1px solid #DEDFE1; margin-left: -200px; background-color: #f0f3f5; height: 5px; width: 120%; margin-bottom: 10px;"></div>
+    <div style="margin-left: 10px; margin-top: 7px;">
+		
+		<!-- Header Text, Selected Node -->
+		<div  style="width: 100%; display: flex; align-items: left; margin-left: -1px;">
+			<div style="flex: 1;">
+			This section provides an interactive graph that can be used to explore the computer, share, files, and identity relationships. This functionality is still experimental.
+			</div>
+			<div style="text-align: right; margin-right: 10px;color:gray;">
+			&nbsp;Selected Node:&nbsp;<span id="selected-node" style="color:gray;">None</span><br>
+				<div id="buttonsright" style="text-align: right;">						
+					<span id="node-count">Nodes: 0</span>&nbsp;&nbsp;
+					<span id="edge-count">Edges: 0</span>  					
+				</div>
+			</div>
+		</div>
+		
+		<!-- SHAREGRAPH CONTAINER START -->
+		<div  style="width: 100%; display: flex;">
+		
+			<!-- SHAREGRAPH TOOLBAR -->
+			<div style="width: 179px; border: .5px solid lightgray; border-radius: 6px; padding: 10px; background-color: lightgray; margin-top: -10px;">
+				
+				<!-- Search and shortest path -->
+				<input type="text" id="search-input" placeholder="Search nodes..." class="modern-input" style="width: 180px;">
+				<input type="text" id="src-node" placeholder="src-node..." class="modern-input" style="width: 180px;">
+				<input type="text" id="dst-node" placeholder="dst-node..." class="modern-input" style="width: 180px;">
+				<button id="find-path" class="modern-button" style="width: 176px;">Find Path</button>			
+				<br>
+
+				<!-- Configuration Options -->
+				<select id="layout-select" class="modern-dropdown" style="width: 180px;">
+					<option value="breadthfirst">Layout</option>
+					<option value="grid">Grid</option>
+					<option value="random">Random</option>
+					<option value="circle">Circle</option>
+					<option value="concentric">Concentric</option>
+					<option value="breadthfirst">Breadthfirst</option>
+					<option value="cose">Cose</option>
+					<option value="dagre">Dagre</option>
+					<option value="euler">Euler</option>
+					<option value="klay">Klay</option>
+					<option value="hierarchical">Hierarchical</option>
+					<option value="organic">Organic</option>
+					<option value="BlastZone">BlastRadius</option>
+				</select>
+				<select id="curve-style-select" class="modern-dropdown" style="width: 180px;">
+					<option value="bezier">Line Style</option>
+					<option value="bezier">Bezier</option>
+					<option value="unbundled-bezier">Unbundled Bezier</option>
+					<option value="haystack">Haystack</option>
+					<option value="segments">Segments</option>
+					<option value="straight">Straight</option>
+					<option value="taxi">Taxi</option>
+					<option value="straight-triangle">Straight-Triangle</option>
+				</select>
+				<label><input type="checkbox" id="toggle-edge-labels" checked> Show Edge Labels</label>
+				<label><input type="checkbox" id="toggle-node-labels" checked> Show Node Labels</label>
+				<label><input type="checkbox" id="toggle-visibility"> Hide Unselected</label>
+
+				<br><div style="margin-bottom: 3px;margin-top: 3px;">Blast Radius</div>
+				<input type="range" min="0" max="5" value="0" class="modern-slider" id="mySlider" style="width:160px;">&nbsp;<span id="sliderValue">0</span>
+				<br><br>					 
+	
+				<!-- Save, Reset, Show All, Zoom Buttons -->
+				<div id="buttonsleft" style="margin-left:2">
+						<button id="save-button" class="modern-button" style="width: 170px;" style="font-size: 11px;">Save as Image</button><br>
+						<button id="clear-selection" class="modern-button" onclick="ResetGraph();" style="font-size: 11px">&nbsp;&nbsp;&nbsp;Reset&nbsp;&nbsp;&nbsp;</button>
+						<button id="removeFadedClassButton" class="modern-button" style="font-size: 11px">&nbsp;Show All&nbsp;&nbsp;</button><br>
+						<button id="zoom-in" class="modern-button" style="font-size: 11px">&nbsp;Zoom In&nbsp;</button>
+						<button id="zoom-out" class="modern-button" style="font-size: 11px">Zoom Out&nbsp;</button>						
+				</div>						
+			</div>
+			
+			<!-- Cytoscape Canvas -->
+			<div id="cy" style="flex: 3; height: 600px; margin-top: 10px;">
+			</div>		
+		</div>		
+		
+			<!-- Hidden Menu - right-click -->
+				<label href="#" class="dropbtn" id="tbrearrange" onClick="">
+					<div id="nodemenu" class="dropdown-content">
+						<a href="#" id="select-node" class="" style="text-decoration:none; font-weight: normal;">Select</a>
+						<a href="#" class="" style="text-decoration:none; font-weight: normal;">Center</a>
+						<a href="#" class="" style="text-decoration:none; font-weight: normal;">Expand</a>
+						<a href="#" id="Show" class="" style="text-decoration:none; font-weight: normal;">Show</a>
+						<a href="#" class="" style="text-decoration:none; font-weight: normal;">Hide</a>
+						<a href="#" class="" style="text-decoration:none; font-weight: normal;">View</a>
+						<a href="#" id="setspsrc" class="" style="text-decoration:none; font-weight: normal;">Set Src</a>
+						<a href="#" id="setspdst" class="" style="text-decoration:none; font-weight: normal;">Set Dest</a>
+					</div>
+				</label>	
+						
+				<!-- Hidden Menu - node data  -->
+				<div id="popup" class="modern-popup">
+					<div id="resizer" class="modern-resizer"></div>
+					<h2 id="popup-title">Node Details</h2>
+					<p id="popup-content">Content goes here...</p>
+					<button id="close-popup" class="modern-button">Close</button>
+				</div>
+							
+				<!-- Hidden Menu - edge data -->
+				<div id="popup2" class="modern-popup">
+					<div id="resizer2" class="modern-resizer"></div>
+					<h2 id="popup-title">Edge Details</h2>
+					<p id="popup-content">Content goes here...</p>
+					<button id="close-popup" class="modern-button">Close</button>
+				</div>			
+	</div>
+	   <script>
+	   	   
+        // Custom Organic Layout
+        (function() {
+            'use strict';
+
+            function OrganicLayout(options) {
+                this.options = options;
+            }
+
+            OrganicLayout.prototype.run = function() {
+                var cy = this.options.cy;
+                var nodes = cy.nodes();
+                var edges = cy.edges();
+                var iterations = this.options.iterations || 1000;
+                var coolingFactor = this.options.coolingFactor || 0.95;
+                var area = cy.width() * cy.height();
+                var maxDisplacement = Math.sqrt(area) / 20;  // Decrease displacement to bring nodes closer
+
+                nodes.positions(function() {
+                    return {
+                        x: Math.random() * cy.width(),
+                        y: Math.random() * cy.height()
+                    };
+                });
+
+                for (var iteration = 0; iteration < iterations; iteration++) {
+                    var displacements = {};
+
+                    nodes.forEach(function(node) {
+                        displacements[node.id()] = { x: 0, y: 0 };
+                    });
+
+                    // Apply repulsive forces
+                    nodes.forEach(function(nodeA) {
+                        nodes.forEach(function(nodeB) {
+                            if (nodeA.id() === nodeB.id()) return;
+
+                            var deltaX = nodeA.position('x') - nodeB.position('x');
+                            var deltaY = nodeA.position('y') - nodeB.position('y');
+                            var distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY) + 0.1;
+                            var repulsiveForce = area / (distance * distance);
+
+                            displacements[nodeA.id()].x += (deltaX / distance) * repulsiveForce;
+                            displacements[nodeA.id()].y += (deltaY / distance) * repulsiveForce;
+                        });
+                    });
+
+                    // Apply attractive forces
+                    edges.forEach(function(edge) {
+                        var source = edge.source();
+                        var target = edge.target();
+
+                        var deltaX = source.position('x') - target.position('x');
+                        var deltaY = source.position('y') - target.position('y');
+                        var distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY) + 0.1;
+                        var attractiveForce = (distance * distance) / area;
+
+                        displacements[source.id()].x -= (deltaX / distance) * attractiveForce;
+                        displacements[source.id()].y -= (deltaY / distance) * attractiveForce;
+
+                        displacements[target.id()].x += (deltaX / distance) * attractiveForce;
+                        displacements[target.id()].y += (deltaY / distance) * attractiveForce;
+                    });
+
+                    // Limit displacement and update positions
+                    nodes.forEach(function(node) {
+                        var displacement = displacements[node.id()];
+                        var distance = Math.sqrt(displacement.x * displacement.x + displacement.y * displacement.y);
+
+                        if (distance > 0) {
+                            var limitedDisplacement = Math.min(maxDisplacement, distance);
+
+                            node.position({
+                                x: node.position('x') + (displacement.x / distance) * limitedDisplacement,
+                                y: node.position('y') + (displacement.y / distance) * limitedDisplacement
+                            });
+                        }
+                    });
+
+                    maxDisplacement *= coolingFactor;
+                }
+
+                cy.fit();
+                cy.emit('layoutready');
+                cy.emit('layoutstop');
+            };
+
+            cytoscape('layout', 'organic', OrganicLayout);
+        })();
+
+        // Custom Hierarchical Layout
+        (function() {
+            'use strict';
+
+            function HierarchicalLayout(options) {
+                this.options = options;
+            }
+
+            HierarchicalLayout.prototype.run = function() {
+                var cy = this.options.cy;
+                var nodes = cy.nodes();
+                var edges = cy.edges();
+
+                // Initialize node levels and positions
+                var levels = [];
+                var nodeLevels = {};
+
+                nodes.forEach(function(node) {
+                    var level = calculateNodeLevel(node, edges);
+                    nodeLevels[node.id()] = level;
+
+                    if (!levels[level]) {
+                        levels[level] = [];
+                    }
+                    levels[level].push(node);
+                });
+
+                // Calculate positions for nodes within each level
+                var maxLevel = levels.length;
+                var levelHeight = cy.height() / maxLevel;
+                var nodeWidth = cy.width() / nodes.length;
+
+                levels.forEach(function(nodesAtLevel, levelIndex) {
+                    var y = (levelIndex + 0.5) * levelHeight;
+                    var currentX = 0;
+
+                    nodesAtLevel.forEach(function(node, nodeIndex) {
+                        // Consider node dimensions for spacing
+                        var width = node.width();
+                        currentX += width / 2;
+                        node.position({ x: currentX, y: y });
+                        currentX += width / 2 + 20; // Add extra spacing between nodes
+                    });
+                });
+
+                cy.fit();
+                cy.emit('layoutready');
+                cy.emit('layoutstop');
+            };
+
+            function calculateNodeLevel(node, edges) {
+                var incomingEdges = edges.filter(function(edge) {
+                    return edge.target().id() === node.id();
+                });
+
+                if (incomingEdges.length === 0) {
+                    return 0; // Root node level
+                } else {
+                    var parentLevels = incomingEdges.map(function(edge) {
+                        return calculateNodeLevel(edge.source(), edges);
+                    });
+
+                    return Math.max.apply(Math, parentLevels) + 1;
+                }
+            }
+
+            cytoscape('layout', 'hierarchical', HierarchicalLayout);
+        })();
+
+        // Custom BlastZone Layout
+        (function() {
+            'use strict';
+
+            function BlastZoneLayout(options) {
+                this.options = options;
+            }
+
+            BlastZoneLayout.prototype.run = function() {
+                var cy = this.options.cy;
+                var nodes = cy.nodes();
+                var selectedNode = cy.getElementById(this.options.centerNode);
+
+                if (!selectedNode || selectedNode.empty()) {
+                    console.error("Center node not found or not provided.");
+                    return;
+                }
+
+                var BlastZones = {};
+
+                nodes.forEach(function(node) {
+                    var dijkstra = cy.elements().dijkstra(selectedNode, function(edge) {
+                        return 1;
+                    });
+                    var distance = dijkstra.distanceTo(node);
+                    BlastZones[node.id()] = distance;
+                });
+
+                var maxDistance = Math.max(...Object.values(BlastZones));
+
+                var centerX = cy.width() / 2;
+                var centerY = cy.height() / 2;
+
+                var animatePositions = [];
+
+                selectedNode.position({ x: centerX, y: centerY });
+
+                for (var i = 1; i <= maxDistance; i++) {
+                    var nodesAtDistance = nodes.filter(function(node) {
+                        return BlastZones[node.id()] === i;
+                    });
+
+                    var angleStep = (2 * Math.PI) / nodesAtDistance.length;
+                    var radius = i * this.options.radiusStep;
+
+                    nodesAtDistance.forEach(function(node, index) {
+                        var angle = index * angleStep;
+                        var x = centerX + radius * Math.cos(angle);
+                        var y = centerY + radius * Math.sin(angle);
+
+                        animatePositions.push({
+                            node: node,
+                            position: { x: x, y: y }
+                        });
+                    });
+                }
+
+                cy.batch(function() {
+                    animatePositions.forEach(function(anim) {
+                        anim.node.animate({
+                            position: anim.position
+                        }, {
+                            duration: this.options.animationDuration || 500,
+                            easing: this.options.easing || 'ease-out'
+                        });
+                    }.bind(this));
+                }.bind(this));
+
+                cy.fit();
+                cy.emit('layoutready');
+                cy.emit('layoutstop');
+            };
+
+            cytoscape('layout', 'BlastZone', BlastZoneLayout);
+
+        })();
+
+        // Declare cy as a global variable
+        var cy;
+
+        // cy creation function 
+        function initializeCytoscape(containerId) {
+            var cy = cytoscape({
+                container: document.getElementById(containerId),
+
+                elements: [
+
+                // Nodes
+
+                $ShareGraphNodesFinal
+				
+                // Edges
+
+				$ShareGraphEdgesFinal
+				
+                ],
+
+                style: [
+                    {
+                        selector: 'node[type="file"]',
+                        style: {
+                            'shape': 'round-rectangle',
+                            'background-opacity': '0.35',
+                            'background-color': '#8C5725',
+                            'border-color': '#ababab',
+                            'border-width': 4,
+                            'background-image': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAuUlEQVR4nO3WsQ3CABBDUa+ARMH+89DQsM6noYgsSu5MkC2d0ubrFYnUnWsM3lPS7R9C2Ixh8B6H5/XMIRdJ9y0ZBk+bMQyHrMWwELISw1LIeAyLIaMx2yFjMYmQkZhUyNdjkiF6f/GPfwA/GTIV/3HpF6chtrQAFbGlBaiILS1ARWxpASpiSwtQEVtagIrY0gJUxJYWoCK2tAAVsaUFqIgtLUBFbGkBKmJLC1ARW1qAitjSAlSkU3Yv1GHq3C0e2MQAAAAASUVORK5CYII=', // File icon
+                            'background-fit': 'none',
+                            'label': 'data(labelWithDegree)',
+                            'color': '#000',
+                            'text-valign': 'bottom',
+                            'text-halign': 'center',
+                            'font-size': '12px',
+                            'width': '60px',
+                            'height': '60px',
+                            'text-margin-y': '10px' // Move label down by 10px
+                        }
+                    },
+                    {
+                        selector: 'node[type="Folder Group"]',
+                        style: {
+                            'shape': 'round-rectangle',
+                            'background-opacity': '0.35',
+                            'background-color': '#8C2F25', // Distinct blue color for Folder Group
+                            'border-color': '#ababab',
+                            'border-width': 4,
+                            'background-image': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAACXBIWXMAAAsTAAALEwEAmpwYAAAA4klEQVR4nO2XMQqDQBBFX58cISmDpV1yTq8h4qnSCtEq3QbBNAkIsxnd1fwHvxR5zAx+QQghtswZaIABCAtnfEcLFEtIdCsIfGZ858lTpEkg8U7tKTIkFOk9RULiSEQTQauFbsRC7Mo8gQq4AQcyIETkDpRkRoiYRJljRwvGVLl2tGDMNdeOFow55trRgjGxz3nnC4mgiaDV4h9uZNiLSLsXkcJYNbIVYeou9fTF3LRIDBJBE0GrNYduBN0IupE5Uv7qPnDE2tE803iKWDuaVzrggjOWjvZr+mkS7hJCCMFqvAAc6in79kAVQAAAAABJRU5ErkJggg==',
+                            'background-fit': 'none',
+                            'label': 'data(labelWithDegree)',
+                            'color': '#000',
+                            'text-valign': 'bottom',
+                            'text-halign': 'center',
+                            'font-size': '12px',
+                            'width': '60px',
+                            'height': '60px',
+                            'text-margin-y': '10px' // Move label down by 10px
+                        }
+                    },
+                    {
+                        selector: 'node[type="sharename"]',
+                        style: {
+                            'shape': 'round-rectangle',
+                            'background-opacity': '0.35',
+                            'background-color': '#8C2F25', // Distinct blue color for Folder Group
+                            'border-color': '#ababab',
+                            'border-width': 4,
+                            'background-image': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAACXBIWXMAAAsTAAALEwEAmpwYAAAB7klEQVR4nO2ZzStEURjGH1+TKGWpJgtWGmUnSf6ASZKdr62ErJGNjSG2UmRPNpYKO6WQnSIbm9GkbERmYby69d7pzLjijTHPTPepX+fcmc3z636ee4EwYcJ8lwiAFQD3AMTAHYB+EGXZKODyCqADJEn+QsTjCkAtCCJ/wDrKRET+kaSeDpFSFxElUS4i9+UiIj8ROQYwAKAFQDVKJJKHdyJVoAQjDqcAKlVkVu/eGYJDSH5yBXP/GFW5SYKSYr2CuT80q8glQTkx7pnsxqNK1AF4IygnBlKuyJGKdBEUEyMHrsiaikwQFBMj3jIkuzGmIhsExcTIsCvSriKnBMXESMwXSQOoAVAF4JmgmBhI+08f3sa57o02gmJi5MK9s2/pfIigmBjZdkWm/2D9XixmXJEenR8QFBMjvb7IO4AGnacIiokBr3ujL3KrYxNBMTHiPZ1ns6djnKCYGNl3RRZ0nCcoJkYWXZE+HXcJiomRQVckquMNQTEx0oq81JMvaSWAJ12W56SboJiVEwRkiqCYlcD3zZsExayMB4mcERSz0pkv4a1BXgiKWcjoBSonMYJiVq6DDqsRgmJWdoJEVgmKWZkLEjkkKGYlHiTyQFDMSrQQX3WL/qXKT4KgnIUlfJGIyrDvmaT2/PQ1N0wYFC4f9KbkCFRHU0gAAAAASUVORK5CYII=',
+                            'background-fit': 'none',
+                            'label': 'data(labelWithDegree)',
+                            'color': '#000',
+                            'text-valign': 'bottom',
+                            'text-halign': 'center',
+                            'font-size': '12px',
+                            'width': '60px',
+                            'height': '60px',
+                            'text-margin-y': '10px' // Move label down by 10px
+                        }
+                    },
+                    {
+                        selector: 'node[type="sharepath"]',
+                        style: {
+                            'shape': 'round-rectangle',
+                            'background-opacity': '0.35',
+                            'background-color': '#2C73D2',
+                            'border-color': '#ababab',
+                            'border-width': 4,
+                            'background-image': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAyElEQVR4nO2ZsQ0CQQwEJ3qJbiiFroAKKAhRAykB9zWQLUK6APEE/4Cw77Qjbe7dtSODMWYuA7AHRkAzdAE2JGQ308CzbsCaZJQPjDx0BlYkQl/oQCdG9GeVegpD60ZUte3FyNiLEXVtxGTjlGBNtFDHd0a6uRE1qgnRA9mIGyF+neQbIT55uRHi05YbIT5huZFKdLJu5JXoZN2IGyGXJkQPZCNuhPh1km+E+OTlRmi0kZJgKC3U9Vfv6ZSvt6GaKa0/Q40xTLgDAd+imkMA/j4AAAAASUVORK5CYII=',
+                            'background-fit': 'none',
+                            'label': 'data(labelWithDegree)',
+                            'color': '#000',
+                            'text-valign': 'bottom',
+                            'text-halign': 'center',
+                            'font-size': '12px',
+                            'width': '60px',
+                            'height': '60px',
+                            'text-margin-y': '10px' // Move label down by 10px
+                        }
+                    },
+                    {
+                        selector: 'node[type="sharepath"][RiskLevel="High"]',
+                        style: {
+                            'shape': 'round-rectangle',
+                            'background-opacity': '.60',
+                            'background-color': 'red',
+                            'border-color': '#ababab',
+                            'border-width': 4,
+                            'background-image': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAyElEQVR4nO2ZsQ0CQQwEJ3qJbiiFroAKKAhRAykB9zWQLUK6APEE/4Cw77Qjbe7dtSODMWYuA7AHRkAzdAE2JGQ308CzbsCaZJQPjDx0BlYkQl/oQCdG9GeVegpD60ZUte3FyNiLEXVtxGTjlGBNtFDHd0a6uRE1qgnRA9mIGyF+neQbIT55uRHi05YbIT5huZFKdLJu5JXoZN2IGyGXJkQPZCNuhPh1km+E+OTlRmi0kZJgKC3U9Vfv6ZSvt6GaKa0/Q40xTLgDAd+imkMA/j4AAAAASUVORK5CYII=',
+                            'background-fit': 'none',
+                            'label': 'data(labelWithDegree)',
+                            'color': '#000',
+                            'text-valign': 'bottom',
+                            'text-halign': 'center',
+                            'font-size': '12px',
+                            'width': '60px',
+                            'height': '60px',
+                            'text-margin-y': '10px' // Move label down by 10px
+                        }
+                    },
+                    {
+                        selector: 'node[type="computer"]',
+                        style: {
+                            'shape': 'round-rectangle',
+                            'border-radius': '50%',
+                            'background-opacity': '0.35',
+                            'background-color': '#8C8325',
+                            'border-color': '#ababab',
+                            'border-width': 4,
+                            'background-image': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAz0lEQVR4nO2YTQrCMBhE3z2sFxHdK15X6t7Si7TeY6TQhQqS+BOS1Hkwy8I3/V4KDRhj3qUHVHi6mCKqJEFyDygXeWLRG9mQj+0vi+RGLoI3kgRZLaxWEmS1sFpJkNXCaiVBVgurlQRZLR7fwvSXloudb1FY8OWDCkyQsYAhFcgQrgGHwssMwD6miCmNI3AtQCG9yDjrH2Qxh12VJEjuAU/ACmiANkWRb4kt0tw9s3YR8qvVzluZtnGu+YwoMi6i2jbSFTCkArl88tk05p+5AaKM/C7vSn5eAAAAAElFTkSuQmCC',
+                            'background-fit': 'none',  // Ensures the image fits within the node's bounds
+                            'background-position': 'center center', // Centers the image both horizontally and vertically
+                            'label': 'data(labelWithDegree)',
+                            'color': '#000',
+                            'text-valign': 'bottom',
+                            'text-halign': 'center',
+                            'font-size': '12px',
+                            'width': '60px',
+                            'height': '60px',
+                            'text-margin-y': '10px' // Move label down by 10px
+                        }
+                    },
+                    {
+                        selector: 'node[type="owner"]',
+                        style: {
+                            'shape': 'round-rectangle',
+                            'background-opacity': '0.35',
+                            'background-color': '#258C71',
+                            'border-color': '#ababab',
+                            'border-width': 4,
+                            'background-image': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAACXBIWXMAAAsTAAALEwEAmpwYAAAC8UlEQVR4nO2ZPWgUURDHf4kXLGKCWpy1goUaBLGwUAtRoygYkGilFgG7YIwWFqIggVioiBAbBRtP7axE7Y0fp0IETSIxYEQQVBT8KMwpXhiYhWW5zb3dfeuNcD8Y2N3bt7v/2zfzZmahSZMmjWI5cBAYAi4Dl4CTwEaghf+A7cBjoDqPjQJLMcxZ4G8dEYG9A64AazFGv6OAqFWAPoywBPiWUojYb2ANBjiQQURgVzHADQ9CXmOAsgchf4CFjRYy5UGIWEejhUx7EtLeaCGPPIiQqNdwbnsQMoYBzngQMoIBdnsQsg8DrPMgZD0GuO9ByD0M8MqDkJcY4KYHIdcxwNYEdUgtk7FbMMKODEK6McZ0ChFvMMi5FELOY5AVwGzCynAlRhlKIETeoFlagHHHLsoCjFN2ECLFmHmeOgh5W2NcG9ALlIBJ4CfwQ7dL+pucYypleR8Z0+NYMk/publTAD45PNAtPb9VO5TBcfkTjmqfq11NtgdDvieZwLCOzY1TDiJmgMV6fiBCwnZ/nQAgvx3R7mRVxeTSbbzmmHMd0jE9er6I2JawUV7RsXt8CVgGnAY+Oq4dMzr92kI+IW8iKQMhn8kUADZpJPmVMCW5qON7Qz6RZj0pABN6DblW4sVur3Y8qiltp16rpPvi2Ek+Ho0BD3T/WJpaZgPwIoOAwCQfQ3u9sr/a8f6bgc865oke60raNz6sCV7VYzfxe4026SjwDChG7t8XSkbvAJ16vEOPybXqsj9j9Re1znmEPA/5TVF950Ik5Q/7k7MQ+c731aMIsVWRqRX+wFPUJkQg5q5uz8Z81XKeWic8ixDbFXF2WbGJEVPVLEH8oxbHXZ39YQ5CRiLhd7xG+C2qr5Q1UsWF30nX8PslByEfNEcKL4iSdiRl0NeC6IMgRalo2uFKdx4pSlaG9Z+VBxvQKRNHQd9ErkljWlr1gYIQP64rtkSkRWpd6tgT/zKNT4tMEdfCysx0iiNa6kqZKyZvQkJsbKk7BzC/6XzIHQYsAAAAAElFTkSuQmCC', // User icon
+                            'background-position': 'center center',
+                            'background-repeat': 'no-repeat',
+                            'background-fit': 'none',
+                            'label': 'data(labelWithDegree)',
+                            'color': '#000',
+                            'text-valign': 'bottom',
+                            'text-halign': 'center',
+                            'font-size': '12px',
+                            'width': '60px',
+                            'height': '60px',
+                            'text-margin-y': '10px' // Move label down by 10px
+                        }
+                    },
+                    {
+                        selector: 'node[type="user"]',
+                        style: {
+                            'shape': 'round-rectangle',
+                            'background-opacity': '0.35',
+                            'background-color': '#8C2564',
+                            'border-color': '#ababab',
+                            'border-width': 4,
+                            'background-image': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAACXBIWXMAAAsTAAALEwEAmpwYAAABtklEQVR4nO2ZPShFYRjHf5dEsriSrAwWGViUkiQMRh8Li7JZZVDko5QySBYGCzIZZRZyDcrHjUSxiluyuK7u0VvnLqeLc895OM/N+dV/fHuf3zmn932f80JISEhQ1ABDwBywAiwBE0ALECEP6ASOAeubHABRFDMPpH+QyOQBWAUaUMaoSwFn3oFhlFAOvHgUMUkB9Shg0IdEJmsoYFNA5BoFxAREPoDioEVuBERMyoIWuRUSKQ1a5EhAwqx6gbMjIHKKAqYFRJZRQI+ASC8KaBQQaUIBewIiuyjgUkDkAgVsCYhsoICOHPqQbDFj21FCtw+RLpRx50HCHG/UsehBxIxRRy2QzLEzrEMps/n+NjJEXO4r90Ahyom5EImTB5y4ELkiD4i7/EGnmiLg0YXIK1CCYqZyWLUWUEgUWPdw5jL/xCpRQBUw6fJz+ipPwAxQHYRAq/0033wIOJMEtoG2375DKbB76zPB4r/KOdBvzylK8x8JWFmEzNwijNgHPCugpOwafDHgs/uTShro83OB86xAwrKTACq8iIwrKN5yZMyLyKGCwi1H9r2IJBQUbmXZPENCQv4rn6Ej5y2yxDtPAAAAAElFTkSuQmCC', // User icon
+                            'background-position': 'center center',
+                            'background-repeat': 'no-repeat',
+                            'background-fit': 'none',
+                            'label': 'data(labelWithDegree)',
+                            'color': '#000',
+                            'text-valign': 'bottom',
+                            'text-halign': 'center',
+                            'font-size': '12px',
+                            'width': '60px',
+                            'height': '60px',
+                            'text-margin-y': '10px' // Move label down by 10px
+                        }
+                    },
+                    {
+                        selector: 'node:selected',
+                        style: {
+                            //'border-color': '#F56A00', // color on node selection
+                            'border-color': '#F56A00', // color on node selection
+                            'border-width': 4,
+                        }
+                    },
+                    {
+                        selector: 'edge',
+                        style: {
+                            'width': 2,
+                            'line-color': 'lightgray',
+                            'curve-style': 'bezier',
+                            'label': 'data(label)',  // Ensure this is present
+                            'text-opacity': 1,
+                            'font-size': 12,
+                            'text-margin-y': -10,  // Adjust as needed to position the label correctly
+                        }
+                    }
+                ],
+
+                layout: {
+                    name: 'breadthfirst',
+                    directed: true,
+                    padding: 10,
+                    spacingFactor: 1.5,
+                    fit: true,
+                    animate: true,
+                }
+            });
+
+            return cy;
+        };
+
+        // #################################
+        // START CYTOSCAPE
+        // #################################
+
+        cy = initializeCytoscape('cy');
+		
+        // #################################
+        // RESET CYTOSCAPE
+        // #################################
+
+        // Function to reset the graph
+        function ResetGraph() {
+            // Destroy the current Cytoscape instance
+            cy.destroy();
+
+            // Reinitialize the Cytoscape instance and reassign it to the global variable
+            cy = initializeCytoscape('cy');
+
+            // Reinitialize event listeners
+            StartCytoListener();
+
+            // Set the 'Show Edge Labels' checkbox to checked
+            document.getElementById('toggle-edge-labels').checked = true;
+
+            // Set the 'Show Node Labels' checkbox to checked
+            document.getElementById('toggle-node-labels').checked = true;
+
+            // Set the 'Hide Unselected' checkbox to unchecked
+            document.getElementById('toggle-visibility').checked = false;
+
+            // Set the search input value to an empty string
+            document.getElementById('search-input').value = '';
+
+            // Set the src input value to an empty string
+            document.getElementById('src-node').value = '';
+
+            // Set the dst input value to an empty string
+            document.getElementById('dst-node').value = '';
+
+            // Set the 'Curve Style' dropdown to the default option
+            document.getElementById('curve-style-select').selectedIndex = 0;
+
+            // Set the 'Layout' dropdown to the default option
+            document.getElementById('layout-select').selectedIndex = 0;
+
+            // Set Selected to ""
+            document.getElementById('selected-node').innerText = '';
+        }
+
+        // #################################
+        // START CYTOSCAPE EVENT LISTENERS
+        // #################################
+
+        function StartCytoListener() {
+
+            // Calculate and set degree for each node, and update label with degree count
+            cy.nodes().forEach(function (node) {
+                var degree = node.degree();
+                var labelWithDegree = node.data('label') + ' (' + degree + ')';
+                node.data('degree', degree);
+                node.data('labelWithDegree', labelWithDegree);
+            });
+
+            // Right-click to show the node menu
+            let selectedNode = null;
+            let lastSelectedNode = null;
+
+            cy.on('cxttap', 'node', function (evt) {
+                selectedNode = evt.target;
+
+                // Show the dropdown menu for node selection
+                let x = evt.originalEvent.clientX;
+                let y = evt.originalEvent.clientY;
+
+                let menu = document.getElementById('nodemenu');
+                menu.style.display = 'inline-block';
+                menu.style.position = 'absolute';
+                menu.style.left = (x + 10) + 'px';
+                menu.style.top = (y + 10) + 'px';
+                menu.style.width = '100px';
+                menu.style.margin = '2px';
+                menu.style.backgroundColor = '#f9f9f9';
+                menu.style.border = '1px solid #ccc';
+                menu.style.boxShadow = '0px 4px 8px rgba(0, 0, 0, 0.2)';
+            });
+
+            // Define a set of gradient colors for different distances
+            var gradientColors = [
+                '#2A6D79', // Distance 0 (center) - Medium-dark blue
+                '#368B81', // Distance 1 - Teal
+                '#45A789', // Distance 2 - Light teal
+                '#54C491', // Distance 3 - Soft greenish blue
+                '#63E199', // Distance 4 - Pale green
+                '#72FFB1', // Distance 5 - Very light greenish blue
+
+                // Add more colors if needed for greater distances
+            ];
+
+		// Function to update edge colors and manage label visibility based on distance and slider value
+		function updateEdgeColors(selectedNode, sliderValue) {
+
+			// Check the state of the checkboxes
+			var shouldHide = document.getElementById('toggle-visibility').checked;
+			var showEdgeLabels = document.getElementById('toggle-edge-labels').checked;
+			var showNodeLabels = document.getElementById('toggle-node-labels').checked;
+
+			// Reset all edges and nodes to their original styles
+			cy.edges().forEach(function (edge) {
+				edge.removeClass('highlighted-edge'); // Remove any highlighted-edge class
+				edge.style('line-color', 'lightgray'); // Reset the edge color to the default color
+				edge.source().style('border-color', '#ababab'); // Reset source node border color
+				edge.target().style('border-color', '#ababab'); // Reset target node border color
+			});
+
+			// Reset all nodes and edges to default faded and invisible state
+			if (shouldHide) {
+				cy.nodes().removeClass('faded blueedge').addClass('invisible');
+				cy.edges().removeClass('faded blueedge').addClass('invisible').removeClass('highlighted-edge');
+			} else {
+				cy.nodes().removeClass('invisible blueedge').addClass('faded');
+				cy.edges().removeClass('invisible blueedge').addClass('faded').removeClass('highlighted-edge');
+			}
+
+			// Get the connected nodes and edges for the selected node
+			var connectedEdges = selectedNode.connectedEdges();
+			var connectedNodes = connectedEdges.connectedNodes();
+
+			// Handle visibility when slider value is 0
+			if (sliderValue === 0) {
+				// Make only the selected node, its connected nodes, and edges visible
+				selectedNode.removeClass('faded invisible');
+				connectedNodes.removeClass('faded invisible');
+				connectedEdges.removeClass('faded invisible');
+
+				// Highlight connected edges and update their styles
+				connectedEdges.forEach(function (edge) {
+					edge.addClass('highlighted-edge');
+					edge.style('line-color', 'blue'); // Example color, change as needed
+
+					// Manage edge label visibility based on the checkbox
+					edge.style('label', showEdgeLabels ? edge.data('label') : '');
+				});
+
+				// Manage node labels for connected nodes based on the checkbox
+				connectedNodes.forEach(function (node) {
+					node.style('label', showNodeLabels ? node.data('labelWithDegree') : '');
+				});
+
+				// Skip the rest of the function since we're only showing connected nodes/edges
+				updateLabelsVisibility();
+				updateCounts();
+				return;
+			}
+
+			// Get the Dijkstra distance from the selected node for non-zero slider values
+			var dijkstra = cy.elements().dijkstra('#' + selectedNode.id(), function (edge) {
+				return 1; // Weight of 1 for each edge
+			});
+
+			// Update edge colors and manage node/edge visibility based on the shortest distance from the selected node
+			cy.edges().forEach(function (edge) {
+				var sourceDistance = dijkstra.distanceTo(edge.source());
+				var targetDistance = dijkstra.distanceTo(edge.target());
+
+				var minDistance = Math.min(sourceDistance, targetDistance);
+
+				if (minDistance <= sliderValue) {
+					// Remove the faded or invisible classes from nodes and edges that should be highlighted
+					if (shouldHide) {
+						edge.removeClass('invisible');
+						edge.source().removeClass('invisible');
+						edge.target().removeClass('invisible');
+					} else {
+						edge.removeClass('faded');
+						edge.source().removeClass('faded');
+						edge.target().removeClass('faded');
+					}
+
+					// Apply the highlighted-edge class and set the color based on the distance
+					edge.addClass('highlighted-edge');
+					var color = gradientColors[minDistance] || gradientColors[gradientColors.length - 1]; // Use last color if distance exceeds predefined colors
+					edge.style('line-color', color);
+
+					// Manage edge label visibility based on the checkbox
+					edge.style('label', showEdgeLabels ? edge.data('label') : '');
+				}
+
+				// Ensure labels are correctly updated
+				updateLabelsVisibility();
+			});
+
+			// Update node labels based on the checkbox state
+			cy.nodes().forEach(function (node) {
+				var distance = dijkstra.distanceTo(node);
+				if (distance <= sliderValue) {
+					// Manage node visibility
+					if (shouldHide) {
+						node.removeClass('invisible');
+					} else {
+						node.removeClass('faded');
+					}
+
+					// Manage node label visibility based on the checkbox
+					node.style('label', showNodeLabels ? node.data('labelWithDegree') : '');
+				}
+
+				// Ensure labels are correctly updated
+				updateLabelsVisibility();
+			});
+
+			// Update count 
+			updateCounts();
+		}
+
+            // ##############################
+			// Select node using the "Select" option from the nodemenu	
+			// ##############################			
+			document.getElementById('select-node').addEventListener('click', function () {
+				// Hide the dropdown menu
+				document.getElementById('nodemenu').style.display = 'none';
+
+				if (selectedNode) {
+					// Ensure that the node is correctly selected by its ID
+					var selectedNodeId = selectedNode.id();
+					var cyNode = cy.getElementById(selectedNodeId);
+
+					if (cyNode && cyNode.same(selectedNode)) {  // Ensure we have the correct node
+						// Remove the 'highlighted' style from the previously highlighted path
+						cy.elements().removeClass('highlighted highlighted-edge');
+
+						// Remove the 'highlighted-edge' style and reset formatting for the previously selected node
+						if (lastSelectedNode && lastSelectedNode.id() !== selectedNodeId) {
+							var lastConnectedEdges = lastSelectedNode.connectedEdges();
+							lastConnectedEdges.removeClass('highlighted-edge').style('line-color', 'lightgray');
+							lastConnectedEdges.connectedNodes().removeClass('highlighted');
+
+							// Reset the last selected node's size and border to its original style
+							lastSelectedNode.style({
+								'border-color': '#ababab', // Reset to the original border color
+								'width': '60px',           // Reset to the original width
+								'height': '60px'           // Reset to the original height
+							});
+						}
+
+						// Update selected node's style
+						selectedNode.style({
+							'border-color': '#25648C',
+							'width': '80px',
+							'height': '80px'
+						}).addClass('highlighted'); // Add the 'highlighted' class to the selected node
+
+						// Get connected edges of the selected node
+						var connectedEdges = selectedNode.connectedEdges();
+
+						// Add the 'highlighted-edge' style to the connected edges of the selected node
+						connectedEdges.addClass('highlighted-edge').style('line-color', '#25648C');
+
+						// Also add the 'highlighted' class to the connected nodes
+						connectedEdges.connectedNodes().addClass('highlighted');
+
+						// Handle visibility/fading for unselected nodes and edges based on checkboxes
+						var shouldHide = document.getElementById('toggle-visibility').checked;
+
+						// Reset all nodes and edges
+						cy.elements().removeClass('faded invisible');
+
+						if (shouldHide) {
+							// Hide all nodes and edges
+							cy.elements().addClass('invisible');
+						} else {
+							// Fade all nodes and edges
+							cy.elements().addClass('faded');
+						}
+
+						// Remove the "faded" or "invisible" class from the selected node and its connected nodes/edges
+						cyNode.removeClass('faded invisible');
+						connectedEdges.removeClass('faded invisible');
+						connectedEdges.connectedNodes().removeClass('faded invisible');
+
+						// Update the last selected node
+						lastSelectedNode = selectedNode;
+
+						// Update label
+						document.getElementById('selected-node').innerText = selectedNodeId;
+
+						// Ensure label visibility (full, faded, invisible) is correctly updated
+						updateLabelsVisibility();
+
+						// Update counts
+						updateCounts();
+					} else {
+						console.error("Failed to correctly identify the selected node.");
+					}
+				}
+			});
+
+            // Update edges when the slider is moved
+            document.getElementById('mySlider').addEventListener('input', function () {
+                var sliderValue = this.value;
+                document.getElementById('sliderValue').textContent = sliderValue;
+
+                // Check if the "selected-node" element's innerText is not empty
+                if (document.getElementById('selected-node').innerText !== '') {
+                    // Apply the color changes to the edges connected to the currently selected node, if any
+                    if (selectedNode) {
+                        updateEdgeColors(selectedNode, sliderValue);
+                    }
+                }
+            });
+
+            // Add a class to fade elements
+            cy.style()
+                .selector('.faded')
+                .style({
+                    'opacity': 0.1,
+                    'pointer-events': 'none',
+                    'text-opacity': 0,  // Hide labels when faded
+                    'color-opacity': 0,  // Hide label colors when faded
+                    // 'transition-property': 'opacity, text-opacity, color-opacity'
+                    //'transition-duration': '0.2s'
+                })
+                .update();
+
+            // Add a class to highlight shortest path edges
+            cy.style()
+                .selector('.highlighted')
+                .style({
+                    'line-color': 'red',
+                    'target-arrow-color': 'red',
+                    'transition-property': 'line-color, target-arrow-color',
+                    'transition-duration': '0.5s'
+                })
+                .update();
+
+            // Add a class to non visible elements
+            cy.style()
+                .selector('.invisible')
+                .style({
+                    //'opacity': 0.1,
+                    //'pointer-events': 'none',
+                    //'text-opacity': 0,  // Hide labels when faded
+                    //'color-opacity': 0,  // Hide label colors when faded
+                    'visibility': 'hidden'  // Hide the nodes and edges completely
+                    //'transition-property': 'visibility',
+                    //'transition-duration': '0.2s'
+                })
+                .update();
+
+            // Add selectionNode styles - nodemenu-select
+            cy.style()
+                .selector('.selected-node')
+                .style({
+                    'border-color': '#25648C',
+                    'border-width': '4px'
+                })
+                .selector('.previously-selected-node')
+                .style({
+                    'border-color': '#ababab',
+                    'border-width': '2px'
+                })
+                .selector('.highlighted-edge')
+                .style({
+                    'line-color': '#25648C',
+                    'width': '4px'
+                })
+                .update();
+
+            // Add source node style select style for shortest path
+            cy.style()
+                .selector('.sourcenode-dot')
+                .style({
+                    'background-color': 'green',  // Make the main node background transparent
+                    'overlay-opacity': 0,  // Ensure no overlay on the node itself
+                    'underlay-color': 'transparent',  // Make sure no underlay color is applied
+                    //'content': '',  // Remove any content from the node
+                    'background-clip': 'none',  // Prevent background clipping
+                    'width': '80px',  // Set the size of the outer node (if needed)
+                    'height': '80px',  // Set the size of the outer node (if needed)
+                    'z-index': 10,  // Ensure this node is above others
+                    //'shape': 'ellipse',  // Round shape for the dot
+                })
+                .update();
+
+            cy.style()
+                .selector('.sourcenode-dot:parent')
+                .style({
+                    'background-color': 'green',  // Make sure the main node background is transparent
+                    'overlay-opacity': 0,  // Ensure no overlay on the main node
+                    'underlay-color': 'transparent',  // Ensure no underlay color on the main node
+                    //'label': '',  // Remove the label from the parent node
+                    //'content': '',  // Remove any content
+                    //'shape': 'ellipse',  // Round shape for the dot
+                    'background-color': 'blue',  // Blue color for the dot
+                    'width': '50px',  // Size of the blue dot (smaller than the main node)
+                    'height': '50px',  // Size of the blue dot
+                    'position': 'relative',  // Ensure it's relative to the parent node
+                    'z-index': 20,  // Ensure the dot is above the parent node
+                    'padding': '5px'  // Optional: add padding to the dot
+                })
+                .update();
+
+            // Add dest node style select style for shortest path
+            cy.style()
+                .selector('.dstnode-dot')
+                .style({
+                    'background-color': 'red',  // Make the main node background transparent
+                    'overlay-opacity': 0,  // Ensure no overlay on the node itself
+                    'underlay-color': 'transparent',  // Make sure no underlay color is applied
+                    //'content': '',  // Remove any content from the node
+                    'background-clip': 'none',  // Prevent background clipping
+                    'width': '80px',  // Set the size of the outer node (if needed)
+                    'height': '80px',  // Set the size of the outer node (if needed)
+                    'z-index': 10,  // Ensure this node is above others
+                    //'shape': 'ellipse',  // Round shape for the dot
+                })
+                .update();
+
+            cy.style()
+                .selector('.dstnode-dot:parent')
+                .style({
+                    'background-color': 'green',  // Make sure the main node background is transparent
+                    'overlay-opacity': 0,  // Ensure no overlay on the main node
+                    'underlay-color': 'transparent',  // Ensure no underlay color on the main node
+                    //'label': '',  // Remove the label from the parent node
+                    //'content': '',  // Remove any content
+                    //'shape': 'ellipse',  // Round shape for the dot
+                    'background-color': 'blue',  // Blue color for the dot
+                    'width': '50px',  // Size of the blue dot (smaller than the main node)
+                    'height': '50px',  // Size of the blue dot
+                    'position': 'relative',  // Ensure it's relative to the parent node
+                    'z-index': 20,  // Ensure the dot is above the parent node
+                    'padding': '5px'  // Optional: add padding to the dot
+                })
+                .update();
+
+            // Search input event to filter nodes
+            document.getElementById('search-input').addEventListener('input', function () {
+                var searchTerm = this.value.toLowerCase();
+
+                if (searchTerm === '') {
+                    cy.elements().removeClass('faded');
+                    document.getElementById('selected-node').textContent = 'None';
+                    return;
+                }
+
+                cy.elements().addClass('faded');
+
+                cy.nodes().filter(function (node) {
+                    return node.data('label').toLowerCase().includes(searchTerm);
+                }).removeClass('faded');
+            });
+
+
+            // Expand node using the "Expand" option from the menu
+            document.querySelector('#nodemenu a:nth-child(3)').addEventListener('click', function () {
+                if (selectedNode) {
+                    var connectedNodes = selectedNode.connectedEdges().connectedNodes();
+
+                    // Show connected nodes and edges - faded
+                    connectedNodes.removeClass('faded');
+                    selectedNode.connectedEdges().removeClass('faded');
+
+                    // Show connected nodes and edges - invisible
+                    connectedNodes.removeClass('invisible');
+                    selectedNode.connectedEdges().removeClass('invisible');
+
+                    // Set edge color to lightgray for expanded node
+                    // selectedNode.connectedEdges().style('line-color', '#17405A');
+
+                    // Hide the dropdown menu
+                    document.getElementById('nodemenu').style.display = 'none';
+                }
+
+                // Ensure labels are correctly updated
+                updateLabelsVisibility();
+
+				// Update counts
+				updateCounts();				
+            });
+			
+			// Show node using the "Show" option from the menu
+			document.getElementById('Show').addEventListener('click', function() {
+				if (selectedNode) {
+				
+					// Hide the dropdown menu
+					document.getElementById('nodemenu').style.display = 'none'
+					
+					// Remove 'faded' class from the selected node
+					selectedNode.removeClass('faded');;
+					
+					// Get all nodes connected to the selected node
+					var connectedNodes = selectedNode.connectedNodes();
+
+					// Filter nodes to get those that do not have the 'faded' class
+					var nonFadedNodes = connectedNodes.filter(function(node) {
+						return !node.hasClass('faded');
+					});		
+					
+					// Find edges connected to non-faded nodes
+					var edgesToUpdate = cy.edges().filter(function(edge) {
+						return nonFadedNodeIds.includes(edge.source().id()) || nonFadedNodeIds.includes(edge.target().id());
+					});
+
+					// Remove 'faded' class from these edges
+					edgesToUpdate.removeClass('faded');		
+					edgesToUpdate.removeClass('invisible');		
+
+					// Update counts
+					updateCounts();
+				}
+			});
+	
+
+            // Hide the menu when clicking elsewhere
+            document.addEventListener('click', function (event) {
+                if (!event.target.closest('#nodemenu') && !event.target.closest('node')) {
+                    document.getElementById('nodemenu').style.display = 'none';
+                }
+            });
+
+			// View node details using the "View" option from the nodemenu
+			document.querySelector('#nodemenu a:nth-child(6)').addEventListener('click', function () {
+				if (selectedNode) {
+					// Get the background image URL from the node's style
+					let backgroundImage = selectedNode.style('background-image');
+
+					// Remove 'url("') and '")' from the string
+					backgroundImage = backgroundImage.replace(/^url\(["']?/, '').replace(/["']?\)$/, '');
+
+					// Check if the image is a valid URL
+					if (!backgroundImage || backgroundImage === 'none') {
+						backgroundImage = ''; // Set to empty if no valid image URL is found
+					}
+
+					// Populate the popup with the selected node's data
+					const popupTitle = document.getElementById('popup-title');
+					const popupContent = document.getElementById('popup-content');
+
+					popupTitle.textContent = 'Node Details: ' + selectedNode.data('label');
+
+					// Initialize the content string
+					let content = '';
+
+					// Add an image element with the background image at the very beginning, only if a valid image URL is found
+					if (backgroundImage) {
+						content += '<img src="' + backgroundImage + '" alt="Node Image" style="float:left; width: 50px; height: 50px; margin-right: 10px;"><br><br><br>';
+					}
+
+					// Iterate through all the properties of the selected node
+					Object.keys(selectedNode.data()).forEach(function (key) {
+						content += '<div><strong>' + key.charAt(0).toUpperCase() + key.slice(1) + ':</strong> ' + selectedNode.data(key) + '</div>';
+					});
+
+					// Set the content of the popup
+					popupContent.innerHTML = content;
+
+					// Show the popup
+					document.getElementById('popup').style.display = 'block';
+
+					// Hide the dropdown menu
+					document.getElementById('nodemenu').style.display = 'none';
+				}
+			});
+
+            // Hide using the "Hide" option from the nodemenu
+            document.querySelector('#nodemenu a:nth-child(5)').addEventListener('click', function () {
+                if (selectedNode) {
+
+                    var connectedNodes = selectedNode.connectedEdges().connectedNodes();
+
+                    // check toggle-visibility
+                    var shouldHide = document.getElementById('toggle-visibility').checked;
+
+                    // Show connected nodes and edges
+                    // connectedNodes.addClass('faded');
+                    if (shouldHide) {
+                        selectedNode.addClass('invisible');
+                        selectedNode.connectedEdges().addClass('invisible');
+                    } else {
+                        selectedNode.addClass('faded');
+                        selectedNode.connectedEdges().addClass('faded');
+                    }
+
+                    // Set edge color to lightgray for expanded node
+					selectedNode.connectedEdges().addClass('faded');
+
+                    // Hide the dropdown menu
+                    document.getElementById('nodemenu').style.display = 'none';
+                }
+
+                // Ensure labels are correctly updated
+                updateLabelsVisibility();
+				
+				// Update counts
+				updateCounts();				
+            });
+
+            // Set using the "set src" option from the nodemenu
+            document.querySelector('#nodemenu a:nth-child(7)').addEventListener('click', function () {
+                if (selectedNode) {
+                    document.getElementById('src-node').value = selectedNode.id();
+
+                    // Remove the sourcenode-dot class from all nodes
+                    cy.nodes().removeClass('sourcenode-dot');
+
+                    // Add the sourcenode-dot class to the selected node
+                    selectedNode.addClass('sourcenode-dot');
+
+                    // Hide the dropdown menu
+                    document.getElementById('nodemenu').style.display = 'none';
+                }
+            });
+
+            // Set using the "set dst" option from the node menu
+            document.querySelector('#nodemenu a:nth-child(8)').addEventListener('click', function () {
+                if (selectedNode) {
+
+                    document.getElementById('dst-node').value = selectedNode.id();
+
+                    // Show connected nodes and edges
+                    // connectedNodes.addClass('faded');
+                    //selectedNode.addClass('border-color':'yellow');
+
+                    // Remove the sourcenode-dot class from all nodes
+                    cy.nodes().removeClass('dstnode-dot');
+
+                    // Add the sourcenode-dot class to the selected node
+                    selectedNode.addClass('dstnode-dot');
+
+                    // Hide the dropdown menu
+                    document.getElementById('nodemenu').style.display = 'none';
+                }
+            });
+
+            // Close the popup when the close button is clicked
+            document.getElementById('close-popup').addEventListener('click', function () {
+                document.getElementById('popup').style.display = 'none';
+            });
+
+            // Ensure the popup closes when clicking outside of it
+            document.addEventListener('click', function (event) {
+                if (!event.target.closest('#popup') && !event.target.closest('#nodemenu')) {
+                    document.getElementById('popup').style.display = 'none';
+                }
+            });
+
+            // Resizing functionality
+            var isResizing = false;
+            var lastDownX = 0;
+
+            var popup = document.getElementById('popup');
+            var resizer = document.getElementById('resizer');
+
+            resizer.addEventListener('mousedown', function (e) {
+                isResizing = true;
+                lastDownX = e.clientX;
+
+                // Prevent text selection while resizing
+                document.body.style.userSelect = 'none';
+            });
+
+            document.addEventListener('mousemove', function (e) {
+                if (!isResizing) return;
+
+                var offsetRight = document.body.clientWidth - (e.clientX - document.body.offsetLeft);
+                var newWidth = offsetRight + 'px';
+
+                // Set a minimum and maximum width for the popup
+                if (offsetRight > 100 && offsetRight < document.body.clientWidth * 0.8) {
+                    popup.style.width = newWidth;
+                }
+            });
+
+            document.addEventListener('mouseup', function (e) {
+                isResizing = false;
+
+                // Re-enable text selection after resizing
+                document.body.style.userSelect = 'auto';
+            });
+
+            // Toggle edge labels visibility
+            document.getElementById('toggle-edge-labels').addEventListener('change', function () {
+                updateLabelsVisibility();
+            });
+
+            // Toggle node labels visibility
+            document.getElementById('toggle-node-labels').addEventListener('change', function () {
+                updateLabelsVisibility();
+            });
+
+            // Helper function for visiblity of labels
+            function updateLabelsVisibility() {
+                var showEdgeLabels = document.getElementById('toggle-edge-labels').checked;
+                var showNodeLabels = document.getElementById('toggle-node-labels').checked;
+
+                cy.edges().forEach(function (edge) {
+                    if (edge.hasClass('faded') || edge.hasClass('invisible')) {
+                        edge.style('text-opacity', 0);  // Hide label if faded or invisible
+                    } else {
+                        edge.style('text-opacity', showEdgeLabels ? 1 : 0);  // Show or hide based on the checkbox
+                    }
+                });
+
+                cy.nodes().forEach(function (node) {
+                    if (node.hasClass('faded') || node.hasClass('invisible')) {
+                        node.style('text-opacity', 0);  // Hide label if faded or invisible
+                    } else {
+                        node.style('text-opacity', showNodeLabels ? 1 : 0);  // Show or hide based on the checkbox
+                    }
+                });
+            }
+
+
+            // Toggle faded visibility
+            document.getElementById('toggle-visibility').addEventListener('change', function () {
+                var shouldHide = this.checked;
+
+                if (shouldHide) {
+                    cy.elements('.faded').addClass('invisible').removeClass('faded');
+                } else {
+                    cy.elements('.invisible').addClass('faded').removeClass('invisible');
+                }
+            });
+
+            // Add hover event listeners to edges
+            cy.edges().on('mouseover', function (event) {
+                var edge = event.target;
+                if (!edge.hasClass('faded') && !edge.hasClass('invisible')) {
+                    edge.style('text-opacity', 1);  // Show label when hovering over the edge
+                }
+            });
+
+            cy.edges().on('mouseout', function (event) {
+                var edge = event.target;
+                if (edge.hasClass('faded') || edge.hasClass('invisible') || !document.getElementById('toggle-edge-labels').checked) {
+                    edge.style('text-opacity', 0);  // Hide label when not hovering if labels are toggled off or faded class is applied
+                }
+            });
+
+            // Add hover event listeners to nodes
+            cy.nodes().on('mouseover', function (event) {
+                var node = event.target;
+                if (!node.hasClass('faded') && !node.hasClass('invisible')) {
+                    node.style('text-opacity', 1);  // Show label when hovering over the node
+                }
+            });
+
+            cy.nodes().on('mouseout', function (event) {
+                var node = event.target;
+                if (node.hasClass('faded') || node.hasClass('invisible') || !document.getElementById('toggle-node-labels').checked) {
+                    node.style('text-opacity', 0);  // Hide label when not hovering if labels are toggled off or faded class is applied
+                }
+            });
+
+            // Add a right-click context menu for edges
+            cy.on('cxttap', 'edge', function (evt) {
+                var selectedEdge = evt.target;
+
+                // Show the dropdown menu for edge selection
+                let x = evt.originalEvent.clientX;
+                let y = evt.originalEvent.clientY;
+
+                let edgeMenu = document.getElementById('edgemenu');
+                if (!edgeMenu) {
+                    edgeMenu = document.createElement('div');
+                    edgeMenu.id = 'edgemenu';
+                    edgeMenu.className = 'dropdown-content';
+                    edgeMenu.innerHTML = '<a href="#" id="view-edge">View</a>';
+                    document.body.appendChild(edgeMenu);
+                }
+
+                // Remove any existing event listener to avoid multiple triggers
+                document.getElementById('view-edge').removeEventListener('click', handleViewEdge);
+
+                // Add click event for "View" option
+                document.getElementById('view-edge').addEventListener('click', handleViewEdge);
+
+                function handleViewEdge() {
+                    if (selectedEdge) {
+                        let content = '';
+
+                        // Conditionally add each property if it exists
+                        Object.keys(selectedEdge.data()).forEach(function (key) {
+                            content += '<strong>' + key.charAt(0).toUpperCase() + key.slice(1) + ':</strong> ' + selectedEdge.data(key) + '<br>';
+                        });
+
+                        // Populate the popup with the selected edge's data
+                        document.getElementById('popup2').querySelector('#popup-title').textContent = 'Edge Details';
+                        document.getElementById('popup2').querySelector('#popup-content').innerHTML = content;
+
+                        // Show the popup
+                        document.getElementById('popup2').style.display = 'block';
+
+                        // Hide the dropdown menu
+                        edgeMenu.style.display = 'none';
+                    }
+                }
+
+                edgeMenu.style.display = 'inline-block';
+                edgeMenu.style.position = 'absolute';
+                edgeMenu.style.left = (x + 10) + 'px';
+                edgeMenu.style.top = (y + 10) + 'px';
+                edgeMenu.style.width = '100px';
+                edgeMenu.style.margin = '2px';
+                edgeMenu.style.backgroundColor = '#f9f9f9';
+                edgeMenu.style.border = '1px solid #ccc';
+                edgeMenu.style.boxShadow = '0px 4px 8px rgba(0, 0, 0, 0.2)';
+            });
+
+
+            // Hide the menu when clicking elsewhere
+            document.addEventListener('click', function (event) {
+                let edgeMenu = document.getElementById('edgemenu');
+                if (edgeMenu && !event.target.closest('#edgemenu') && !event.target.closest('edge')) {
+                    edgeMenu.style.display = 'none';
+                }
+            });
+
+            // Close the popup2 when the close button is clicked
+            document.querySelector('#popup2 #close-popup').addEventListener('click', function () {
+                document.getElementById('popup2').style.display = 'none';
+            });
+
+            // Ensure the popup2 closes when clicking outside of it
+            document.addEventListener('click', function (event) {
+                if (!event.target.closest('#popup2') && !event.target.closest('#edgemenu')) {
+                    document.getElementById('popup2').style.display = 'none';
+                }
+            });
+
+            // Resizing functionality for popup2
+            var isResizing2 = false;
+            var lastDownX2 = 0;
+
+            var popup2 = document.getElementById('popup2');
+            var resizer2 = document.getElementById('resizer2');
+
+            resizer2.addEventListener('mousedown', function (e) {
+                isResizing2 = true;
+                lastDownX2 = e.clientX;
+
+                // Prevent text selection while resizing
+                document.body.style.userSelect = 'none';
+            });
+
+            document.addEventListener('mousemove', function (e) {
+                if (!isResizing2) return;
+
+                var offsetRight2 = document.body.clientWidth - (e.clientX - document.body.offsetLeft);
+                var newWidth2 = offsetRight2 + 'px';
+
+                // Set a minimum and maximum width for the popup2
+                if (offsetRight2 > 100 && offsetRight2 < document.body.clientWidth * 0.8) {
+                    popup2.style.width = newWidth2;
+                }
+            });
+
+            document.addEventListener('mouseup', function (e) {
+                isResizing2 = false;
+
+                // Re-enable text selection after resizing
+                document.body.style.userSelect = 'auto';
+            });
+
+            // Function to calculate and return the node with the highest degree centrality
+            function getHighestCentralityNode(cy) {
+                let maxCentralityNode = null;
+                let maxCentrality = -1;
+
+                cy.nodes().forEach(function (node) {
+                    let centrality = node.degree(); // Calculate degree centrality (number of connected edges)
+
+                    if (centrality > maxCentrality) {
+                        maxCentrality = centrality;
+                        maxCentralityNode = node;
+                    }
+                });
+
+                return maxCentralityNode;
+            }
+
+            // Event listener for layout dropdown
+            document.getElementById('layout-select').addEventListener('change', function () {
+                var selectedNodes = cy.nodes().not('.faded');
+                var selectedEdges = selectedNodes.connectedEdges().filter(function (edge) {
+                    return edge.target().same(selectedNodes) || edge.source().same(selectedNodes);
+                });
+
+                // Get the selected layout from the dropdown
+                var selectedLayout = document.getElementById('layout-select').value;
+
+                // Check if the selected layout is 'BlastZone'
+                if (selectedLayout === 'BlastZone') {
+                    // If selectedNode is not set, choose the node with the highest centrality as the centerNode
+                    var centerNode = selectedNode ? selectedNode : getHighestCentralityNode(cy);
+
+                    // Ensure the centrality selection has returned a valid node
+                    if (!centerNode || centerNode.empty()) {
+                        console.error("No valid nodes available to select as the center node.");
+                        return;
+                    }
+
+                    cy.layout({
+                        name: 'BlastZone',
+                        centerNode: centerNode.id(), // Use the selectedNode or highest centrality node as the centerNode
+                        radiusStep: 200,
+                        nodes: selectedNodes,
+                        fit: false,
+                        animate: true
+                    }).run();
+                } else {
+                    // Apply the selected layout to the selected nodes and their connected edges
+                    cy.layout({
+                        name: selectedLayout, // Use the selected layout
+                        nodes: selectedNodes,
+                        fit: false,
+                        animate: true
+                    }).run();
+                }
+
+                // Ensure selected edges are also shown
+                selectedEdges.removeClass('faded');
+            });
+
+// Event listener for the "Center" option from the nodemenu
+// Event listener for the "Center" option from the nodemenu
+document.querySelector('#nodemenu a:nth-child(2)').addEventListener('click', function () {
+    // Determine the centroid node
+    var centroidNode;
+
+    // If a node is selected, use it as the centroid
+    if (selectedNode && !selectedNode.empty()) {
+        centroidNode = selectedNode;
+    } else {
+        // If no node is selected, choose the node with the most connections (highest degree)
+        centroidNode = getHighestCentralityNode(cy);
+    }
+
+    if (!centroidNode || centroidNode.empty()) {
+        console.error("No valid node available to center.");
+        return;
+    }
+
+    cy.batch(function () {
+        // Ensure the centroid node and its connected elements are visible before layout
+        centroidNode.removeClass('faded invisible');
+        var connectedEdges = centroidNode.connectedEdges();
+        var connectedNodes = connectedEdges.connectedNodes();
+        connectedEdges.removeClass('faded invisible');
+        connectedNodes.removeClass('faded invisible');
+
+        // Apply the BlastZone layout with the centroid node as the center
+        var layout = cy.layout({
+            name: 'BlastZone',
+            centerNode: centroidNode.id(),
+            radiusStep: 200,
+            fit: false,  // Do not fit automatically within the layout
+            animate: true
+        });
+
+        layout.run();
+
+        // Ensure the centroid node and its connected elements remain visible after layout
+        centroidNode.removeClass('faded invisible');
+        connectedEdges.removeClass('faded invisible');
+        connectedNodes.removeClass('faded invisible');
+
+        // Fit the view to show the centroid node and its immediate connections without zooming in too much
+        var elementsToFit = centroidNode.union(connectedNodes).union(connectedEdges);
+        cy.fit(elementsToFit, 100); // Adjust the padding (100) as needed
+
+        // Apply the same selection formatting as the "Select" functionality
+        // Remove the 'highlighted' style from the previously highlighted path
+        cy.elements().removeClass('highlighted highlighted-edge');
+
+        // Remove the 'highlighted-edge' style and reset formatting for the previously selected node
+        if (lastSelectedNode && lastSelectedNode.id() !== centroidNode.id()) {
+            var lastConnectedEdges = lastSelectedNode.connectedEdges();
+            lastConnectedEdges.removeClass('highlighted-edge').style('line-color', 'lightgray');
+            lastConnectedEdges.connectedNodes().removeClass('highlighted');
+
+            // Reset the last selected node's size and border to its original style
+            lastSelectedNode.style({
+                'border-color': '#ababab', // Reset to the original border color
+                'width': '60px',           // Reset to the original width
+                'height': '60px'           // Reset to the original height
+            });
+        }
+
+        // Update the centroid node's style
+        centroidNode.style({
+            'border-color': '#25648C',
+            'width': '80px',
+            'height': '80px'
+        }).addClass('highlighted'); // Add the 'highlighted' class to the centroid node
+
+        // Add the 'highlighted-edge' style to the connected edges of the centroid node
+        connectedEdges.addClass('highlighted-edge').style('line-color', '#25648C');
+
+        // Also add the 'highlighted' class to the connected nodes
+        connectedEdges.connectedNodes().addClass('highlighted');
+
+        // Handle visibility/fading for unselected nodes and edges based on checkboxes
+        var shouldHide = document.getElementById('toggle-visibility').checked;
+
+        // Reset all nodes and edges
+        cy.elements().removeClass('faded invisible');
+
+        if (shouldHide) {
+            // Hide all nodes and edges
+            cy.elements().addClass('invisible');
+        } else {
+            // Fade all nodes and edges
+            cy.elements().addClass('faded');
+        }
+
+        // Remove the "faded" or "invisible" class from the centroid node and its connected nodes/edges
+        centroidNode.removeClass('faded invisible');
+        connectedEdges.removeClass('faded invisible');
+        connectedNodes.removeClass('faded invisible');
+
+        // Update the last selected node
+        lastSelectedNode = centroidNode;
+
+        // Update the label to show the centroid node's ID
+        document.getElementById('selected-node').innerText = centroidNode.id();
+
+        // Hide the dropdown menu
+        document.getElementById('nodemenu').style.display = 'none';
+
+        // Ensure labels are correctly updated
+        updateLabelsVisibility();
+
+        // Update counts
+        updateCounts();
+    });
+});
+
+
+
+
+
+
+
+            // Set curve style
+            document.getElementById('curve-style-select').addEventListener('change', function () {
+                var selectedStyle = this.value;
+                var edgeStyle = {
+                    'curve-style': selectedStyle
+                };
+
+                cy.edges().style(edgeStyle);
+            });
+
+            // save as image
+            document.getElementById('save-button').addEventListener('click', function () {
+                var pngData = cy.png({
+                    bg: '#f0f0f0' // Same background color as the canvas
+                });
+                var link = document.createElement('a');
+                link.href = pngData;
+                link.download = 'cytoscape-graph.png';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+
+            // Add drop shadow to nodes on hover
+            cy.nodes().on('mouseover', function (event) {
+                var node = event.target;
+                node.addClass('hovered');
+            });
+
+            cy.nodes().on('mouseout', function (event) {
+                var node = event.target;
+                node.removeClass('hovered');
+            });
+
+            cy.style()
+                .selector('.hovered')
+                .style({
+                    'overlay-color': 'rgba(255, 255, 255, 0.3)', // Simulate shadow with overlay
+                    'overlay-padding': '2px',             // Increase size of the overlay
+                    'overlay-opacity': 0.3,                // Adjust opacity for shadow effect
+                    'background-color': 'white',           // Set to your node color
+                    'z-compound-depth': 'below'
+                })
+                .update();
+            
+			// ###########################
+			// Shortest Path Finder
+			// ###########################
+			document.getElementById('find-path').addEventListener('click', function () {
+				// Clear previous highlights and visibility/fading
+				cy.elements().removeClass('highlighted faded invisible');
+
+				// Reset all edges and nodes to their original styles
+				cy.edges().forEach(function (edge) {
+					edge.removeClass('highlighted-edge'); // Remove any highlighted-edge class
+					edge.style('line-color', 'lightgray'); // Reset the edge color to the default color
+				});
+
+				// Remove blue formatting from the last selected node
+				cy.nodes().forEach(function (node) {
+					node.style('border-color', '#ababab'); // Reset to default border color
+				});
+
+				// Get source and destination nodes
+				var srcNodeId = document.getElementById('src-node').value;
+				var dstNodeId = document.getElementById('dst-node').value;
+
+				// Validate that the source and destination nodes exist in the graph
+				var srcNode = cy.getElementById(srcNodeId);
+				var dstNode = cy.getElementById(dstNodeId);
+
+				if (srcNode.empty() || dstNode.empty()) {
+					console.error('Source or Destination node not found.');
+					return;
+				}
+
+				// Run Dijkstra's algorithm
+				var dijkstra = cy.elements().dijkstra(srcNode, function (edge) {
+					return 1; // Weight of 1 for each edge
+				});
+
+				var path = dijkstra.pathTo(dstNode);
+
+				// Highlight the path
+				path.addClass('highlighted');
+
+				// Get toggle visibility status
+				var toggleVisibility = document.getElementById('toggle-visibility').checked;
+
+				// Apply 'faded' or 'invisible' class to elements not on the path
+				cy.elements().not(path).forEach(function (ele) {
+					if (toggleVisibility) {
+						ele.addClass('invisible');
+					} else {
+						ele.addClass('faded');
+					}
+				});
+
+				// Remove the sourcenode-dot and dstnode-dot classes from all nodes
+				cy.nodes().removeClass('dstnode-dot sourcenode-dot');
+
+				// Set selected node to dstnode and apply selection styles
+				selectedNode = dstNode;
+				selectedNode.style({
+					'border-color': '#25648C',
+					'width': '80px',
+					'height': '80px'
+				});
+
+				// Display the ID of the selected node in the 'selected-node' element
+				document.getElementById('selected-node').innerText = selectedNode.id();
+
+				// Ensure labels are correctly updated
+				updateLabelsVisibility();
+
+				// Update count 
+				updateCounts();
+			});
+
+
+            // Set an initial zoom step
+            var zoomStep = 10;
+
+            // Function to zoom in
+            function zoomIn() {
+                var currentZoom = cy.zoom();
+                var newZoom = currentZoom + (zoomStep / cy.container().clientHeight); // Calculate the new zoom level
+                cy.zoom({
+                    level: newZoom,
+                    renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } // Keep zoom centered
+                });
+                cy.center();
+            }
+
+            // Function to zoom out
+            function zoomOut() {
+                var currentZoom = cy.zoom();
+                var newZoom = currentZoom - (zoomStep / cy.container().clientHeight); // Calculate the new zoom level
+                cy.zoom({
+                    level: newZoom,
+                    renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } // Keep zoom centered
+                });
+                cy.center();
+            }
+
+            // Attach event listeners to buttons
+            document.getElementById('zoom-in').addEventListener('click', zoomIn);
+            document.getElementById('zoom-out').addEventListener('click', zoomOut);
+
+            const slider = document.getElementById('mySlider');
+            const sliderValue = document.getElementById('sliderValue');
+
+            // Update the slider value dynamically
+            slider.addEventListener('input', function () {
+                sliderValue.textContent = slider.value;
+            });
+			
+			document.getElementById('removeFadedClassButton').addEventListener('click', function() {
+			// Access the Cytoscape instance (assumed to be stored in a variable 'cy')
+			if (typeof cy !== 'undefined') {
+					cy.nodes().removeClass('faded'); // Remove 'faded' class from all nodes
+					cy.edges().removeClass('faded');  // Remove 'faded' class from all edges
+					cy.nodes().removeClass('invisible'); // Remove 'faded' class from all nodes
+					cy.edges().removeClass('invisible');  // Remove 'faded' class from all edges	
+                    updateCounts();				
+				} else {
+					console.error('Cytoscape instance is not available.');
+				}
+			});
+			
+			function debounce(func, wait) {
+				let timeout;
+				return function(...args) {
+					const context = this;
+					clearTimeout(timeout);
+					timeout = setTimeout(() => func.apply(context, args), wait);
+				};
+			}
+
+			// Apply debounce to the slider input event
+			document.getElementById('mySlider').addEventListener('input', debounce(function() {
+				var sliderValue = this.value;
+				document.getElementById('sliderValue').textContent = sliderValue;
+
+				if (document.getElementById('selected-node').innerText !== '') {
+					if (selectedNode) {
+						updateEdgeColors(selectedNode, sliderValue);
+					}
+				}
+			}, 100)); // Adjust debounce delay as needed	
+
+			function updateCounts() {
+				const visibleNodes = cy.nodes().filter(node => !node.hasClass('faded') && !node.hasClass('invisible'));
+				const visibleEdges = cy.edges().filter(edge => !edge.hasClass('faded') && !edge.hasClass('invisible'));
+
+				document.getElementById('node-count').textContent = visibleNodes.length + ' Nodes';
+                document.getElementById('edge-count').textContent = visibleEdges.length + ' Edges';
+			}
+
+			// Update counts
+			updateCounts();
+			
+			function escapeCyId(id) {
+				return id.replace(/([#;&,.+*~':"!^$[\]()=>|/@])/g, "\\$1");
+			}
+        } // end cytoscape event listeners function
+
+        // #################################
+        // START CYTOSCAPE EVENT LISTENERS
+        // #################################
+        StartCytoListener();
+		
+		cy.layout({ name: 'breadthfirst' }).run();
+		cy.fit(); // This ensures the graph is centered within the container
+    </script>
+</div>
 
 <!--  
 |||||||||| PAGE: Exploit Shares
@@ -6565,49 +8676,49 @@ Below are some tips for getting started on prioritizing the remediation of share
 		 <tr>
 			<td class="cardsubtitle" style="vertical-align:top">Domain</td>
 			<td >					
-				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">ad.biola.edu</span>				
+				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">$TargetDomain</span>				
 			</td>
 		 </tr>
 		 <tr>
 			<td class="cardsubtitle" style="vertical-align:top">DC</td>
 			<td >					
-				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;"></span>				
+				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">$DomainController</span>				
 			</td>
 		 </tr>	
 		 <tr>
 			<td class="cardsubtitle" style="vertical-align: top;">Start Time</td>
 			<td>					
-				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">08/08/2024 11:35:16</span>				
+				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">$StartTime</span>				
 			</td>
 		 </tr>
 		 <tr>
 			<td class="cardsubtitle" style="vertical-align:top">Stop Time</td>
 			<td >					
-				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">08/08/2024 11:35:31</span>				
+				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">$EndTime</span>				
 			</td>
 		 </tr>
 		 <tr>
 			<td class="cardsubtitle" style="vertical-align:top">Duration</td>
 			<td >					
-				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">00:00:15.3406613</span>				
+				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">$RunTime</span>				
 			</td>
 		 </tr>
 		 <tr>
 			<td class="cardsubtitle" style="vertical-align:top">Src Host</td>
 			<td >					
-				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">DESKTOP-AQP11SR</span>				
+				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">$SourceHost</span>				
 			</td>
 		 </tr>
 		 <tr>
 			<td class="cardsubtitle" style="vertical-align:top">Src IPs</td>
 			<td >					
-				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">192.168.208.1<br>172.17.128.1<br>192.168.33.1<br>192.168.40.1<br>10.128.1.99<br>192.168.1.38</span>				
+				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">$SourceIps</span>				
 			</td>
 		 </tr>		
 		 <tr>
 			<td class="cardsubtitle" style="vertical-align:top">Src User</td>
 			<td >					
-				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">netspi\ssutherland</span>				
+				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">$username</span>				
 			</td>
 		 </tr>		 
 		</table> 		  
