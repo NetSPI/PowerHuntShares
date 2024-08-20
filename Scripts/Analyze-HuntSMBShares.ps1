@@ -5,7 +5,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.80
+# Version: v1.81
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Analyze-HuntSMBShares
 {    
@@ -8026,8 +8026,66 @@ document.querySelector('#nodemenu a:nth-child(2)').addEventListener('click', fun
         // #################################
         StartCytoListener();
 		
-		cy.layout({ name: 'breadthfirst' }).run();
-		cy.fit(); // This ensures the graph is centered within the container
+        // #################################
+        // START CYTOSCAPE INITIAL LAYOUT
+        // #################################		
+        // Flag to track if the layout has been applied
+        let layoutApplied = false;
+
+        // Set layout on sharegraph menu selection
+        document.getElementById('btnShareGraph').addEventListener('click', function () {
+
+            // Select nodes and edges
+            var selectedNodes = cy.nodes().not('.faded');
+            var selectedEdges = selectedNodes.connectedEdges().filter(function (edge) {
+                return edge.target().same(selectedNodes) || edge.source().same(selectedNodes);
+            });
+
+            // Only apply the layout if it's the first time the button is clicked
+            if (!layoutApplied) {
+                // Get the selected layout from the dropdown (you can update this as needed)
+                var selectedLayout = 'breadthfirst';
+
+                // Apply the selected layout to the selected nodes and edges
+                cy.elements().layout({
+                    name: selectedLayout,
+                    fit: false,
+                    animate: true,
+                    eles: selectedNodes.union(selectedEdges), // Apply the layout to selected nodes and edges
+                    ready: function() {
+                        // This function is called when the layout is ready but not yet applied
+                    },
+                    stop: function() {
+                        // This function is called after the layout has been completely applied
+                
+                        // Set the initial zoom level to 0.4 (40% of the original size)
+                        cy.zoom(0.4);
+
+                        // Re-center the graph after zooming
+                        cy.center(selectedNodes);
+
+                        // Optional: Ensure that the centered graph fits well within the viewport
+                        cy.fit(selectedNodes, 50);
+
+                        // Mark that the layout has been applied
+                        layoutApplied = true;
+                    }
+                }).run();
+		
+                // If the layout has already been applied, just re-center and zoom the graph
+                cy.zoom(0.4);
+                cy.center(selectedNodes);
+                cy.fit(selectedNodes, 50);		
+            } else {
+            }
+    
+            // Zoom-in functionality
+            document.getElementById('zoom-in').addEventListener('click', function() {
+                const zoomLevel = cy.zoom();
+                cy.zoom(zoomLevel * 1.2); // Increase the zoom level by 20%
+                cy.center(selectedNodes); // Re-center after zooming in
+            });
+        });
     </script>
 </div>
 
