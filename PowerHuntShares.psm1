@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.111
+# Version: v1.112
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -245,7 +245,7 @@ function Invoke-HuntSMBShares
         Write-Output " [*][$Time] Scan Start"
 
         # Nova format
-        If ($Nova) {
+        If ($ExportNova) {
             Write-Verbose " [*][$Time] The results will be export to the NOVA format as well."
             $rMasterFindingId = "FindingTemplateSourceIdentifier"
             $rFindingName = "FindingName"
@@ -6631,7 +6631,7 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
 		<!-- Header Text, Selected Node -->
 		<div  style="width: 100%; display: flex; align-items: left; margin-left: -1px;">
 			<div style="flex: 1;">
-			This section provides an interactive graph that can be used to explore the computer, share, files, and identity relationships. This functionality is still experimental.
+			This section provides an interactive graph that can be used to explore the computer, share, files, and identity relationships. 
 			</div>
 			<div style="text-align: right; margin-right: 10px;color:gray;">
 			&nbsp;Selected Node:&nbsp;<span id="selected-node" style="color:gray;">None</span><br>
@@ -10063,7 +10063,7 @@ Write-Output ""
                 $object | add-member noteproperty $rMasterFindingId $ExcessivePrivID
                 $object | add-member noteproperty $rFindingName            "Excessive Share ACL"
                 $object | add-member noteproperty $rAssetName               $ComputerName       
-                if(-not $Nova){$object | add-member noteproperty IssueFirstFoundDate     $EndTime}
+                if(-not $ExportNova){$object | add-member noteproperty IssueFirstFoundDate     $EndTime}
                 $object | add-member noteproperty VerificationCaption01   "$IdentityReference has $FileSystemRights privileges on $SharePath." 
                 $ShareDetails = @"
 Computer Name: $ComputerName
@@ -10083,7 +10083,7 @@ File Count: $FileCount
 File List Sample: 
 $FileList 
 "@                
-                if($Nova){
+                if($ExportNova){
                     $object | add-member noteproperty VerificationText01 "<pre><code>$ShareDetails</code></pre>"
                 }else{
                     $object | add-member noteproperty VerificationText01 $ShareDetails
@@ -10105,12 +10105,12 @@ $FileList
             $object | add-member noteproperty $rMasterFindingId       $ExcessivePrivID
             $object | add-member noteproperty $rFindingName           "Domain ACL Summary"
             $object | add-member noteproperty $rAssetName             $TargetDomain                  
-            if(-not $Nova){
+            if(-not $ExportNova){
                 $object | add-member noteproperty IssueFirstFoundDate     $EndTime
             }         
             $object | add-member noteproperty VerificationCaption01   "$ExcessiveSharesCount shares across $ComputerWithExcessive systems are configured with $ExcessiveSharePrivsCount potentially excessive ACLs." 
             $ShareDetails = $ExcessiveSharePrivs | Select-Object SharePath -Unique -ExpandProperty SharePath | Out-String            
-            if($Nova){
+            if($ExportNova){
                 $object | add-member noteproperty VerificationText01      "<pre><code>$ShareDetails</code></pre>"
             }else{
                 $object | add-member noteproperty VerificationText01      $ShareDetails
@@ -10149,7 +10149,7 @@ The 5 most common share names are:
 
             $SummaryFinal = $Summary1 + $Summary2
 
-            if($Nova){
+            if($ExportNova){
                 $object | add-member noteproperty VerificationText02      "<pre><code>$SummaryFinal</code></pre>"
             }else{
                 $object | add-member noteproperty VerificationText02      $SummaryFinal
@@ -10204,7 +10204,7 @@ The 5 most common share names are:
                 $object | add-member noteproperty $rMasterFindingId $ExcessivehighRiskID
                 $object | add-member noteproperty $rFindingName            "Excessive Share ACL"
                 $object | add-member noteproperty $rAssetName               $ComputerName       
-                if(-not $Nova){
+                if(-not $ExportNova){
                     $object | add-member noteproperty IssueFirstFoundDate     $EndTime
                 }
                 $object | add-member noteproperty VerificationCaption01   "$IdentityReference has $FileSystemRights privileges on $SharePath." 
@@ -10245,12 +10245,12 @@ $FileList
             $object | add-member noteproperty $rMasterFindingId $ExcessivehighRiskID
             $object | add-member noteproperty $rFindingName            "Domain ACL Summary"
             $object | add-member noteproperty $rAssetName               $TargetDomain       
-            if(-not $Nova){
+            if(-not $ExportNova){
                 $object | add-member noteproperty IssueFirstFoundDate     $EndTime
             }          
             $object | add-member noteproperty VerificationCaption01   "$SharesHighRiskCount shares across $ComputerwithHighRisk systems are considered high risk." 
             $ShareDetails = $SharesHighRisk | Select-Object SharePath -Unique -ExpandProperty SharePath | Out-String            
-            if($Nova){
+            if($ExportNova){
                 $object | add-member noteproperty VerificationText01      "<pre><code>$ShareDetails</code></pre>"
             }else{
                 $object | add-member noteproperty VerificationText01      $ShareDetails
@@ -10289,7 +10289,7 @@ The 5 most common share names are:
 
             $SummaryFinal = $Summary1 + $Summary2
 
-            if($Nova){
+            if($ExportNova){
                 $object | add-member noteproperty VerificationText02      "<pre><code>$SummaryFinal</code></pre>"
             }else{
                 $object | add-member noteproperty VerificationText02      $SummaryFinal
