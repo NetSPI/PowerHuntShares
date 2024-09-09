@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.112
+# Version: v1.113
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -2388,6 +2388,45 @@ function Invoke-HuntSMBShares
              if($RiskLevelFileListGroupResult -eq "High"    ){$RiskLevelFolderGroupCountHigh     = $RiskLevelFolderGroupCountHigh     + 1}
              if($RiskLevelFileListGroupResult -eq "Critical"){$RiskLevelFolderGroupCountCritical = $RiskLevelFolderGroupCountCritical + 1}                         
         } 
+
+        # ----------------------------------------------------------------------
+        # Calculate Peer Comparison Data - INSIGHTS 
+        # ---------------------------------------------------------------------- 
+        # % of computers, shares, aces with excessive privs enumerated from single active directory domain
+
+        # Set averages from a sample of 50 representative (size and industry) environments
+        $PeerCompareAverageP = "[18, 9, 15]"  
+
+        # Get actual computer %
+        if($ComputerPingableCount -gt 0){
+            $PeerComparisonComputerCount = $ComputerPingableCount # use ping count
+        }else{
+            $PeerComparisonComputerCount = $Computers445OpenCount # use open445 count
+        }
+        $PeerComparActualComputers = [math]::Round($ComputerWithExcessive/$PeerComparisonComputerCount,2) * 100      
+
+        # Get actual shares %
+        $PeerComparActualShares = [math]::Round($ExcessiveSharesCount/$AllSMBSharesCount,2) * 100      
+
+        # Get actual aces %
+        $PeerComparActualAces = [math]::Round($ExcessiveSharePrivsCount/$ShareACLsCount ,2) * 100     
+
+        # Set actual
+        $PeerCompareActuaP   = "[$PeerComparActualComputers, $PeerComparActualShares, $PeerComparActualAces]"
+
+        # ----------------------------------------------------------------------
+        # Calculate Remediation Prioritization and Charts - INSIGHTS 
+        # ----------------------------------------------------------------------
+        $RemediationBase = "[$ExcessiveSharePrivsCount,$ExcessiveSharePrivsCount,$ExcessiveSharePrivsCount]"
+        $RemediationSave = "[$ExcessiveSharePrivsCount,$FolderGroupChartCount,$ShareNameChartCount]"
+        $RemediationSaveFgP = 100 - ([math]::Round($FolderGroupChartCount/$ExcessiveSharePrivsCount,2) * 100)
+        $RemediationSaveSnP = 100 - ([math]::Round($ShareNameChartCount/$ExcessiveSharePrivsCount,2) * 100)
+
+        if($RemediationSaveFgP -gt $RemediationSaveSnP){
+            $RemediationSavings = $RemediationSaveFgP
+        }else{
+            $RemediationSavings = $RemediationSaveSnP
+        }
 
         # ----------------------------------------------------------------------
         # Create ShareGraph Nodes and Edges
@@ -5597,6 +5636,25 @@ input[type="checkbox"]:checked::before {
 <div style="height:.5px;width:100%;position:relative;float:left;"></div>
 
 <!--  
+|||||||||| CARD: Peer Comparison
+-->
+                     <div style="margin-left: 10px; width: 90%; margin-bottom: 10px;">
+	                    <span style="color:#4A4A4A;"> <strong>Peer Comparison</strong><br></span>
+	                    This section displays the percentage of assets associated with excessive share Access Control Entries (ACEs). Each percentage is calculated based on the total number of assets of that type discovered in the target environment. It also compares these figures to the average percentage of affected assets observed in other environments.
+                     </div>
+
+		            <div class="LargeCard" style="width:90%;">	
+							<a href="#" id="DashLink" style="text-decoration:none;">
+							</a>
+																	
+									<div class="chart-container">
+									<div id="ChartDashboardPeerCompare"></div>
+										<div class="chart-controls"></div>
+									</div>								  							
+							
+					</div>	
+
+<!--  
 |||||||||| CARD: RISK AND INTERESTING FILE SUMMARY
 -->
  <div style="margin-left: 10px; width: 90%;">
@@ -5627,6 +5685,25 @@ input[type="checkbox"]:checked::before {
 							
 					</div>
 
+<!--  
+|||||||||| CARD: Remediation Recommendations
+-->
+                     <div style="margin-left: 10px; width: 90%; margin-bottom: 10px;">
+	                    <span style="color:#4A4A4A;"> <strong>Remediation Prioritization</strong><br></span>
+	                    In most cases it makes sense to remediate share ACEs that have been categorized as high or critical risk first. Next, prioritize shares in groups by folder group (shares containing exactly the same files) or by share names that have a high similarity score. 
+						Prioritizing those groups may help <i>reduce remediation actions by as much as <strong>$RemediationSavings percent</strong> for this environment</i>. That has been illustrated in the chart below.
+                     </div>
+
+		            <div class="LargeCard" style="width:90%;">	
+							<a href="#" id="DashLink" style="text-decoration:none;">
+							</a>
+																	
+									<div class="chart-container">
+									<div id="ChartDashboardRemediate"></div>
+										<div class="chart-controls"></div>
+									</div>								  							
+							
+					</div>	
 
 <!--  
 |||||||||| CARD: Share Creation Timeline
@@ -8860,7 +8937,6 @@ Invoke-HuntSMBShares -Threads 20 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\
 <br>
 <script>
 
-
 // --------------------------
 // side menu collapse function
 // --------------------------
@@ -9427,6 +9503,208 @@ const ChartDashboardIFOptions = {
 
 const ChartDashboardIF = new ApexCharts(document.querySelector("#ChartDashboardIF"), ChartDashboardIFOptions);
 ChartDashboardIF.render();
+
+// --------------------------
+// Dashboard Page: Chart - Remediation Prioritization
+// --------------------------
+
+		//  Set data series
+		var DataSeriesAverage = $RemediationBase;		
+		var DataSeriesActual  = $RemediationSave;
+		
+		
+		// Find max values
+		var maxValueAverage = Math.max(...DataSeriesAverage);
+		var maxValueActual = Math.max(...DataSeriesActual);
+		var maxValueOverall = Math.max(maxValueAverage, maxValueActual);
+
+        var RemCompareOptions = {
+          series: [{
+          name: 'Affected Shares',
+          data: DataSeriesAverage
+        }, {
+          name: 'Grouping',
+          data: DataSeriesActual
+        }],
+          chart: {
+          type: 'bar',
+          height: 250
+        },
+        plotOptions: {
+          bar: {
+            horizontal: false,
+            columnWidth: '55%',
+            endingShape: 'rounded'
+          },
+        },
+        colors: ['#07142A', '#f08c41'],  // Reversed colors for Average and Actual bars
+        dataLabels: {
+          enabled: true,  // Enable data labels
+          style: {
+            fontSize: '12px',
+            colors: ['#f08c41', '#07142A'],  // Colors for labels
+          },
+          formatter: function (val, opts) {
+            return val;  // Display values with percentage sign
+          },
+          offsetY: -6  // Adjust position of the label
+        },
+        stroke: {
+          show: true,
+          width: 2,
+          colors: ['transparent']
+        },
+        xaxis: {
+          categories: ['Individul ACEs (No Grouping)','Folder Groups', 'Share Name Groups (High Similarity)'],  // X-axis categories
+          labels: {
+            style: {
+              colors: '#808080',  // Set x-axis labels to gray
+            }
+          }
+        },
+        yaxis: {
+          title: {
+            text: 'Remediation Tasks',
+            style: {
+              fontWeight: 'normal',
+              color: '#808080'  // Set "Percentage" text to gray
+            }
+          },
+          labels: {
+            style: {
+              colors: '#808080',  // Set y-axis labels to gray
+            },
+            formatter: function (val) {
+              return val;  // Format y-axis labels with percentage sign
+            }
+          },
+          max: Math.ceil(maxValueOverall * 1.1),
+          min: 0
+        },
+        fill: {
+          opacity: 1
+        },
+        tooltip: {
+          y: {
+            formatter: function (val) {
+              return val + "%";  // Show percentage in tooltip
+            }
+          }
+        },
+        title: {
+          text: 'Remediation Effort Saving',  // Updated chart title
+          align: 'center',
+          style: {
+            fontSize: '18px',
+            fontWeight: 'normal',
+            color: '#808080'
+          }
+        }
+        };
+
+        var RemCompareOptionschart = new ApexCharts(document.querySelector("#ChartDashboardRemediate"), RemCompareOptions);
+        RemCompareOptionschart.render();
+
+// --------------------------
+// Dashboard Page: Chart - Peer Comparison
+// --------------------------
+
+		//  Set data series
+		var DataSeriesAverage = $PeerCompareAverageP;		
+		var DataSeriesActual  = $PeerCompareActuaP;
+		
+		
+		// Find max values
+		var maxValueAverage = Math.max(...DataSeriesAverage);
+		var maxValueActual = Math.max(...DataSeriesActual);
+		var maxValueOverall = Math.max(maxValueAverage, maxValueActual);
+
+        var PeerCompareOptions = {
+          series: [{
+          name: 'Peer Average',
+          data: DataSeriesAverage
+        }, {
+          name: 'This Environment',
+          data: DataSeriesActual
+        }],
+          chart: {
+          type: 'bar',
+          height: 250
+        },
+        plotOptions: {
+          bar: {
+            horizontal: false,
+            columnWidth: '55%',
+            endingShape: 'rounded'
+          },
+        },
+        colors: ['#07142A', '#f08c41'],  // Reversed colors for Average and Actual bars
+        dataLabels: {
+          enabled: true,  // Enable data labels
+          style: {
+            fontSize: '12px',
+            colors: ['#f08c41', '#07142A'],  // Colors for labels
+          },
+          formatter: function (val, opts) {
+            return val + '%';  // Display values with percentage sign
+          },
+          offsetY: -6  // Adjust position of the label
+        },
+        stroke: {
+          show: true,
+          width: 2,
+          colors: ['transparent']
+        },
+        xaxis: {
+          categories: ['Computers', 'Shares', 'ACEs'],  // X-axis categories
+          labels: {
+            style: {
+              colors: '#808080',  // Set x-axis labels to gray
+            }
+          }
+        },
+        yaxis: {
+          title: {
+            text: 'Percentage (%)',
+            style: {
+              fontWeight: 'normal',
+              color: '#808080'  // Set "Percentage" text to gray
+            }
+          },
+          labels: {
+            style: {
+              colors: '#808080',  // Set y-axis labels to gray
+            },
+            formatter: function (val) {
+              return val + '%';  // Format y-axis labels with percentage sign
+            }
+          },
+          max: Math.ceil(maxValueOverall * 1.1),
+          min: 0
+        },
+        fill: {
+          opacity: 1
+        },
+        tooltip: {
+          y: {
+            formatter: function (val) {
+              return val + "%";  // Show percentage in tooltip
+            }
+          }
+        },
+        title: {
+          text: 'Percentage of Assets with Excessive Privileges',  // Updated chart title
+          align: 'center',
+          style: {
+            fontSize: '18px',
+            fontWeight: 'normal',
+            color: '#808080'
+          }
+        }
+        };
+
+        var PeerCompareOptionschart = new ApexCharts(document.querySelector("#ChartDashboardPeerCompare"), PeerCompareOptions);
+        PeerCompareOptionschart.render();
 
 // --------------------------
 // Dashboard Page: Risk Level chart
@@ -10001,6 +10279,7 @@ function updateLabelColors(divId, objectId) {
 }
 	
 </script>
+
 </div>
 </div>
 </div>
