@@ -5,7 +5,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.83
+# Version: v1.84
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Analyze-HuntSMBShares
 {    
@@ -5361,6 +5361,14 @@ $ComputerCount computers were found in the $TargetDomain Active Directory domain
                                 </div>
                     </div>
 
+					<div class="LargeCard" style="width:32.75%;">	
+																	
+									<div class="chart-container">
+									<div id="ChartComputersRisk"></div>
+										<div class="chart-controls"></div>
+									</div>								  							
+							
+					</div>	
             
 					<div class="LargeCard" style="width:32.75%;">	
 																	
@@ -5369,14 +5377,6 @@ $ComputerCount computers were found in the $TargetDomain Active Directory domain
 										<div class="chart-controls"></div>
 									</div>								  							
 						
-					</div>	
-					<div class="LargeCard" style="width:32.75%;">	
-																	
-									<div class="chart-container">
-									<div id="ChartComputersRisk"></div>
-										<div class="chart-controls"></div>
-									</div>								  							
-							
 					</div>					
 				
 <div class="searchbar" style="margin-top:270px; text-align:left; display: flex;" >
