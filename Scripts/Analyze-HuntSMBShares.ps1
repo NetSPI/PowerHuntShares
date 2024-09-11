@@ -5,7 +5,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.82
+# Version: v1.83
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Analyze-HuntSMBShares
 {    
@@ -702,10 +702,10 @@ function Analyze-HuntSMBShares
             $Object |  Add-Member Desc          $SubnetDesc
             $Object |  Add-Member Created       $SubnetCreated
             $Object |  Add-Member Site          $SubnetSite
-            $Object |  Add-Member Acls          $subnetaclsCount
-            $Object |  Add-Member ReadAcls      $subnetaclrCount
-            $Object |  Add-Member WriteAcls     $subnetaclwCount
-            $Object |  Add-Member HighRiskAcls  $subnetaclxCount
+            $Object |  Add-Member ACEs          $subnetaclsCount
+            $Object |  Add-Member ReadACEs      $subnetaclrCount
+            $Object |  Add-Member WriteACEs     $subnetaclwCount
+            $Object |  Add-Member ExploitableACEs  $subnetaclxCount
             $Object |  Add-Member Shares        $subnetsharesCount
             $Object |  Add-Member Computers     $subnetcomputersCount
 
@@ -723,15 +723,15 @@ function Analyze-HuntSMBShares
         $SubnetFile = "$TargetDomain-Shares-Inventory-Common-Subnets.csv"  
         
         # Create HTML table for report
-        
+
         # Setup HTML begin
         Write-Verbose "[+] Creating html top." 
         $HTMLSTART = @"
         <table class="table table-striped table-hover tabledrop">
 "@
-    
+
         # Get list of columns        
-        $MyCsvColumns = ("Computers","Shares","HighRiskAcls","WriteAcls","ReadAcls","Acls","Site","Created","Desc","Subnet")
+        $MyCsvColumns = ("Computers","Shares","ExploitableACEs","WriteACEs","ReadACEs","ACEs","Site","Created","Desc","Subnet")
 
         # Print columns creation  
         $HTMLTableHeadStart= "<thead><tr>" 
@@ -743,28 +743,41 @@ function Analyze-HuntSMBShares
         }
         $HTMLTableColumn = "$HTMLTableHeadStart$HTMLTableColumn</tr></thead>" 
 
-         # Create table rows
+        # Create table rows
         Write-Verbose "[+] Creating html table rows."     
         $HTMLTableRow = $SubnetSummary |
         ForEach-Object {
-    
+
             # Create a value contain row data
-            # Read = yellow, write = orange, highrisk = red (if value >0)
             $CurrentRow = $_
             $PrintRow = ""
             $MyCsvColumns | 
             ForEach-Object{
-                
+        
                 try{
                     $GetValue = $CurrentRow | Select-Object $_ -ExpandProperty $_ -ErrorAction SilentlyContinue
+                    $ColumnIndex = $MyCsvColumns.IndexOf($_) + 1
+
+                    # Set background color based on shifted conditions
+                    $BackgroundColor = ""
+
+                    if ($ColumnIndex -eq 5 -and [int]$GetValue -gt 0) {          # Originally for column 4 = write
+                        $BackgroundColor = ' style="background-color:#FDFFd9;"'  
+                    } elseif ($ColumnIndex -eq 4 -and [int]$GetValue -gt 0) {    # Originally for column 5 = read
+                        $BackgroundColor = ' style="background-color:#FFCC98;"'  
+                    } elseif ($ColumnIndex -eq 3 -and [int]$GetValue -gt 0) {
+                        $BackgroundColor = ' style="background-color:#FC6C84;"'  # Originally for column 3=exploitable, 2=shares,1=computers
+                    }
+
+                    # Append the value with the background color
                     if($PrintRow -eq ""){
-                        $PrintRow = "<td>$GetValue</td>"               
+                        $PrintRow = "<td$BackgroundColor>$GetValue</td>"               
                     }else{         
-                        $PrintRow = "<td>$GetValue</td>$PrintRow"
+                        $PrintRow = "<td$BackgroundColor>$GetValue</td>$PrintRow"
                     }
                 }catch{}            
             }
-        
+
             # Return row
             $HTMLTableHeadstart = "<tr>" 
             $HTMLTableHeadend = "</tr>" 
@@ -774,13 +787,12 @@ function Analyze-HuntSMBShares
         # Setup HTML end
         Write-Verbose "[+] Creating html bottom." 
         $HTMLEND = @"
-      </tbody>
-    </table>
+          </tbody>
+        </table>
 "@
 
         # Return it
-        $SubnetSummaryHTML = "$HTMLSTART $HTMLTableColumn $HTMLTableRow $HTMLEND" 
-                                  
+        $SubnetSummaryHTML = "$HTMLSTART $HTMLTableColumn $HTMLTableRow $HTMLEND"                                  
 
         # ----------------------------------------------------------------------
         # Calculate percentages
@@ -1981,8 +1993,12 @@ function Analyze-HuntSMBShares
             $PeerComparisonComputerCount = $ComputerPingableCount # use ping count
         }else{
             $PeerComparisonComputerCount = $Computers445OpenCount # use open445 count
+            $ComputerPingableCount       = 0 #hacky patch
         }
-        $PeerComparActualComputers = [math]::Round($ComputerWithExcessive/$PeerComparisonComputerCount,2) * 100      
+        $PeerComparActualComputers   = [math]::Round($ComputerWithExcessive/$PeerComparisonComputerCount,2) * 100 
+        $PeerComparActualComputersr  = [math]::Round($ComputerWithReadCount/$PeerComparisonComputerCount,2) * 100
+        $PeerComparActualComputersW  = [math]::Round($ComputerWithWriteCount/$PeerComparisonComputerCount,2) * 100
+        $PeerComparActualComputershr = [math]::Round($ComputerwithHighRisk/$PeerComparisonComputerCount,2) * 100             
 
         # Get actual shares %
         $PeerComparActualShares = [math]::Round($ExcessiveSharesCount/$AllSMBSharesCount,2) * 100      
@@ -4936,7 +4952,7 @@ input[type="checkbox"]:checked::before {
 
                     <div class="card" style="width: 20%">	
 	                    <div class="cardtitle" style="color:gray;font-size: 16px; font-weight: bold;">
-		                   Interesting File Names Found
+		                   Interesting Files Found
 	                    </div>		
                                     <br><br>
 				                    <span class="percentagetext" style = "color:#f08c41;">                    
@@ -4998,12 +5014,69 @@ input[type="checkbox"]:checked::before {
 		<div id="tabPanel" class="tabPanel">
 		<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Summary Report</h2>	
 		<div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>
-		<div style="min-height: 450px;">		
+		<div style="min-height: 450px;">	
+												
+<!--  
+|||||||||| CARD: RISK AND INTERESTING FILE SUMMARY
+-->
+                     <div style="margin-left: 10px; width: 90%;">
+	                    <h4 style="color:#4A4A4A;">Risk & Data Exposure</h4>
+	                    In total, $RiskLevelCountCritical critical, $RiskLevelCountHigh high, $RiskLevelCountMedium medium, and  $RiskLevelCountLow low risk <a style="font-weight: normal;" href="https://en.wikipedia.org/wiki/Security_descriptor">ACE (Access Control Entry)</a> configurations were discovered across $ExcessiveSharesCount shares, hosted by $ComputerWithExcessive computers in the $TargetDomain Active Directory domain. The affected shares were found hosting $InterestingFilesAllObjectsSecretCount files that may contain passwords and $InterestingFilesAllObjectsSensitiveCount files that may contain sensitive data. Overall, $InterestingFilesAllFilesCount interesting files were found that could potentially lead to unauthorized data access or remote code execution. 
+                        <Br>
+                     </div>
+
+		            <div class="LargeCard" style="width:43.75%;">	
+							<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnaces');" style="text-decoration:none;">
+							</a>
+																	
+									<div class="chart-container">
+									<div id="ChartDashboardRisk"></div>
+										<div class="chart-controls"></div>
+									</div>								  							
+							
+					</div>
+					
+				
+				
+					<div class="LargeCard" style="width: 43.75%;">	
+							<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;updateLabelColors('tabs', 'btnif');" style="text-decoration:none;">
+							</a>
+																	
+									<div class="chart-container">
+									<div id="ChartDashboardIF"></div>
+										<div class="chart-controls"></div>
+									</div>								  							
+							
+					</div>
+
+<!--  
+|||||||||| CARD: Remediation Recommendations
+-->
+                     <div style="margin-left: 10px; width: 90%; margin-bottom: 10px;">
+	                    <span style="color:#4A4A4A;"> <strong>Remediation Prioritization</strong><br></span>
+	                    Consider remediating share ACEs by risk level, starting with critical and high risks. Next, prioritize remediating groups of shares to speed up the process. Prioritize by folder group (shares containing exactly the same files) or by share names that have a high similarity score. 
+						<i>Prioritizing those groups may help reduce remediation actions by as much as <strong>$RemediationSavings percent</strong> for this environment</i>. Below is a summary of the potential task reduction for each approach.
+                     </div>
+
+		            <div class="LargeCard" style="width:90%;">	
+							<a href="#" id="DashLink" style="text-decoration:none;">
+							</a>
+																	
+									<div class="chart-container">
+									<div id="ChartDashboardRemediate"></div>
+										<div class="chart-controls"></div>
+									</div>								  							
+							
+					</div>
+
+<!--  
+|||||||||| Section: Affected Asset Exposure
+-->	
 		<div style="margin-left:10px;margin-top:16px;">			
 			<div style="width:90%;">	
-				<h4 style="color:#4A4A4A;">Affected Assets</h4>
+				<h4 style="color:#4A4A4A;">Affected Asset Exposure</h4>
 				<div>
-				Below is a summary of the computers, shares, and <a style="font-weight: normal;" href="https://en.wikipedia.org/wiki/Security_descriptor">ACEs (Access Control Entries)</a> associated with shares configured with excessive privileges.
+				Below is a summary of the computers, shares, and ACEs associated with shares configured with excessive privileges.
 	            $ExcessiveSharePrivsCount ACL entries, on $ExcessiveSharesCount shares, hosted by $ComputerWithExcessive computers were found configured with excessive privileges on the $TargetDomain domain. Overall, $IdentityReferenceListCount identities were assigned excessive privileges. Click the "Exposure Summary" or the titles on the cards below to explore the details.<Br><Br>
 				</div>
 			</div>
@@ -5027,7 +5100,7 @@ input[type="checkbox"]:checked::before {
 			<div class="content">
 			<div class="filelistparent" style="font-size: 10px;">		  
 			<div>
-                <span style="color:#9B3722;font-size:12;">$ComputerWithExcessive</span> of $ComputerCount ($PercentComputerExPrivP)<br><br>
+                <span style="color:#9B3722;font-size:12;">$ComputerWithExcessive</span> of $PeerComparisonComputerCount ($PeerComparActualComputers%)<br><br>
 	            <table>
 		             <tr>
 			            <td class="cardsubtitle" style="vertical-align: top; width:78px;">
@@ -5037,7 +5110,7 @@ input[type="checkbox"]:checked::before {
 				            <div class="cardbarouter">
 					            <div class="cardbarinside" style="width: $PercentComputerReadP;"></div>
 				            </div>	
-				            <span class="cardbartext">$ComputerWithReadCount of $ComputerCount ($PercentComputerReadP)</span>				
+				            <span class="cardbartext">$ComputerWithReadCount of $PeerComparisonComputerCount ($PeerComparActualComputersr%)</span>				
 			            </td>
 		             </tr>
 		             <tr>
@@ -5048,18 +5121,18 @@ input[type="checkbox"]:checked::before {
 				            <div class="cardbarouter">
 					            <div class="cardbarinside" style="width: $PercentComputerWriteP;"></div>
 				            </div>
-				            <span class="cardbartext">$ComputerWithWriteCount of $ComputerCount ($PercentComputerWriteP)</span>
+				            <span class="cardbartext">$ComputerWithWriteCount of $PeerComparisonComputerCount ($PeerComparActualComputersW%)</span>
 			            </td>
 		             </tr>
 		             <tr>
 			            <td class="cardsubtitle" style="vertical-align:top">
-                        High Risk
+                        Exploitable
                         </td>
 			            <td align="right">
 				            <div class="cardbarouter">
 					            <div class="cardbarinside" style="width: $PercentComputerHighRiskP;"></div>
 				            </div>
-				            <span class="cardbartext">$ComputerwithHighRisk of $ComputerCount ($PercentComputerHighRiskP)</span>				
+				            <span class="cardbartext">$ComputerwithHighRisk of $PeerComparisonComputerCount ($PeerComparActualComputershr%)</span>				
 			            </td>
 		             </tr>		 
 		            </table> 
@@ -5110,7 +5183,7 @@ input[type="checkbox"]:checked::before {
 		             </tr>
 		             <tr>
 			            <td class="cardsubtitle" style="vertical-align:top">
-                        High Risk
+                        Exploitable
                         </td>
 			            <td align="right">
 				            <div class="cardbarouter">
@@ -5167,7 +5240,7 @@ input[type="checkbox"]:checked::before {
 		             </tr>
 		             <tr>
 			            <td class="cardsubtitle" style="vertical-align:top">
-                        High Risk
+                        Exploitable
                         </td>
 			            <td align="right">
 				            <div class="cardbarouter">
@@ -5218,7 +5291,8 @@ input[type="checkbox"]:checked::before {
 -->
                      <div style="margin-left: 10px; width: 90%; margin-bottom: 10px;">
 	                    <span style="color:#4A4A4A;"> <strong>Peer Comparison</strong><br></span>
-	                    This section displays the percentage of assets associated with excessive share Access Control Entries (ACEs). Each percentage is calculated based on the total number of assets of that type discovered in the target environment. It also compares these figures to the average percentage of affected assets observed in other environments.
+	                    Below is a comaprison between the percent of affected assets in this environment and the average percent of affected assets observed in other environments. 
+                        The percentage is calculated based on the total number of assets discovered for each asset type. 
                      </div>
 
 		            <div class="LargeCard" style="width:90%;">	
@@ -5230,58 +5304,7 @@ input[type="checkbox"]:checked::before {
 										<div class="chart-controls"></div>
 									</div>								  							
 							
-					</div>													
-<!--  
-|||||||||| CARD: RISK AND INTERESTING FILE SUMMARY
--->
-                     <div style="margin-left: 10px; width: 90%;">
-	                    <h4 style="color:#4A4A4A;">Exposure Summary</h4>
-	                    In total, $RiskLevelCountCritical critical, $RiskLevelCountHigh high, $RiskLevelCountMedium medium, and  $RiskLevelCountLow low risk ACE configurations were discovered across shares in the $TargetDomain Active Directory domain. The affected shares were found hosting $InterestingFilesAllObjectsSecretCount files that may contain passwords and $InterestingFilesAllObjectsSensitiveCount files that may contain sensitive data. Overall, $InterestingFilesAllFilesCount interesting files were found that could potentially lead to unauthorized data access or remote code execution. Click the chart titles below to explore the details.<Br><Br>
-                     </div>
-
-		            <div class="LargeCard" style="width:43.75%;">	
-							<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnaces');" style="text-decoration:none;">
-							</a>
-																	
-									<div class="chart-container">
-									<div id="ChartDashboardRisk"></div>
-										<div class="chart-controls"></div>
-									</div>								  							
-							
-					</div>
-					
-				
-				
-					<div class="LargeCard" style="width: 43.75%;">	
-							<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;updateLabelColors('tabs', 'btnif');" style="text-decoration:none;">
-							</a>
-																	
-									<div class="chart-container">
-									<div id="ChartDashboardIF"></div>
-										<div class="chart-controls"></div>
-									</div>								  							
-							
-					</div>
-
-<!--  
-|||||||||| CARD: Remediation Recommendations
--->
-                     <div style="margin-left: 10px; width: 90%; margin-bottom: 10px;">
-	                    <span style="color:#4A4A4A;"> <strong>Remediation Prioritization</strong><br></span>
-	                    In most cases it makes sense to remediate share ACEs that have been categorized as high or critical risk first. Next, prioritize shares in groups by folder group (shares containing exactly the same files) or by share names that have a high similarity score. 
-						Prioritizing those groups may help <i>reduce remediation actions by as much as <strong>$RemediationSavings percent</strong> for this environment</i>. That has been illustrated in the chart below.
-                     </div>
-
-		            <div class="LargeCard" style="width:90%;">	
-							<a href="#" id="DashLink" style="text-decoration:none;">
-							</a>
-																	
-									<div class="chart-container">
-									<div id="ChartDashboardRemediate"></div>
-										<div class="chart-controls"></div>
-									</div>								  							
-							
-					</div>	
+					</div>		
 
 <!--  
 |||||||||| CARD: Share Creation Timeline
@@ -5319,7 +5342,7 @@ $CardLastModifiedTimeLine
 <h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Computers</h2>
 <div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>
 <div style="margin-left:10px;margin-top:3px; margin-bottom: 3px;width:95%">
-$ComputerCount computers were found in the $TargetDomain Active Directory domain. Below is a list of the computers hosting shares configured with excessive privileges. 
+$ComputerCount computers were found in the $TargetDomain Active Directory domain, $ComputerPingableCount responded to ping requests, $Computers445OpenCount had port 445 open, and $ComputerWithExcessive were found hosting shares configured with excessive privileges. Below is a list of the computers hosting shares configured with excessive privileges. 
 </div>		
 
 		    
@@ -5330,7 +5353,7 @@ $ComputerCount computers were found in the $TargetDomain Active Directory domain
 	                    </div>		
                                     <br><br>
 				                    <span class="percentagetext" style = "color:#f08c41;">                    
-					                    $ComputerPingableCount&nbsp;                     
+					                    $PeerComparisonComputerCount&nbsp;                     
 				                    </span>	
 			                    <Br>
                                 <div style="padding-right: 10px;">
@@ -6050,7 +6073,7 @@ Below is a summary of the exposure associated with each of those groups.
 <h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Share Names</h2>
 <div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>
 <div style="margin-left:10px;margin-top:3px; margin-bottom: 3px;width:95%">
-$AllSMBSharesCount shares were discovered across computers in the $TargetDomain Active Directory domain. $ShareNameChartCount shares were found configured with excessive privileges. Below is a summary of those shares grouped by name.
+$AllSMBSharesCount shares were discovered across $ComputerPingableCount live computers in the $TargetDomain Active Directory domain. $ExcessiveSharesCount of those shares were found configured with excessive privileges across $ComputerWithExcessive computers. Below is a summary of the affected shares grouped by name.
 </div>	
 
                     <div class="card" style="width: 20%">	
@@ -6059,11 +6082,11 @@ $AllSMBSharesCount shares were discovered across computers in the $TargetDomain 
 	                    </div>		
                                     <br><br>
 				                    <span class="percentagetext" style = "color:#f08c41;">                    
-					                    $ShareNameChartCountUnique  &nbsp;                     
+					                    $ExcessiveSharesCount  &nbsp;                     
 				                    </span>	
 			                    <Br>
                                 <div style="padding-right: 10px;">
-                                ($ShareNameChartCount unique share names found)	
+                                ($ShareNameChartCount unique names)	
                                 </div>
                     </div>
 					
@@ -6162,7 +6185,7 @@ $AllSMBSharesCount shares were discovered across computers in the $TargetDomain 
 <h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Networks</h2>
 <div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>
 <div style="margin-left:10px;margin-top:3px">
-This section contains a list of networks/subnets hosting computers with shares that are configured with excessive privileges. 
+$SubnetsCount networks/subnets were found associated with computers that host shares that are configured with excessive privileges. 
 </div>
 
 $SubnetSummaryHTML
@@ -6286,7 +6309,7 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
 		<!-- Header Text, Selected Node -->
 		<div  style="width: 100%; display: flex; align-items: left; margin-left: -1px;">
 			<div style="flex: 1;">
-			This section provides an interactive graph that can be used to explore the computer, share, files, and identity relationships. This functionality is still experimental.
+			This provides an interactive graph that can be used to explore the computer, share, and other relationships. Experimental.
 			</div>
 			<div style="text-align: right; margin-right: 10px;color:gray;">
 			&nbsp;Selected Node:&nbsp;<span id="selected-node" style="color:gray;">None</span><br>
@@ -8678,7 +8701,7 @@ const ChartAcesIFOptions = {
           categories: categoriesc,
         },
 		  title: {
-			text: 'Interesting File Count',
+			text: 'Interesting File Exposure',
 			align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
 			margin: 10, // Adjusts the space between the title and the chart
 			style: {
@@ -8839,7 +8862,7 @@ const ChartFGPageIFOptions = {
           categories: categoriesb,
         },
 		  title: {
-			text: 'Exposed File Count by Category',
+			text: 'Interesting File Exposure',
 			align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
 			margin: 10, // Adjusts the space between the title and the chart
 			style: {
@@ -8947,7 +8970,7 @@ const ChartSharePageIFOptions = {
           categories: categoriesa,
         },
 		  title: {
-			text: 'Exposed File Count by Category',
+			text: 'Interesting File Exposure',
 			align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
 			margin: 10, // Adjusts the space between the title and the chart
 			style: {
@@ -9069,7 +9092,7 @@ const ChartDashboardIFOptions = {
           categories: categories,
         },
   title: {
-    text: 'Interesting Files Count',
+    text: 'Interesting File Exposure',
     align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
     margin: 10, // Adjusts the space between the title and the chart
     style: {
@@ -9272,7 +9295,7 @@ ChartDashboardIF.render();
           }
         },
         title: {
-          text: 'Percentage of Assets with Excessive Privileges',  // Updated chart title
+          text: 'Percent of Assets with Excessive Privileges',  // Updated chart title
           align: 'center',
           style: {
             fontSize: '18px',
@@ -9324,7 +9347,7 @@ const ChartDashboardRiskOptions = {
     categories: ['Critical','High','Medium','Low']
   },
   title: {
-    text: 'Share ACL Count by Risk Level',
+    text: 'ACE Count by Risk Level',
     align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
     margin: 10, // Adjusts the space between the title and the chart
     style: {
@@ -9478,7 +9501,7 @@ const chartOptions = {
         }
     },
 		  title: {
-			text: 'File Name Category Distribution',
+			text: 'Interesting File Exposure',
 			align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
 			margin: 10, // Adjusts the space between the title and the chart
 			style: {
