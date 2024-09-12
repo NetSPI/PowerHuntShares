@@ -5,7 +5,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.84
+# Version: v1.85
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Analyze-HuntSMBShares
 {    
@@ -1889,6 +1889,63 @@ function Analyze-HuntSMBShares
             # Add row to rows    
             $ComputerTableRows = $ComputerTableRows + $ComputerTableRow  
         }
+
+        # ----------------------------------------------------------------------
+        # Create Share Summary Information
+        # ---------------------------------------------------------------------- 
+        
+        # Get share path count
+        $SharePathChartCount       = $ExcessiveSharePrivsFinal | where SharePath -ne "" | 
+        foreach{
+            if( ($_.sharename -ne 'SYSVOL') -and ($_.sharename -ne 'NETLOGON'))
+            {
+                $_                
+            }
+        } | select SharePath -Unique |  measure | select count -ExpandProperty count  
+
+        # Get share path severity
+        # Reivew ACLs for each share path, highest severity wins
+        $RiskLevelSharePathCountCritical = 0
+        $RiskLevelSharePathCountHigh     = 0
+        $RiskLevelSharePathCountMedium   = 0
+        $RiskLevelSharePathCountLow      = 0
+        $ExcessiveSharePrivsFinal | where SharePath -ne "" |
+        foreach{
+
+            # filter out sysvol and netlogon
+            if( ($_.SharePath -ne 'SYSVOL') -and ($_.SharePath -ne 'NETLOGON'))
+            {
+                $_                
+            }
+        } | select SharePath -Unique |
+        foreach {
+             
+             # Set target share name
+             $TargetRiskSharePath = $_.SharePath
+
+             # Grab the risk level for the highest risk acl for the share name
+             $SharePathTopACLRiskScore = $ExcessiveSharePrivsFinal | where SharePath -eq $TargetRiskSharePath | select RiskScore | sort RiskScore -Descending | select -First 1  | select RiskScore -ExpandProperty RiskScore
+
+             # Check risk level - Highest wins
+             If($SharePathTopACLRiskScore -le 4                                          ) { $RiskLevelSharePathResult = "Low"}
+             If($SharePathTopACLRiskScore -gt 4  -and $SharePathTopACLRiskScore -lt 11   ) { $RiskLevelSharePathResult = "Medium"} 
+             If($SharePathTopACLRiskScore -ge 11 -and $SharePathTopACLRiskScore -lt 20   ) { $RiskLevelSharePathResult = "High"}     
+             If($SharePathTopACLRiskScore -ge 20                                         ) { $RiskLevelSharePathResult = "Critical"}   
+             
+             # Increment counts
+             if($RiskLevelSharePathResult -eq "Low"     ){$RiskLevelSharePathCountLow      = $RiskLevelSharePathCountLow      + 1}
+             if($RiskLevelSharePathResult -eq "Medium"  ){$RiskLevelSharePathCountMedium   = $RiskLevelSharePathCountMedium   + 1}
+             if($RiskLevelSharePathResult -eq "High"    ){$RiskLevelSharePathCountHigh     = $RiskLevelSharePathCountHigh     + 1}
+             if($RiskLevelSharePathResult -eq "Critical"){$RiskLevelSharePathCountCritical = $RiskLevelSharePathCountCritical + 1}                         
+        }        
+
+        # Counts
+        <#
+        $RiskLevelSharePathCountLow
+        $RiskLevelSharePathCountMedium
+        $RiskLevelSharePathCountHigh 
+        $RiskLevelSharePathCountCritical
+        #>
 
         # ----------------------------------------------------------------------
         # Create Share Name Summary Information
@@ -5034,9 +5091,7 @@ input[type="checkbox"]:checked::before {
 										<div class="chart-controls"></div>
 									</div>								  							
 							
-					</div>
-					
-				
+					</div>									
 				
 					<div class="LargeCard" style="width: 43.75%;">	
 							<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;updateLabelColors('tabs', 'btnif');" style="text-decoration:none;">
@@ -8980,7 +9035,6 @@ const ChartSharePageIFOptions = {
 			}
 		  }
         };
-
 const ChartSharePageIF = new ApexCharts(document.querySelector("#ChartSharePageIF"), ChartSharePageIFOptions);
 ChartSharePageIF.render();
 
@@ -9064,7 +9118,7 @@ const ChartDashboardIFOptions = {
         }],
           chart: {
           type: 'bar',
-          height: 250
+          height: 300
         },
         plotOptions: {
           bar: {		 
@@ -9105,6 +9159,88 @@ const ChartDashboardIFOptions = {
 
 const ChartDashboardIF = new ApexCharts(document.querySelector("#ChartDashboardIF"), ChartDashboardIFOptions);
 ChartDashboardIF.render();
+
+// --------------------------
+// Dashboard Page: Risk Level chart
+// --------------------------
+
+//  Set data series
+var DataSeriesComputers = [$RiskLevelComputersCountLow, $RiskLevelComputersCountMedium, $RiskLevelComputersCountHigh, $RiskLevelComputersCountCritical];
+var DataSeriesShares    = [$RiskLevelSharePathCountLow, $RiskLevelSharePathCountMedium, $RiskLevelSharePathCountHigh, $RiskLevelSharePathCountCritical];
+var DataSeriesACEs      = [$RiskLevelCountLow, $RiskLevelCountMedium, $RiskLevelCountHigh,$RiskLevelCountCritical];
+
+// Reverse each array
+DataSeriesComputers.reverse();
+DataSeriesShares.reverse();
+DataSeriesACEs.reverse();
+
+// Find max values
+var maxComputer     = Math.max(...DataSeriesComputers);
+var maxShares       = Math.max(...DataSeriesShares);
+var maxACEs         = Math.max(...DataSeriesACEs);
+var maxValueOverall = Math.max(maxComputer, maxShares, maxACEs);
+
+// Initialize ApexCharts
+const ChartDashboardRiskOptions = {
+  series: [{
+    name: 'Computers',
+    data: DataSeriesComputers
+    //color: 'blue'  // Set color for Computers series
+  },{
+    name: 'Shares',
+    data: DataSeriesShares
+    //color: 'green'  // Set color for Shares series
+  },{
+    name: 'ACEs',
+    data: DataSeriesACEs 
+    //color: 'red'  // Set color for ACEs series
+  }],
+  chart: {
+    type: 'bar',
+    height: 300
+  },
+  plotOptions: {
+    bar: {		 
+      borderRadius: 0,
+      borderRadiusApplication: 'end',
+      horizontal: true,
+      barHeight: '90%', // Reduce bar height for more space
+      barGap: '0%',     // Adds gap between bars in the same group
+     // barSpacing: 0.0  // Adds space between the groups (risk levels)
+    }
+  },
+  colors: ['#DBDCD6', '#E4A628', '#07142A'],  // Colors for the bars
+  dataLabels: {
+    enabled: true,
+    style: {
+      fontSize: '12px',
+      colors: ['#07142A', '#07142A', '#E4A628'] // colors for the lables #FF9965
+    },
+    offsetX: 0
+  },
+  grid: {
+    show: true,
+	opacity: 0.5
+  },
+  xaxis: {
+    categories: ['Critical','High','Medium','Low'],
+	max: maxValueOverall,
+	min: 0
+  },
+  title: {
+    text: 'Asset Count by Risk Level',
+    align: 'center',
+    margin: 10,
+    style: {
+      fontSize: '16px',
+      fontWeight: 'bold',
+      color: 'gray'
+    }
+  }
+};
+
+const ChartDashboardRisk = new ApexCharts(document.querySelector("#ChartDashboardRisk"), ChartDashboardRiskOptions);
+ChartDashboardRisk.render();
 
 // --------------------------
 // Dashboard Page: Chart - Remediation Prioritization
@@ -9307,60 +9443,6 @@ ChartDashboardIF.render();
 
         var PeerCompareOptionschart = new ApexCharts(document.querySelector("#ChartDashboardPeerCompare"), PeerCompareOptions);
         PeerCompareOptionschart.render();
-
-// --------------------------
-// Dashboard Page: Risk Level chart
-// --------------------------
-
-// Initialize ApexCharts
-const ChartDashboardRiskOptions = {
-  series: [{
-    data: [$RiskLevelCountCritical, $RiskLevelCountHigh, $RiskLevelCountMedium, $RiskLevelCountLow]
-  }],
-  chart: {
-    type: 'bar',
-    height: 250
-  },
-  plotOptions: {
-    bar: {		 
-      borderRadius: 0,
-      borderRadiusApplication: 'end',
-      horizontal: true,
-      colors: {
-        backgroundBarColors: ['#e0e0e0'],
-        backgroundBarOpacity: 1,
-        ranges: [{
-          from: 0,
-          to: 1000,
-          color: '#f08c41'
-        }]
-      }
-    }
-  },
-  dataLabels: {
-    enabled: false
-  },
-  grid: {
-    show: false
-  },
-  xaxis: {
-    categories: ['Critical','High','Medium','Low']
-  },
-  title: {
-    text: 'ACE Count by Risk Level',
-    align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
-    margin: 10, // Adjusts the space between the title and the chart
-    style: {
-      fontSize: '16px',
-      fontWeight: 'bold',
-      color: 'gray'
-    }
-  }
-};
-
-const ChartDashboardRisk = new ApexCharts(document.querySelector("#ChartDashboardRisk"), ChartDashboardRiskOptions);
-ChartDashboardRisk.render();
-
 
 // --------------------------
 // Function to support collapsing and expanding sections
