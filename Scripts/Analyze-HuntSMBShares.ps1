@@ -5,7 +5,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.85
+# Version: v1.86
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Analyze-HuntSMBShares
 {    
@@ -2079,6 +2079,67 @@ function Analyze-HuntSMBShares
         }else{
             $RemediationSavings = $RemediationSaveSnP
         }
+
+        # ----------------------------------------------------------------------
+        # Generate Sankey Summary C H M L
+        # ----------------------------------------------------------------------
+
+        # Create critical edge
+        if($RiskLevelCountCritical -gt 0){
+            $SanKeyCritical = @"
+                                {
+                                  source: 'ACEs ($ExcessiveSharePrivsCount)',
+                                  target: 'Critical ($RiskLevelCountCritical)',
+                                  value: $RiskLevelCountCritical,
+                                  color: '#93E6C4', // Custom color for this edge
+                                },
+"@
+        }else{
+          $SanKeyCrtiical = ""
+        }
+
+        # Create high edge
+        if($RiskLevelCountHigh -gt 0){
+            $SanKeyHigh = @"
+                                {
+                                  source: 'ACEs ($ExcessiveSharePrivsCount)',
+                                  target: 'High ($RiskLevelCountHigh)',
+                                  value: $RiskLevelCountHigh,
+                                  color: '#FB897C', // Custom color for this edge
+                                },
+"@
+        }else{
+          $SanKeyHigh = ""
+        }
+
+        # Create medium edge
+        if($RiskLevelCountMedium -gt 0){
+            $SanKeyMedium = @"
+                                {
+                                  source: 'ACEs ($ExcessiveSharePrivsCount)',
+                                  target: 'Medium ($RiskLevelCountMedium)',
+                                  value: $RiskLevelCountMedium,
+                                  color: '#FDAC70', // Custom color for this edge
+                                },
+"@
+        }else{
+          $SanKeyMedium = ""
+        }
+
+        # Create low edge
+        if($RiskLevelCountLow -gt 0){
+            $SanKeyLow = @"
+                                {
+                                  source: 'ACEs ($ExcessiveSharePrivsCount)',
+                                  target: 'Low ($RiskLevelCountLow)',
+                                  value: $RiskLevelCountLow,
+                                  color: '#FEDA94', // Custom color for this edge
+                                },
+"@
+        }else{
+          $SanKeyLow = ""
+        }
+
    
         # ----------------------------------------------------------------------
         # Create ShareGraph Nodes and Edges
@@ -3522,6 +3583,7 @@ $NewHtmlReport = @"
   <script src="https://unpkg.com/cytoscape-euler/cytoscape-euler.js"></script>
   <script src="https://unpkg.com/klayjs/klay.js"></script>
   <script src="https://unpkg.com/cytoscape-klay/cytoscape-klay.js"></script>  
+  <script src="https://cdn.jsdelivr.net/npm/apexsankey"></script>
   <title>Report</title>
   <style>    
      .modern-input {
@@ -5103,6 +5165,16 @@ input[type="checkbox"]:checked::before {
 									</div>								  							
 							
 					</div>
+
+					 <div style="margin-left: 10px; width: 90%; margin-bottom: 10px;">
+					 The chart below illustrates the relationship between networks, computers, shares, and the ACEs configured with excessive privileges. Each network contains computers with assigned IP addresses. Each computer may host multiple shares and each share is configured with ACEs that allow remote access. As a result, ACEs represent the individual points of remediation that will need to be addressed to reduce exposure and risk.
+					 </div>
+					
+					<div class="LargeCard" style="width: 90%;">	
+						<a href="#" id="DashLink" style="text-decoration:none;">
+						</a>															
+						<div style="width: 100%; height: 200px;" id="svg-sankey"></div>								
+					</div>	
 
 <!--  
 |||||||||| CARD: Remediation Recommendations
@@ -8592,6 +8664,95 @@ Invoke-HuntSMBShares -Threads 20 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\
 </div>
 <br>
 <script>
+
+// --------------------------
+// Dashboard Page: Sankey Chart
+// --------------------------
+
+
+  const SankeyData = {
+  nodes: [
+    {
+      id: 'Networks ($SubnetsCount)',
+      title: 'Networks ($SubnetsCount)',
+      color: '#0c8b99',
+    },
+    {
+      id: 'Computers ($ComputerWithExcessive)',
+      title: 'Computers ($ComputerWithExcessive)',
+      color: '#04B9CD',
+    },
+    {
+      id: 'Shares ($ExcessiveSharesCount)',
+      title: 'Shares ($ExcessiveSharesCount)',
+      color: '#45D1C8', 
+    },
+    {
+      id: 'ACEs ($ExcessiveSharePrivsCount)',
+      title: 'ACEs ($ExcessiveSharePrivsCount)',
+      color: '#93E6C4', 
+    },
+    {
+      id: 'Critical ($RiskLevelCountCritical)',
+      title: 'Critical ($RiskLevelCountCritical)',
+      color: '#FF6A6A', 
+    },
+    {
+      id: 'High ($RiskLevelCountHigh)',
+      title: 'High ($RiskLevelCountHigh)',
+      color: '#FB897C', 
+    },
+    {
+      id: 'Medium ($RiskLevelCountMedium)',
+      title: 'Medium ($RiskLevelCountMedium)',
+      color: '#FDAC70', 
+    },
+    {
+      id: 'Low ($RiskLevelCountLow)',
+      title: 'Low ($RiskLevelCountLow)',
+      color: '#FEDA94', 
+    },
+  ],
+  edges: [
+      {
+      source: 'Networks ($SubnetsCount)',
+      target: 'Computers ($ComputerWithExcessive)',
+      value: $ComputerWithExcessive,
+      color: '#0c8b99', // Custom color for this edge 
+    },
+    {
+      source: 'Computers ($ComputerWithExcessive)',
+      target: 'Shares ($ExcessiveSharesCount)',
+      value: $ExcessiveSharesCount,
+      color: '#04B9CD', // Custom color for this edge
+    },
+    {
+      source: 'Shares ($ExcessiveSharesCount)',
+      target: 'ACEs ($ExcessiveSharePrivsCount)',
+      value: $ExcessiveSharePrivsCount,
+      color: '#45D1C8', // Custom color for this edge
+    },    
+    $SanKeyCritical
+    $SanKeyHigh
+    $SanKeyMedium
+    $SanKeyLow
+  ],
+};
+
+const graphOptions = {
+  nodeWidth: 10,
+  fontFamily: 'Quicksand, sans-serif', 
+  fontSize: '14px',  
+  fontWeight: 400,
+  fontColor: '#07142A',
+  height: 200,
+  width: 1200,
+  spacing: 10, // margin
+  enableTooltip: true,
+  canvasStyle: 'border: 0px solid #caced0;',
+};
+const s = new ApexSankey(document.getElementById('svg-sankey'), graphOptions);
+s.render(SankeyData);
 
 
 // --------------------------
