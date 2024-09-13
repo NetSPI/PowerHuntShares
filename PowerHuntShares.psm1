@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.117
+# Version: v1.118
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -2505,6 +2505,186 @@ function Invoke-HuntSMBShares
           $SanKeyLow = ""
         }
 
+        # ----------------------------------------------------------------------
+        # Generate Share Creation Timeline Data Series Objects
+        # ---------------------------------------------------------------------- 
+
+        # Set Counters
+        $LowAcesCounter      = 0
+        $MediumAcesCounter   = 0
+        $HighAcesCounter     = 0
+        $CriticalAcesCounter = 0
+
+        # Create date series variables
+        $DataSeriesComputers = ""
+        $DataSeriesShares    = ""
+        $DataSeriesAces      = ""
+        $DataSeriesLow       = ""
+        $DataSeriesMedium    = ""
+        $DataSeriesHigh      = ""
+        $DataSeriesCritical  = ""
+
+        # Get unique dates from final inventory
+        $UniqueDates = $ExcessiveSharePrivsFinal  | select CreationDate -Unique | 
+        foreach { 
+
+            # Get date
+            $dateTimeString = $_.CreationDate; 
+
+            # Convert the string to a [DateTime] object
+            $dateTime = [DateTime]::Parse($dateTimeString)
+
+            # Return the DateTime object
+            $dateTime.Date
+
+        } | Sort-Object | Select-Object -Unique | foreach {
+
+            # After sorting and removing duplicates, format the date as MM/dd/yyyy
+            $_.ToString('MM/dd/yyyy')
+
+        }
+
+        # Join the dates into a comma-separated string and format it as labels
+        $labelsString = $UniqueDates -join "', '"
+        $formattedLabels = "labels: ['$labelsString'],"
+
+        # Pre-process all CreationDates from final inventory to avoid repeated parsing and formatting
+        $AllAcesWithFormattedDates = $ExcessiveSharePrivsFinal | ForEach-Object {
+            # Create a new property 'FormattedCreationDate' with the date formatted as 'MM/dd/yyyy'
+            $_ | Add-Member -MemberType NoteProperty -Name 'FormattedCreationDate' -Value ([DateTime]::Parse($_.CreationDate).ToString('MM/dd/yyyy')) -PassThru
+        }
+
+        # Get start and end dates for all
+        $AcesFirstDate     =  $UniqueDates | select -First 1
+        $AcesLastDate      =  $UniqueDates | select -Last 1  
+
+        # Get start and end dates for all high
+        $ACEHighCountBlah = $AllAcesWithFormattedDates | Where-Object { $_.RiskLevel -eq 'High' } | measure | select count -ExpandProperty count
+        If($ACEHighCountBlah -gt 0)
+        {
+            [datetime]$HighFirstDateD     =  [datetime]($AllAcesWithFormattedDates | Where-Object { $_.RiskLevel -eq 'High' } | Select-Object -First 1).CreationDate
+            $HighFirstDateS               =  $HighFirstDateD.ToString('MM/dd/yyyy')
+
+            [datetime]$HighLastDateD      =  [datetime]($AllAcesWithFormattedDates | Where-Object { $_.RiskLevel -eq 'High' } | Select-Object -Last 1).CreationDate
+            $HighLastDateS                =  $HighLastDateD.ToString('MM/dd/yyyy')
+
+            #$ACEHighTime = "Shares configured with high risk ACEs were created between $HighFirstDateS and $HighLastDateS."
+            $ACEHighTime = "" 
+        }else{
+            $HighFirstDateS    = "NA"
+            $HighLastDateS     = "NA"
+            $ACEHighTime = ""    
+        }
+
+        
+
+        # Get start and end dates for all critical
+        $ACECriticalCountBlah = $AllAcesWithFormattedDates | Where-Object { $_.RiskLevel -eq 'Critical' } | measure | select count -ExpandProperty count
+        If($ACECriticalCountBlah -gt 0)
+        {
+            [datetime]$CriticalFirstDateD     =  [datetime]($AllAcesWithFormattedDates | Where-Object { $_.RiskLevel -eq 'Critical' } | Select-Object -First 1).CreationDate
+            $CriticalFirstDateS               =  $CriticalFirstDateD.ToString('MM/dd/yyyy')
+
+            [datetime]$CriticalLastDateD      =  [datetime]($AllAcesWithFormattedDates | Where-Object { $_.RiskLevel -eq 'Critical' } | Select-Object -Last 1).CreationDate
+            $CriticalLastDateS                =  $CriticalLastDateD.ToString('MM/dd/yyyy')
+
+            #$ACECriticalTime = "Shares configured with critical risk ACEs were created between  $CriticalFirstDateS and $CriticalLastDateS."
+            $ACECriticalTime = ""
+        }else{
+            $CriticalFirstDateS  = "NA" 
+            $CriticalLastDateS   = "NA"
+            $ACECriticalTime = ""
+        }
+
+        
+
+        # Iterate through unique dates and count ACEs efficiently
+        $UniqueDates | ForEach-Object {
+
+            # Get target date
+            $TargetDate = $_
+
+            # Filter ACES with pre-formatted dates
+            $TargetAces = $AllAcesWithFormattedDates | Where-Object {
+                $_.FormattedCreationDate -eq $TargetDate
+            }
+
+            # Count the number of matching ACEs
+            $TargetAcesCount = $TargetAces |  measure | select count -ExpandProperty count
+            if($TargetAcesCount -gt 0){
+                $DataSeriesAces = $DataSeriesAces + ", $TargetAcesCount"
+            }
+
+            # Get computer count
+	        $TargetAcesComputerCount = $TargetAces | select ComputerName -unique | measure | select count -expandproperty count
+
+            # Add computer count to series
+            $DataSeriesComputers     = $DataSeriesComputers + ", $TargetAcesComputerCount"
+
+	        # Get share count
+	        $TargetAcesShareCount    = $TargetAces | select SharePath -unique    | measure | select count -expandproperty count
+
+            # Add share count to series
+            $DataSeriesShares        = $DataSeriesShares + ", $TargetAcesShareCount"
+
+	        # Check for lows and increase counter
+	        $LowAceCount = $TargetAces | where RiskLevel -eq 'Low' | measure | select count -expandproperty count
+	        if($LowAceCount -gt 0){
+		        $LowAcesCounter = $LowAcesCounter + $LowAceCount
+	        }
+            $DataSeriesLow         = $DataSeriesLow  + ", $LowAcesCounter"
+
+	        # Check for mediums and increase counter
+	        $MediumAceCount = $TargetAces | where RiskLevel -eq 'Medium' | measure | select count -expandproperty count
+	        if($MediumAceCount -gt 0){
+		        $MediumAcesCounter = $MediumAcesCounter + $MediumAceCount
+	        }
+            $DataSeriesMedium         = $DataSeriesMedium  + ", $MediumAcesCounter"
+
+	        # Check for highs and increase counter
+	        $HighAceCount = $TargetAces | where RiskLevel -eq 'High' | measure | select count -expandproperty count
+	        if($HighAceCount -gt 0){
+		        $HighAcesCounter = $HighAcesCounter + $HighAceCount
+	        }
+            $DataSeriesHigh        = $DataSeriesHigh  + ", $HighAcesCounter"
+
+	        # Check for critical and increase counter
+	        $CriticalAceCount = $TargetAces | where RiskLevel -eq 'Critical' | measure | select count -expandproperty count
+	        if($CriticalAceCount -gt 0){
+		        $CriticalAcesCounter = $CriticalAcesCounter + $CriticalAceCount
+	        }		
+            $DataSeriesCritical        = $DataSeriesCritical   + ", $CriticalAcesCounter"
+        }
+
+        # Final data series formatting
+        $DataSeriesComputers = $DataSeriesComputers.Substring(2)
+        $DataSeriesComputers = '[' + $DataSeriesComputers + ']'
+        $DataSeriesShares    = $DataSeriesShares.Substring(2)
+        $DataSeriesShares    = '[' + $DataSeriesShares + ']'
+        $DataSeriesAces      = $DataSeriesAces.Substring(2)
+        $DataSeriesAces      = '[' + $DataSeriesAces + ']'
+        $DataSeriesLow       = $DataSeriesLow.Substring(2)
+        $DataSeriesLow       = '[' + $DataSeriesLow  + ']'
+        $DataSeriesMedium    = $DataSeriesMedium.Substring(2)
+        $DataSeriesMedium    = '[' + $DataSeriesMedium   + ']'
+        $DataSeriesHigh      = $DataSeriesHigh.Substring(2)
+        $DataSeriesHigh      = '[' + $DataSeriesHigh  + ']'
+        $DataSeriesCritical  = $DataSeriesCritical.Substring(2)
+        $DataSeriesCritical  = '[' + $DataSeriesCritical   + ']'
+
+        # For ace count by date, get the max and average
+        $DataSeriesAcesClean = $DataSeriesAces.TrimStart('[').TrimEnd(']')
+        $DataSeriesAcesNum   = $DataSeriesAcesClean -split ',\s*' | ForEach-Object { [int]$_ }
+        $DataSeriesAceMax    = $DataSeriesAcesNum | Measure-Object -Maximum | Select-Object -ExpandProperty Maximum
+        $DataSeriesAceAvg    = [math]::Round(($DataSeriesAcesNum | Measure-Object -Maximum -Average | Select-Object -ExpandProperty Average),2)
+
+        # Get standard deviation number and standard deviation x2 number from mean
+        $DataSeriesAceVariance = ($DataSeriesAcesNum | ForEach-Object { [math]::Pow($_ - $DataSeriesAceAvg, 2) } | Measure-Object -Average).Average
+        $DataSeriesAceSD = [math]::Round([math]::Sqrt($DataSeriesAceVariance),2)
+        $DataSeriesAceSDtwo = $DataSeriesAceSD * 2 + $DataSeriesAceAvg
+
+        # Get number of records/days past the 
+        $DataSeriesAceAnomalyCount = ($DataSeriesAcesNum| Where-Object { $_ -ge $DataSeriesAceSDtwo }) | Measure-Object | select count -ExpandProperty count  
 
         # ----------------------------------------------------------------------
         # Create ShareGraph Nodes and Edges
@@ -5576,9 +5756,7 @@ input[type="checkbox"]:checked::before {
 										<div class="chart-controls"></div>
 									</div>								  							
 							
-					</div>
-					
-				
+					</div>									
 				
 					<div class="LargeCard" style="width: 43.75%;">	
 							<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;updateLabelColors('tabs', 'btnif');" style="text-decoration:none;">
@@ -5606,7 +5784,7 @@ input[type="checkbox"]:checked::before {
 -->
                      <div style="margin-left: 10px; width: 90%; margin-bottom: 10px;">
 	                    <span style="color:#4A4A4A;"> <strong>Remediation Prioritization</strong><br></span>
-	                    Consider remediating share ACEs by risk level, starting with critical and high risks. Next, prioritize remediating groups of shares to speed up the process. Prioritize by folder group (shares containing exactly the same files) or by share names that have a high similarity score. 
+	                    Consider remediating share ACEs by risk level, starting with critical and high risks. Consider reviewing the share creation timeline for additional contenxt. Next, prioritize remediating groups of shares to speed up the process. Prioritize by folder group (shares containing exactly the same files) or by share names that have a high similarity score. 
 						<i>Prioritizing those groups may help reduce remediation actions by as much as <strong>$RemediationSavings percent</strong> for this environment</i>. Below is a summary of the potential task reduction for each approach.
                      </div>
 
@@ -5861,15 +6039,34 @@ input[type="checkbox"]:checked::before {
 <!--  
 |||||||||| CARD: Share Creation Timeline
 -->
+
  <div style="height:.5px;width:100%;position:relative;float:left;"></div>
  <div style="height:130px;"></div>
 	<div style="margin-left: 10px; width: 95%">
-	<h4 style="color:#4A4A4A;">Timelines</h4>
-	Below are charts to help illustrate the share creation and last write timelines.<Br><Br>
+	<h4 style="color:#4A4A4A;">Share Creation Timeline</h4>
+    <div style = "width: 90%">
+	Below is a time series chart to help provide a sense of when shares were created and at what point high-risk and critical-risk shares were introduced into the environment.
+    Shares were found created in this environment between $AcesFirstDate and $AcesLastDate.
+    The average number of ACEs associated with shares created on the same day is $DataSeriesAceAvg, the max is $DataSeriesAceMax, and the standard deviation is $DataSeriesAceSD.
+    $DataSeriesAceAnomalyCount anomalies were found that represent days when shares were created with ACE counts twice the standard deviation.
+    $ACEHighTime
+    $ACECriticalTime
+    </div>
  </div>
-$CardCreationTimeLine
+ <div class="LargeCard" style="width:90%;">	
+        <a href="#" id="DashLink" style="text-decoration:none;">
+        </a>																	
+        <div class="chart-container">
+            <div id="TimelinCreationChart"></div>
+        <div class="chart-controls"></div>
+    </div>								  							
+</div>	
 <div style="height:.5px;width:100%;position:relative;float:left;"></div>
  
+<!--  
+|||||||||| CARD: LastAccessDate Timeline
+ $CardCreationTimeLine
+-->
 
 <!--  
 |||||||||| CARD: LastAccessDate Timeline
@@ -5879,8 +6076,9 @@ $CardLastAccessTimeLine
 
 <!--  
 |||||||||| CARD: LastModifiedDate Timeline
--->
+
 $CardLastModifiedTimeLine
+-->
 </div>
 </div>
 
@@ -9090,6 +9288,176 @@ Invoke-HuntSMBShares -Threads 20 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\
 </div>
 <br>
 <script>
+
+// --------------------------
+// Dashboard Page: Timeline Creation Chart
+// --------------------------
+
+var allData = $DataSeriesAces; // ACEs data
+
+function calculateMean(data) {
+    let sum = data.reduce((a, b) => a + b, 0);
+    return sum / data.length;
+}
+
+function calculateStandardDeviation(data, mean) {
+    let sum = data.reduce((a, b) => a + Math.pow(b - mean, 2), 0);
+    return Math.sqrt(sum / data.length);
+}
+
+var meanValue = calculateMean(allData);
+var stdDev = calculateStandardDeviation(allData, meanValue);
+
+var lowerBound = meanValue - 2 * stdDev;
+var upperBound = meanValue + 2 * stdDev;
+
+var TimelineCreationOptions = {
+    series: [
+        {
+            name: 'Computers',
+            type: 'column',
+            data: $DataSeriesComputers,
+            color: '#9ba1a9'
+        },
+        {
+            name: 'Shares',
+            type: 'column',
+            data: $DataSeriesShares,
+            color: '#515a69'
+        },
+        {
+            name: 'ACEs',
+            type: 'column',
+            data: $DataSeriesAces,
+            color: '#07142A'
+        },
+        {
+            name: 'All High',
+            type: 'area',
+            data: $DataSeriesHigh, 
+            color: '#f08c41'
+        },
+        {
+            name: 'All Critical',
+            type: 'area',
+            data: $DataSeriesCritical,
+            color: '#EE092D'
+        }
+    ],
+    annotations: {
+        yaxis: [
+            {
+                y: meanValue,
+                borderColor: '#000000',
+                label: {
+                    borderColor: '#000000',
+                    style: {
+                        color: '#fff',
+                        background: '#000000'
+                    },
+                    text: 'avg'
+                },
+                strokeDashArray: 4
+            },
+            {
+                y: lowerBound,
+                borderColor: '#FF0000',
+                label: {
+                    borderColor: '#FF0000',
+                    style: {
+                        color: '#fff',
+                        background: '#FF0000'
+                    },
+                    text: '-2 std dev'
+                },
+                strokeDashArray: 4
+            },
+            {
+                y: upperBound,
+                borderColor: '#FF0000',
+                label: {
+                    borderColor: '#FF0000',
+                    style: {
+                        color: '#fff',
+                        background: '#FF0000'
+                    },
+                    text: '+2 Std Dev'
+                },
+                strokeDashArray: 4
+            }
+        ],
+        xaxis: [
+            {
+                x: 0,
+                borderColor: '#FF0000',
+                label: {
+                    borderColor: '#FF0000',
+                    style: {
+                        color: '#fff',
+                        background: '#FF0000'
+                    },
+                    text: 'Highlight'
+                }
+            }
+        ]
+    },
+    chart: {
+        height: 350,
+        type: 'line',
+        stacked: false
+    },
+    stroke: {
+        width: [0, 2, 5],
+        curve: 'smooth'
+    },
+    plotOptions: {
+        bar: {
+            columnWidth: '50%'
+        }
+    },
+    fill: {
+        opacity: [1, 1, 1, .5, .5],
+        gradient: {
+            inverseColors: false,
+            shade: 'light',
+            type: "vertical",
+            opacityFrom: 0.0,
+            opacityTo: 1,
+            stops: [0, 25, 50, 100]
+        }
+    },
+    $formattedLabels
+    markers: {
+        size: 0
+    },
+    xaxis: {
+        type: 'datetime'
+    },
+    yaxis: {
+        title: {
+                    text: 'Count',
+                    style: {
+                      fontWeight: 'normal',
+                      color: '#808080'  // Set "Percentage" text to gray
+                    }
+                  }
+    },
+    tooltip: {
+        shared: true,
+        intersect: false,
+        y: {
+            formatter: function (y) {
+                if (typeof y !== "undefined") {
+                    return y.toFixed(0);
+                }
+                return y;
+            }
+        }
+    }
+};
+
+var TimelineCreationChartVar = new ApexCharts(document.querySelector("#TimelinCreationChart"), TimelineCreationOptions);
+TimelineCreationChartVar.render();
 
 // --------------------------
 // Dashboard Page: Sankey Chart
