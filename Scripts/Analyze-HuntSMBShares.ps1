@@ -5,7 +5,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.87
+# Version: v1.88
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Analyze-HuntSMBShares
 {    
@@ -2146,10 +2146,10 @@ function Analyze-HuntSMBShares
         # ---------------------------------------------------------------------- 
 
         # Set Counters
-        $LowAcesCounter      = 0
-        $MediumAcesCounter   = 0
-        $HighAcesCounter     = 0
-        $CriticalAcesCounter = 0
+        $LowShareCounter      = 0
+        $MediumShareCounter   = 0
+        $HighShareCounter     = 0
+        $CriticalShareCounter = 0
 
         # Create date series variables
         $DataSeriesComputers = ""
@@ -2191,43 +2191,45 @@ function Analyze-HuntSMBShares
         }
 
         # Get start and end dates for all
-        $AcesFirstDate     =  $UniqueDates | select -First 1
-        $AcesLastDate      =  $UniqueDates | select -Last 1  
+        $ShareFirstDate     =  $UniqueDates | select -First 1
+        $ShareLastDate      =  $UniqueDates | select -Last 1  
 
         # Get start and end dates for all high
-        $ACEHighCountBlah = $AllAcesWithFormattedDates | Where-Object { $_.RiskLevel -eq 'High' } | measure | select count -ExpandProperty count
-        If($ACEHighCountBlah -gt 0)
+        $ShareHighCountBlah = $AllAcesWithFormattedDates | Where-Object { $_.RiskLevel -eq 'High' } | select SharePath -Unique | measure | select count -ExpandProperty count
+        If($ShareHighCountBlah -gt 0)
         {
-            [datetime]$HighFirstDateD     =  [datetime]($AllAcesWithFormattedDates | Where-Object { $_.RiskLevel -eq 'High' } | Select-Object -First 1).CreationDate
+            [datetime]$HighFirstDateD     =  [datetime]($AllAcesWithFormattedDates | Where-Object { $_.RiskLevel -eq 'High' } | Sort | Select-Object -First 1).CreationDate
             $HighFirstDateS               =  $HighFirstDateD.ToString('MM/dd/yyyy')
 
-            [datetime]$HighLastDateD      =  [datetime]($AllAcesWithFormattedDates | Where-Object { $_.RiskLevel -eq 'High' } | Select-Object -Last 1).CreationDate
+            [datetime]$HighLastDateD      =  [datetime]($AllAcesWithFormattedDates | Where-Object { $_.RiskLevel -eq 'High' } | Sort | Select-Object -Last 1).CreationDate
             $HighLastDateS                =  $HighLastDateD.ToString('MM/dd/yyyy')
 
-            $ACEHighTime = "Shares configured with high risk ACEs were created between $HighFirstDateS and $HighLastDateS."
+            $ShareHighTime = "Shares configured with high risk ACEs were created between $HighFirstDateS and $HighLastDateS."
+            # $ShareHighTime = "" 
         }else{
-            $HighFirstDateS    = "NA"
-            $HighLastDateS     = "NA"
-            $ACEHighTime = ""    
+            # $HighFirstDateS    = "NA"
+            # $HighLastDateS     = "NA"
+            $ShareHighTime = "No shares were found configured with high risk ACEs."  
         }
 
         
 
         # Get start and end dates for all critical
-        $ACECriticalCountBlah = $AllAcesWithFormattedDates | Where-Object { $_.RiskLevel -eq 'Critical' } | measure | select count -ExpandProperty count
-        If($ACECriticalCountBlah -gt 0)
+        $ShareCriticalCountBlah = $AllAcesWithFormattedDates | Where-Object { $_.RiskLevel -eq 'Critical' } | select SharePath -Unique | measure | select count -ExpandProperty count
+        If($ShareCriticalCountBlah -gt 0)
         {
-            [datetime]$CriticalFirstDateD     =  [datetime]($AllAcesWithFormattedDates | Where-Object { $_.RiskLevel -eq 'Critical' } | Select-Object -First 1).CreationDate
+            [datetime]$CriticalFirstDateD     =  [datetime]($AllAcesWithFormattedDates | Where-Object { $_.RiskLevel -eq 'Critical' } | Sort | Select-Object -First 1).CreationDate
             $CriticalFirstDateS               =  $CriticalFirstDateD.ToString('MM/dd/yyyy')
 
-            [datetime]$CriticalLastDateD      =  [datetime]($AllAcesWithFormattedDates | Where-Object { $_.RiskLevel -eq 'Critical' } | Select-Object -Last 1).CreationDate
+            [datetime]$CriticalLastDateD      =  [datetime]($AllAcesWithFormattedDates | Where-Object { $_.RiskLevel -eq 'Critical' } | Sort | Select-Object -Last 1).CreationDate
             $CriticalLastDateS                =  $CriticalLastDateD.ToString('MM/dd/yyyy')
 
-            $ACECriticalTime = "Shares configured with critical risk ACEs were created between  $CriticalFirstDateS and $CriticalLastDateS."
+            $ShareCriticalTime = "Shares configured with critical risk ACEs were created between $CriticalFirstDateS and $CriticalLastDateS."
+            # $ShareCriticalTime = ""
         }else{
-            $CriticalFirstDateS  = "NA" 
-            $CriticalLastDateS   = "NA"
-            $ACECriticalTime = ""
+            # $CriticalFirstDateS  = "NA" 
+            # $CriticalLastDateS   = "NA"
+            $ShareCriticalTime = "No shares were found configured with critical risk ACEs." 
         }
 
         
@@ -2256,38 +2258,38 @@ function Analyze-HuntSMBShares
             $DataSeriesComputers     = $DataSeriesComputers + ", $TargetAcesComputerCount"
 
 	        # Get share count
-	        $TargetAcesShareCount    = $TargetAces | select SharePath -unique    | measure | select count -expandproperty count
+	        $TargetAcesShareCount    = $TargetAces | select SharePath -unique | measure | select count -expandproperty count
 
             # Add share count to series
             $DataSeriesShares        = $DataSeriesShares + ", $TargetAcesShareCount"
 
 	        # Check for lows and increase counter
-	        $LowAceCount = $TargetAces | where RiskLevel -eq 'Low' | measure | select count -expandproperty count
-	        if($LowAceCount -gt 0){
-		        $LowAcesCounter = $LowAcesCounter + $LowAceCount
+	        $LowShareCount = $TargetAces | where RiskLevel -eq 'Low' | select SharePath -Unique | measure | select count -expandproperty count
+	        if($LowShareCount -gt 0){
+		        $LowShareCounter = $LowShareCounter + $LowShareCount
 	        }
-            $DataSeriesLow         = $DataSeriesLow  + ", $LowAcesCounter"
+            $DataSeriesLow         = $DataSeriesLow  + ", $LowShareCounter"
 
 	        # Check for mediums and increase counter
-	        $MediumAceCount = $TargetAces | where RiskLevel -eq 'Medium' | measure | select count -expandproperty count
-	        if($MediumAceCount -gt 0){
-		        $MediumAcesCounter = $MediumAcesCounter + $MediumAceCount
+	        $MediumShareCount = $TargetAces | where RiskLevel -eq 'Medium' |  select SharePath -Unique | measure | select count -expandproperty count
+	        if($MediumShareCount -gt 0){
+		        $MediumShareCounter = $MediumShareCounter + $MediumShareCount
 	        }
-            $DataSeriesMedium         = $DataSeriesMedium  + ", $MediumAcesCounter"
+            $DataSeriesMedium         = $DataSeriesMedium  + ", $MediumShareCounter"
 
 	        # Check for highs and increase counter
-	        $HighAceCount = $TargetAces | where RiskLevel -eq 'High' | measure | select count -expandproperty count
-	        if($HighAceCount -gt 0){
-		        $HighAcesCounter = $HighAcesCounter + $HighAceCount
+	        $HighShareCount = $TargetAces | where RiskLevel -eq 'High' |  select SharePath -Unique | measure | select count -expandproperty count
+	        if($HighShareCount -gt 0){
+		        $HighShareCounter = $HighShareCounter + $HighShareCount
 	        }
-            $DataSeriesHigh        = $DataSeriesHigh  + ", $HighAcesCounter"
+            $DataSeriesHigh        = $DataSeriesHigh  + ", $HighShareCounter"
 
 	        # Check for critical and increase counter
-	        $CriticalAceCount = $TargetAces | where RiskLevel -eq 'Critical' | measure | select count -expandproperty count
-	        if($CriticalAceCount -gt 0){
-		        $CriticalAcesCounter = $CriticalAcesCounter + $CriticalAceCount
+	        $CriticalShareCount = $TargetAces | where RiskLevel -eq 'Critical' | select SharePath -Unique | measure | select count -expandproperty count
+	        if($CriticalShareCount -gt 0){
+		        $CriticalShareCounter = $CriticalShareCounter + $CriticalShareCount
 	        }		
-            $DataSeriesCritical        = $DataSeriesCritical   + ", $CriticalAcesCounter"
+            $DataSeriesCritical        = $DataSeriesCritical   + ", $CriticalShareCounter"
         }
 
         # Final data series formatting
@@ -2307,18 +2309,18 @@ function Analyze-HuntSMBShares
         $DataSeriesCritical  = '[' + $DataSeriesCritical   + ']'
 
         # For ace count by date, get the max and average
-        $DataSeriesAcesClean = $DataSeriesAces.TrimStart('[').TrimEnd(']')
-        $DataSeriesAcesNum   = $DataSeriesAcesClean -split ',\s*' | ForEach-Object { [int]$_ }
-        $DataSeriesAceMax    = $DataSeriesAcesNum | Measure-Object -Maximum | Select-Object -ExpandProperty Maximum
-        $DataSeriesAceAvg    = [math]::Round(($DataSeriesAcesNum | Measure-Object -Maximum -Average | Select-Object -ExpandProperty Average),2)
+        $DataSeriesSharesClean  = $DataSeriesShares.TrimStart('[').TrimEnd(']')
+        $DataSeriesSharesNum    = $DataSeriesSharesClean -split ',\s*' | ForEach-Object { [int]$_ }
+        $DataSeriesSharesMax    = $DataSeriesSharesNum | Measure-Object -Maximum | Select-Object -ExpandProperty Maximum
+        $DataSeriesSharesAvg    = [math]::Round(($DataSeriesSharesNum | Measure-Object -Maximum -Average | Select-Object -ExpandProperty Average),2)
 
         # Get standard deviation number and standard deviation x2 number from mean
-        $DataSeriesAceVariance = ($DataSeriesAcesNum | ForEach-Object { [math]::Pow($_ - $DataSeriesAceAvg, 2) } | Measure-Object -Average).Average
-        $DataSeriesAceSD = [math]::Round([math]::Sqrt($DataSeriesAceVariance),2)
-        $DataSeriesAceSDtwo = $DataSeriesAceSD * 2 + $DataSeriesAceAvg
+        $DataSeriesSharesVariance = ($DataSeriesSharesNum | ForEach-Object { [math]::Pow($_ - $DataSeriesSharesAvg, 2) } | Measure-Object -Average).Average
+        $DataSeriesSharesSD = [math]::Round([math]::Sqrt($DataSeriesSharesVariance),2)
+        $DataSeriesSharesSDtwo = $DataSeriesSharesSD * 2 + $DataSeriesSharesAvg
 
         # Get number of records/days past the 
-        $DataSeriesAceAnomalyCount = ($DataSeriesAcesNum| Where-Object { $_ -ge $DataSeriesAceSDtwo }) | Measure-Object | select count -ExpandProperty count      
+        $DataSeriesSharesAnomalyCount = ($DataSeriesSharesNum | Where-Object { $_ -ge $DataSeriesSharesSDtwo }) | Measure-Object | select count -ExpandProperty count      
 
         # ----------------------------------------------------------------------
         # Create ShareGraph Nodes and Edges
@@ -5346,7 +5348,9 @@ input[type="checkbox"]:checked::before {
 					</div>
 
 					 <div style="margin-left: 10px; width: 90%; margin-bottom: 10px;">
-					 The chart below illustrates the relationship between networks, computers, shares, and the ACEs configured with excessive privileges. Each network contains computers with assigned IP addresses. Each computer may host multiple shares and each share is configured with ACEs that allow remote access. As a result, ACEs represent the individual points of remediation that will need to be addressed to reduce exposure and risk.
+                    <span style="color:#4A4A4A;"><strong>Affected Assets</strong><br></span>
+					 $ExcessiveSharePrivsCount ACL entries, on $ExcessiveSharesCount shares, hosted by $ComputerWithExcessive computers were found configured with excessive privileges on the $TargetDomain domain. Overall, $IdentityReferenceListCount identities/groups had excessive privileges assigned to them. 
+                     The chart below illustrates the relationship between networks, computers, shares, and the ACEs configured with excessive privileges. Each network contains computers with assigned IP addresses. Each computer may host multiple shares and each share is configured with ACEs that allow remote access. As a result, ACEs represent the individual points of remediation that will need to be addressed to reduce exposure and risk.
 					 </div>
 					
 					<div class="LargeCard" style="width: 90%;">	
@@ -5355,242 +5359,6 @@ input[type="checkbox"]:checked::before {
 						<div style="width: 100%; height: 200px;" id="svg-sankey"></div>								
 					</div>	
 
-<!--  
-|||||||||| CARD: Remediation Recommendations
--->
-                     <div style="margin-left: 10px; width: 90%; margin-bottom: 10px;">
-	                    <span style="color:#4A4A4A;"> <strong>Remediation Prioritization</strong><br></span>
-	                    Consider remediating share ACEs by risk level, starting with critical and high risks. Consider reviewing the share creation timeline for additional contenxt. Next, prioritize remediating groups of shares to speed up the process. Prioritize by folder group (shares containing exactly the same files) or by share names that have a high similarity score. 
-						<i>Prioritizing those groups may help reduce remediation actions by as much as <strong>$RemediationSavings percent</strong> for this environment</i>. Below is a summary of the potential task reduction for each approach.
-                     </div>
-
-		            <div class="LargeCard" style="width:90%;">	
-							<a href="#" id="DashLink" style="text-decoration:none;">
-							</a>
-																	
-									<div class="chart-container">
-									<div id="ChartDashboardRemediate"></div>
-										<div class="chart-controls"></div>
-									</div>								  							
-							
-					</div>
-
-<!--  
-|||||||||| Section: Affected Asset Exposure
--->	
-		<div style="margin-left:10px;margin-top:16px;">			
-			<div style="width:90%;">	
-				<h4 style="color:#4A4A4A;">Affected Asset Exposure</h4>
-				<div>
-				Below is a summary of the computers, shares, and ACEs associated with shares configured with excessive privileges.
-	            $ExcessiveSharePrivsCount ACL entries, on $ExcessiveSharesCount shares, hosted by $ComputerWithExcessive computers were found configured with excessive privileges on the $TargetDomain domain. Overall, $IdentityReferenceListCount identities were assigned excessive privileges. Click the "Exposure Summary" or the titles on the cards below to explore the details.<Br><Br>
-				</div>
-			</div>
-		</div>
-
-<!-- mini card wrapper -->
-<div style="margin-top: -10px;">
-
-<!--  
-|||||||||| CARD: COMPUTER SUMMARY
--->
- <div class="card" style="width: 20%">	
-	<div class="cardtitle">
-		<a href="#" id="DashLink" style="text-decoration:none;" onClick="radiobtn = document.getElementById('ComputerInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btncomputers');">COMPUTERS</a>
-	</div>		
-				<span class="percentagetext" style = "color:#f08c41;">                    
-					$ComputerWithExcessive&nbsp;                     
-				</span>	
-			<Br>
-			<button class="collapsible" style="text-align:left;font-size:10px;">Exposure Summary</button>
-			<div class="content">
-			<div class="filelistparent" style="font-size: 10px;">		  
-			<div>
-                <span style="color:#9B3722;font-size:12;">$ComputerWithExcessive</span> of $PeerComparisonComputerCount ($PeerComparActualComputers%)<br><br>
-	            <table>
-		             <tr>
-			            <td class="cardsubtitle" style="vertical-align: top; width:78px;">
-                        Read
-                        </td>
-			            <td align="right">				
-				            <div class="cardbarouter">
-					            <div class="cardbarinside" style="width: $PercentComputerReadP;"></div>
-				            </div>	
-				            <span class="cardbartext">$ComputerWithReadCount of $PeerComparisonComputerCount ($PeerComparActualComputersr%)</span>				
-			            </td>
-		             </tr>
-		             <tr>
-			            <td class="cardsubtitle" style="vertical-align:top">
-                        Write
-                        </td>
-			            <td align="right">				
-				            <div class="cardbarouter">
-					            <div class="cardbarinside" style="width: $PercentComputerWriteP;"></div>
-				            </div>
-				            <span class="cardbartext">$ComputerWithWriteCount of $PeerComparisonComputerCount ($PeerComparActualComputersW%)</span>
-			            </td>
-		             </tr>
-		             <tr>
-			            <td class="cardsubtitle" style="vertical-align:top">
-                        Exploitable
-                        </td>
-			            <td align="right">
-				            <div class="cardbarouter">
-					            <div class="cardbarinside" style="width: $PercentComputerHighRiskP;"></div>
-				            </div>
-				            <span class="cardbartext">$ComputerwithHighRisk of $PeerComparisonComputerCount ($PeerComparActualComputershr%)</span>				
-			            </td>
-		             </tr>		 
-		            </table> 
-                </div>	   
-			</div>
-			</div> 			  
- </div>
-
-<!--  
-|||||||||| CARD: SHARE SUMMARY
--->
-
-<div class="card" style="width: 20%">	
-	<div class="cardtitle">
-		<a href="#" id="DashLink" style="text-decoration:none;" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;updateLabelColors('tabs', 'btnshares');">SHARES</a>
-	</div>	
-				<span class="percentagetext" style = "color:#f08c41;">                    
-					$ExcessiveSharesCount&nbsp;                      
-				</span>	
-			<Br>
-			<button class="collapsible" style="text-align:left;font-size:10px;">Exposure Summary</button>
-			<div class="content">
-			<div class="filelistparent" style="font-size: 10px;">		  
-			<div>
-                <span style="color:#9B3722;font-size:12;">$ExcessiveSharesCount</span> of $AllSMBSharesCount ($PercentSharesExPrivP)<br><br>
-	            <table>
-		             <tr>
-			            <td class="cardsubtitle" style="vertical-align: top; width:78px;">
-                        Read
-                        </td>
-			            <td align="right">				
-				            <div class="cardbarouter">
-					            <div class="cardbarinside" style="width: $PercentSharesReadP;"></div>
-				            </div>	
-				            <span class="cardbartext">$SharesWithReadCount of $AllSMBSharesCount ($PercentSharesReadP;)</span>				
-			            </td>
-		             </tr>
-		             <tr>
-			            <td class="cardsubtitle" style="vertical-align:top">
-                        Write
-                        </td>
-			            <td align="right">				
-				            <div class="cardbarouter">
-					            <div class="cardbarinside" style="width: $PercentSharesWriteP;"></div>
-				            </div>
-				            <span class="cardbartext">$SharesWithWriteCount of $AllSMBSharesCount ($PercentSharesWriteP)</span>
-			            </td>
-		             </tr>
-		             <tr>
-			            <td class="cardsubtitle" style="vertical-align:top">
-                        Exploitable
-                        </td>
-			            <td align="right">
-				            <div class="cardbarouter">
-					            <div class="cardbarinside" style="width: $PercentSharesHighRiskP;"></div>
-				            </div>
-				            <span class="cardbartext">$SharesHighRiskCount of $AllSMBSharesCount ($PercentSharesHighRiskP)</span>				
-			            </td>
-		             </tr>		 
-		            </table> 
-                </div>	   
-			</div>
-			</div> 			  
- </div>
-
-<!--  
-|||||||||| CARD: ACL SUMMARY
--->
-
-<div class="card" style="width: 20%">	
-	<div class="cardtitle">
-		<a href="#" id="DashLink" style="text-decoration:none;" onClick="radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnaces');">ACES</a>
-	</div>	
-				<span class="percentagetext" style = "color:#f08c41;">                    
-					$ExcessiveSharePrivsCount&nbsp;                   
-				</span>	
-			<Br>
-			<button class="collapsible" style="text-align:left;font-size:10px;">Exposure Summary</button>
-			<div class="content">
-			<div class="filelistparent" style="font-size: 10px;">		  
-			<div>
-                <span style="color:#9B3722;font-size:12;">$ExcessiveSharePrivsCount</span> of $ShareACLsCount ($PercentAclExPrivP)<br><br>
-	            <table>
-		             <tr>
-			            <td class="cardsubtitle" style="vertical-align: top; width:78px;">
-                        Read
-                        </td>
-			            <td align="right">				
-				            <div class="cardbarouter">
-					            <div class="cardbarinside" style="width: $PercentAclReadP;"></div>
-				            </div>	
-				            <span class="cardbartext">$AclWithReadCount of $ShareACLsCount ($PercentAclReadP)</span>				
-			            </td>
-		             </tr>
-		             <tr>
-			            <td class="cardsubtitle" style="vertical-align:top">
-                        Write
-                        </td>
-			            <td align="right">				
-				            <div class="cardbarouter">
-					            <div class="cardbarinside" style="width: $PercentAclWriteP;"></div>
-				            </div>
-				            <span class="cardbartext">$AclWithWriteCount of $ShareACLsCount ($PercentAclWriteP)</span>
-			            </td>
-		             </tr>
-		             <tr>
-			            <td class="cardsubtitle" style="vertical-align:top">
-                        Exploitable
-                        </td>
-			            <td align="right">
-				            <div class="cardbarouter">
-					            <div class="cardbarinside" style="width:  $PercentAclHighRiskP;"></div>
-				            </div>
-				            <span class="cardbartext">$AclHighRiskCount of $ShareACLsCount ($PercentAclHighRiskP)</span>				
-			            </td>
-		             </tr>		 
-		            </table> 
-                </div>	   
-			</div>
-			</div> 			  
- </div>
-
- <!--  
-|||||||||| CARD: IDENTITY SUMMARY
--->
-
-<div class="card" style="width: 20%">	
-	<div class="cardtitle">
-		<a href="#" id="DashLink" style="text-decoration:none;" onClick="radiobtn = document.getElementById('IdentityInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnidentities');">IDENTITIES</a>
-	</div>	
-				<span class="percentagetext" style = "color:#f08c41;">                    
-					$IdentityReferenceListCount&nbsp;                      
-				</span>	
-			<Br>
-			<button class="collapsible" style="text-align:left;font-size:10px;">Exposure Summary</button>
-			<div class="content">
-			    <div class="filelistparent" style="font-size: 10px;">		  
-			        <div>
-	                Coming soon.
-                    </div>   
-			    </div>
-			</div> 			  
- </div>
-
- <!-- mini card  wrapper end  -->	
-</div>
-
- <!--  
-|||||||||| CARD: Identities Place Holder
--->
-
-<div style="height:.5px;width:100%;position:relative;float:left;"></div>
 
 <!--  
 |||||||||| CARD: Peer Comparison
@@ -5610,23 +5378,20 @@ input[type="checkbox"]:checked::before {
 										<div class="chart-controls"></div>
 									</div>								  							
 							
-					</div>		
+					</div>	
 
 <!--  
 |||||||||| CARD: Share Creation Timeline
 -->
-
- <div style="height:.5px;width:100%;position:relative;float:left;"></div>
- <div style="height:130px;"></div>
-	<div style="margin-left: 10px; width: 95%">
-	<h4 style="color:#4A4A4A;">Share Creation Timeline</h4>
+<div style="margin-left: 10px; width: 90%; margin-bottom: 10px;">
+    <span style="color:#4A4A4A;"> <strong>Share Creation Timeline</strong><br></span>
     <div style = "width: 90%">
 	Below is a time series chart to help provide a sense of when shares were created and at what point high-risk and critical-risk shares were introduced into the environment.
-    Shares were found created in this environment between $AcesFirstDate and $AcesLastDate.
-    The average number of ACEs associated with shares created on the same day is $DataSeriesAceAvg, the max is $DataSeriesAceMax, and the standard deviation is $DataSeriesAceSD.
-    $DataSeriesAceAnomalyCount anomalies were found that represent days when shares were created with ACE counts twice the standard deviation.
-    $ACEHighTime
-    $ACECriticalTime
+    Shares were found created in this environment between $ShareFirstDate and $ShareLastDate.
+    On days when shares were created, the average number of shares created was $DataSeriesSharesAvg, the max was $DataSeriesSharesMax, and the standard deviation was $DataSeriesSharesSD.
+    $DataSeriessharesAnomalyCount anomalies were found that represent days when share creation counts were twice the standard deviation.
+    $ShareHighTime
+    $ShareCriticalTime
     </div>
  </div>
  <div class="LargeCard" style="width:90%;">	
@@ -5636,7 +5401,28 @@ input[type="checkbox"]:checked::before {
             <div id="TimelinCreationChart"></div>
         <div class="chart-controls"></div>
     </div>								  							
-</div>	
+</div>
+
+<!--  
+|||||||||| CARD: Remediation Recommendations
+-->
+                     <div style="margin-left: 10px; width: 90%; margin-bottom: 10px;">
+                        <h4 style="color:#4A4A4A;">Remediation & Prioritization Recommendations</h4>	                    
+	                    Consider remediating share ACEs by risk level, starting with critical and high risks. Consider reviewing the share creation timeline for additional contenxt. Next, prioritize remediating groups of shares to speed up the process. Prioritize by folder group (shares containing exactly the same files) or by share names that have a high similarity score. 
+						<i>Prioritizing those groups may help reduce remediation actions by as much as <strong>$RemediationSavings percent</strong> for this environment</i>. Below is a summary of the potential task reduction for each approach.
+                     </div>
+
+		            <div class="LargeCard" style="width:90%;">	
+							<a href="#" id="DashLink" style="text-decoration:none;">
+							</a>
+																	
+									<div class="chart-container">
+									<div id="ChartDashboardRemediate"></div>
+										<div class="chart-controls"></div>
+									</div>								  							
+							
+					</div>
+	
 <div style="height:.5px;width:100%;position:relative;float:left;"></div>
  
 <!--  
@@ -8868,7 +8654,7 @@ Invoke-HuntSMBShares -Threads 20 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\
 // Dashboard Page: Timeline Creation Chart
 // --------------------------
 
-var allData = $DataSeriesAces; // ACEs data
+var allData = $DataSeriesShares // ACEs data
 
 function calculateMean(data) {
     let sum = data.reduce((a, b) => a + b, 0);
@@ -8899,13 +8685,7 @@ var TimelineCreationOptions = {
             type: 'column',
             data: $DataSeriesShares,
             color: '#515a69'
-        },
-        {
-            name: 'ACEs',
-            type: 'column',
-            data: $DataSeriesAces,
-            color: '#07142A'
-        },
+        },      
         {
             name: 'All High',
             type: 'area',
@@ -8933,20 +8713,7 @@ var TimelineCreationOptions = {
                     text: 'avg'
                 },
                 strokeDashArray: 4
-            },
-            {
-                y: lowerBound,
-                borderColor: '#FF0000',
-                label: {
-                    borderColor: '#FF0000',
-                    style: {
-                        color: '#fff',
-                        background: '#FF0000'
-                    },
-                    text: '-2 std dev'
-                },
-                strokeDashArray: 4
-            },
+            },            
             {
                 y: upperBound,
                 borderColor: '#FF0000',
@@ -8982,7 +8749,7 @@ var TimelineCreationOptions = {
         stacked: false
     },
     stroke: {
-        width: [0, 2, 5],
+        width: [0, .5, .5],
         curve: 'smooth'
     },
     plotOptions: {
@@ -8991,7 +8758,7 @@ var TimelineCreationOptions = {
         }
     },
     fill: {
-        opacity: [1, 1, 1, .5, .5],
+        opacity: [1, 1, .25, .25],
         gradient: {
             inverseColors: false,
             shade: 'light',
@@ -9028,7 +8795,17 @@ var TimelineCreationOptions = {
                 return y;
             }
         }
+    },
+	title: {
+    text: 'Share Creation Timeline',
+    align: 'center',
+    margin: 10,
+    style: {
+        fontSize: '18px',
+        fontWeight: 'normal',
+        color: '#808080'
     }
+  }
 };
 
 var TimelineCreationChartVar = new ApexCharts(document.querySelector("#TimelinCreationChart"), TimelineCreationOptions);
@@ -9681,9 +9458,9 @@ const ChartDashboardIFOptions = {
     align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
     margin: 10, // Adjusts the space between the title and the chart
     style: {
-      fontSize: '16px',
-      fontWeight: 'bold',
-      color: 'gray'
+        fontSize: '18px',
+        fontWeight: 'normal',
+        color: '#808080'
     }
   }
         };
@@ -9740,12 +9517,12 @@ const ChartDashboardRiskOptions = {
      // barSpacing: 0.0  // Adds space between the groups (risk levels)
     }
   },
-  colors: ['#DBDCD6', '#E4A628', '#07142A'],  // Colors for the bars
+  colors: ['#DBDCD6', '#f08c41', '#07142A'],  // Colors for the bars
   dataLabels: {
     enabled: true,
     style: {
       fontSize: '12px',
-      colors: ['#07142A', '#07142A', '#E4A628'] // colors for the lables #FF9965
+      colors: ['#07142A', '#07142A', '#f08c41'] // colors for the lables #FF9965
     },
     offsetX: 0
   },
@@ -9763,9 +9540,9 @@ const ChartDashboardRiskOptions = {
     align: 'center',
     margin: 10,
     style: {
-      fontSize: '16px',
-      fontWeight: 'bold',
-      color: 'gray'
+        fontSize: '18px',
+        fontWeight: 'normal',
+        color: '#808080'
     }
   }
 };
