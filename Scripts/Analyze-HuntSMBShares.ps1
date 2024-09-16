@@ -5,7 +5,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.88
+# Version: v1.89
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Analyze-HuntSMBShares
 {    
@@ -5386,12 +5386,14 @@ input[type="checkbox"]:checked::before {
 <div style="margin-left: 10px; width: 90%; margin-bottom: 10px;">
     <span style="color:#4A4A4A;"> <strong>Share Creation Timeline</strong><br></span>
     <div style = "width: 90%">
-	Below is a time series chart to help provide a sense of when shares were created and at what point high-risk and critical-risk shares were introduced into the environment.
-    Shares were found created in this environment between $ShareFirstDate and $ShareLastDate.
-    On days when shares were created, the average number of shares created was $DataSeriesSharesAvg, the max was $DataSeriesSharesMax, and the standard deviation was $DataSeriesSharesSD.
-    $DataSeriessharesAnomalyCount anomalies were found that represent days when share creation counts were twice the standard deviation.
-    $ShareHighTime
+	Below is a time series chart to help provide a sense of when shares were created and at what point critical and high risk shares were introduced into the environment.
+    By reading the chart left to right, you can see that shares were created in this environment between $ShareFirstDate and $ShareLastDate. You can zoom into any section of the chart by clicking or using the chart controls in the upper right hand corner of the chart. 
+    The orange and red trend areas reflect the cumulative number of critical and high risk shares in the environment so you can easily observe when they were introduced.
     $ShareCriticalTime
+    $ShareHighTime    
+    The chart also includes two horizontal lines. The "avg" line shows the average number of created shares and everything above the "+2 Std Dev" line is considered anomolous in the context of this report. The average number of shares created was $DataSeriesSharesAvg, the max was $DataSeriesSharesMax, and the standard deviation was $DataSeriesSharesSD.
+    $DataSeriessharesAnomalyCount anomalies were found that represent days when share creation counts were twice the standard deviation.
+
     </div>
  </div>
  <div class="LargeCard" style="width:90%;">	
@@ -5408,7 +5410,7 @@ input[type="checkbox"]:checked::before {
 -->
                      <div style="margin-left: 10px; width: 90%; margin-bottom: 10px;">
                         <h4 style="color:#4A4A4A;">Remediation & Prioritization Recommendations</h4>	                    
-	                    Consider remediating share ACEs by risk level, starting with critical and high risks. Consider reviewing the share creation timeline for additional contenxt. Next, prioritize remediating groups of shares to speed up the process. Prioritize by folder group (shares containing exactly the same files) or by share names that have a high similarity score. 
+	                    Consider remediating share ACEs by risk level, starting with critical and high risks. Consider reviewing the share creation timeline and data details from the other sections for additional context. Next, prioritize remediating groups of shares to speed up the process. Prioritize by folder group (shares containing exactly the same files) or by share names that have a high similarity score. 
 						<i>Prioritizing those groups may help reduce remediation actions by as much as <strong>$RemediationSavings percent</strong> for this environment</i>. Below is a summary of the potential task reduction for each approach.
                      </div>
 
@@ -9633,7 +9635,7 @@ ChartDashboardRisk.render();
         tooltip: {
           y: {
             formatter: function (val) {
-              return val + "%";  // Show percentage in tooltip
+              return val;  // Show percentage in tooltip
             }
           }
         },
