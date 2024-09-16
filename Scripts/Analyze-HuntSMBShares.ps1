@@ -5,7 +5,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.89
+# Version: v1.90
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Analyze-HuntSMBShares
 {    
@@ -2194,6 +2194,9 @@ function Analyze-HuntSMBShares
         $ShareFirstDate     =  $UniqueDates | select -First 1
         $ShareLastDate      =  $UniqueDates | select -Last 1  
 
+        # Set color check to 0
+        $ShareCriticalHighCheck = 0
+
         # Get start and end dates for all high
         $ShareHighCountBlah = $AllAcesWithFormattedDates | Where-Object { $_.RiskLevel -eq 'High' } | select SharePath -Unique | measure | select count -ExpandProperty count
         If($ShareHighCountBlah -gt 0)
@@ -2206,14 +2209,13 @@ function Analyze-HuntSMBShares
 
             $ShareHighTime = "Shares configured with high risk ACEs were created between $HighFirstDateS and $HighLastDateS."
             # $ShareHighTime = "" 
+            $ShareCriticalHighCheck = 1
         }else{
             # $HighFirstDateS    = "NA"
             # $HighLastDateS     = "NA"
             $ShareHighTime = "No shares were found configured with high risk ACEs."  
         }
-
         
-
         # Get start and end dates for all critical
         $ShareCriticalCountBlah = $AllAcesWithFormattedDates | Where-Object { $_.RiskLevel -eq 'Critical' } | select SharePath -Unique | measure | select count -ExpandProperty count
         If($ShareCriticalCountBlah -gt 0)
@@ -2226,12 +2228,16 @@ function Analyze-HuntSMBShares
 
             $ShareCriticalTime = "Shares configured with critical risk ACEs were created between $CriticalFirstDateS and $CriticalLastDateS."
             # $ShareCriticalTime = ""
+            $ShareCriticalHighCheck = 1
         }else{
             # $CriticalFirstDateS  = "NA" 
             # $CriticalLastDateS   = "NA"
             $ShareCriticalTime = "No shares were found configured with critical risk ACEs." 
         }
 
+        if($ShareCriticalHighCheck -eq 1){
+            $ShareCriticalHighLine = "The orange and red trend areas reflect the cumulative number of critical and high risk shares in the environment so you can easily observe when/if they were introduced."
+        }
         
 
         # Iterate through unique dates and count ACEs efficiently
@@ -5385,14 +5391,13 @@ input[type="checkbox"]:checked::before {
 -->
 <div style="margin-left: 10px; width: 90%; margin-bottom: 10px;">
     <span style="color:#4A4A4A;"> <strong>Share Creation Timeline</strong><br></span>
-    <div style = "width: 90%">
+    <div style = "width: 100%">
 	Below is a time series chart to help provide a sense of when shares were created and at what point critical and high risk shares were introduced into the environment.
-    By reading the chart left to right, you can see that shares were created in this environment between $ShareFirstDate and $ShareLastDate. You can zoom into any section of the chart by clicking or using the chart controls in the upper right hand corner of the chart. 
-    The orange and red trend areas reflect the cumulative number of critical and high risk shares in the environment so you can easily observe when they were introduced.
+    By reading the chart left to right, you can see that shares were created in this environment between $ShareFirstDate and $ShareLastDate. You can zoom into any section of the chart by clicking or using the chart controls in the upper right hand corner of the chart.    
     $ShareCriticalTime
     $ShareHighTime    
-    The chart also includes two horizontal lines. The "avg" line shows the average number of created shares and everything above the "+2 Std Dev" line is considered anomolous in the context of this report. The average number of shares created was $DataSeriesSharesAvg, the max was $DataSeriesSharesMax, and the standard deviation was $DataSeriesSharesSD.
-    $DataSeriessharesAnomalyCount anomalies were found that represent days when share creation counts were twice the standard deviation.
+    $ShareCriticalHighLine
+    The chart also includes two horizontal lines. The "avg" line shows the average number of created shares and everything above the "+2 Std Dev" line is considered anomolous in the context of this report. $DataSeriessharesAnomalyCount anomalies were found that represent days when share creation counts were twice the standard deviation.
 
     </div>
  </div>
