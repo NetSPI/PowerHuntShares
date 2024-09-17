@@ -5,7 +5,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.91
+# Version: v1.92
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Analyze-HuntSMBShares
 {    
@@ -2338,82 +2338,102 @@ function Analyze-HuntSMBShares
         $addedNodes = @{}
         $addedEdges = @{}
 
+        # Function to perform case-sensitive check for node existence
+        function NodeExists {
+            param($nodeId)
+            return $addedNodes.Keys | Where-Object { $_ -ceq $nodeId } | ForEach-Object { return $true }
+            return $false
+        }
+
+        # Function to perform case-sensitive check for edge existence
+        function EdgeExists {
+            param($edgeId)
+            return $addedEdges.Keys | Where-Object { $_ -ceq $edgeId } | ForEach-Object { return $true }
+            return $false
+        }
+
+        # Function to escape single quotes in a string
+        function EscapeSingleQuotes {
+            param($inputString)
+            return $inputString -replace "'", "\'"
+        }
+
         # Iterate through each row in the CSV
         foreach ($row in $ExcessiveSharePrivsFinal) {
 
             # Replace single backslashes with double backslashes for SharePath, ShareName, ShareOwner, and IdentityReference
-            $escapedSharePath = $row.SharePath -replace '\\', '\\'
-            $escapedShareName = $row.ShareName -replace '\\', '\\'
-            $escapedShareOwner = $row.ShareOwner -replace '\\', '\\'
-            $escapedIdentityReference = $row.IdentityReference -replace '\\', '\\'
+            $escapedSharePath         = EscapeSingleQuotes($row.SharePath         -replace '\\', '\\')
+            $escapedShareName         = EscapeSingleQuotes($row.ShareName         -replace '\\', '\\')
+            $escapedShareOwner        = EscapeSingleQuotes($row.ShareOwner        -replace '\\', '\\')
+            $escapedIdentityReference = EscapeSingleQuotes($row.IdentityReference -replace '\\', '\\')
 
             # Create and add nodes if they don't exist
-            $ownerNode = "{ data: { id: '$escapedShareOwner', label: '$escapedShareOwner', type: 'owner', IdentitySID: '$($row.IdentitySID)' } },"
-            if (-not $addedNodes.ContainsKey($escapedShareOwner)) {
+            $ownerNode = "{ data: { id: '$escapedShareOwner', label: '$escapedShareOwner', type: 'owner', IdentitySID: '" + (EscapeSingleQuotes($row.IdentitySID)) + "' } },"
+            if (-not (NodeExists $escapedShareOwner)) {
                 $ShareGraphNodes += $ownerNode
                 $addedNodes[$escapedShareOwner] = $true
             }
 
-            $userNode = "{ data: { id: '$escapedIdentityReference', label: '$escapedIdentityReference', type: 'user', IdentitySID: '$($row.IdentitySID)' } },"
-            if (-not $addedNodes.ContainsKey($escapedIdentityReference)) {
+            $userNode = "{ data: { id: '$escapedIdentityReference', label: '$escapedIdentityReference', type: 'user', IdentitySID: '" + (EscapeSingleQuotes($row.IdentitySID)) + "' } },"
+            if (-not (NodeExists $escapedIdentityReference)) {
                 $ShareGraphNodes += $userNode
                 $addedNodes[$escapedIdentityReference] = $true
             }
 
-            $computerNode = "{ data: { id: '$($row.ComputerName)', label: '$($row.ComputerName)', type: 'computer', ipaddress: '$($row.IpAddress)' } },"
-            if (-not $addedNodes.ContainsKey($row.ComputerName)) {
+            $computerNode = "{ data: { id: '" + (EscapeSingleQuotes($row.ComputerName)) + "', label: '" + (EscapeSingleQuotes($row.ComputerName)) + "', type: 'computer', ipaddress: '" + (EscapeSingleQuotes($row.IpAddress)) + "' } },"
+            if (-not (NodeExists $row.ComputerName)) {
                 $ShareGraphNodes += $computerNode
                 $addedNodes[$row.ComputerName] = $true
             }
 
-            $folderGroupNode = "{ data: { id: '$($row.FileListGroup)', label: '$($row.FileListGroup)', type: 'Folder Group' } },"
-            if (-not $addedNodes.ContainsKey($row.FileListGroup)) {
+            $folderGroupNode = "{ data: { id: '" + (EscapeSingleQuotes($row.FileListGroup)) + "', label: '" + (EscapeSingleQuotes($row.FileListGroup)) + "', type: 'Folder Group' } },"
+            if (-not (NodeExists $row.FileListGroup)) {
                 $ShareGraphNodes += $folderGroupNode
                 $addedNodes[$row.FileListGroup] = $true
             }
 
             # Check if the ShareName node already exists
-            if (-not $addedNodes.ContainsKey($escapedShareName)) {
+            if (-not (NodeExists $escapedShareName)) {
                 $shareNameNode = "{ data: { id: '$escapedShareName', label: '$escapedShareName', type: 'sharename' } },"
                 $ShareGraphNodes += $shareNameNode
                 $addedNodes[$escapedShareName] = $true
             }
 
             # Check if SharePath node already exists
-            if (-not $addedNodes.ContainsKey($escapedSharePath)) {
-                $sharePathNode = "{ data: { id: '$escapedSharePath', label: '$escapedSharePath', type: 'sharepath', RiskLevel: '$($row.RiskLevel)', RiskScore: '$($row.RiskScore)', creationDate: '$($row.CreationDate)', lastModifiedDate: '$($row.LastModifiedDate)', fileCount: $($row.FileCount), owner: '$escapedShareOwner', IsDefault: '$($row.IsDefault)', IsEmpty: '$($row.IsEmpty)', IsStale: '$($row.IsStale)', IsHR: '$($row.HasHR)', HasWrite: '$($row.HasWrite)', HasRead: '$($row.HasRead)', HasRCE: '$($row.HasRCE)', InterestingFiles: '$($row.HasIF)', ShareName: '$escapedShareName', ShareDescription: '$($row.ShareDescription)' } },"
+            if (-not (NodeExists $escapedSharePath)) {
+                $sharePathNode = "{ data: { id: '$escapedSharePath', label: '$escapedSharePath', type: 'sharepath', RiskLevel: '" + (EscapeSingleQuotes($row.RiskLevel)) + "', RiskScore: '" + (EscapeSingleQuotes($row.RiskScore)) + "', creationDate: '" + (EscapeSingleQuotes($row.CreationDate)) + "', lastModifiedDate: '" + (EscapeSingleQuotes($row.LastModifiedDate)) + "', fileCount: $($row.FileCount), owner: '$escapedShareOwner', IsDefault: '" + (EscapeSingleQuotes($row.IsDefault)) + "', IsEmpty: '" + (EscapeSingleQuotes($row.IsEmpty)) + "', IsStale: '" + (EscapeSingleQuotes($row.IsStale)) + "', IsHR: '" + (EscapeSingleQuotes($row.HasHR)) + "', HasWrite: '" + (EscapeSingleQuotes($row.HasWrite)) + "', HasRead: '" + (EscapeSingleQuotes($row.HasRead)) + "', HasRCE: '" + (EscapeSingleQuotes($row.HasRCE)) + "', InterestingFiles: '" + (EscapeSingleQuotes($row.HasIF)) + "', ShareName: '$escapedShareName', ShareDescription: '" + (EscapeSingleQuotes($row.ShareDescription)) + "' } },"
                 $ShareGraphNodes += $sharePathNode
                 $addedNodes[$escapedSharePath] = $true
             }
 
             # Ensure the edge between ShareName and SharePath exists
             $shareNameEdge = "{ data: { source: '$escapedShareName', target: '$escapedSharePath', label: 'child_of' } },"
-            if (-not $addedEdges.ContainsKey("child_of_$escapedShareName_$escapedSharePath")) {
+            if (-not (EdgeExists "child_of_$escapedShareName_$escapedSharePath")) {
                 $ShareGraphEdges += $shareNameEdge
                 $addedEdges["child_of_$escapedShareName_$escapedSharePath"] = $true
             }
 
             # Create and add other edges if they don't exist
             $ownerEdge = "{ data: { source: '$escapedShareOwner', target: '$escapedSharePath', label: 'owner_of' } },"
-            if (-not $addedEdges.ContainsKey("owner_of_$escapedShareOwner_$escapedSharePath")) {
+            if (-not (EdgeExists "owner_of_$escapedShareOwner_$escapedSharePath")) {
                 $ShareGraphEdges += $ownerEdge
                 $addedEdges["owner_of_$escapedShareOwner_$escapedSharePath"] = $true
             }
 
-            $privilegeEdge = "{ data: { source: '$escapedIdentityReference', target: '$escapedSharePath', label: 'has_privilege_on', filesystemrights: '$($row.FileSystemRights)' } },"
-            if (-not $addedEdges.ContainsKey("has_privilege_on_$escapedIdentityReference_$escapedSharePath")) {
+            $privilegeEdge = "{ data: { source: '$escapedIdentityReference', target: '$escapedSharePath', label: 'has_privilege_on', filesystemrights: '" + (EscapeSingleQuotes($row.FileSystemRights)) + "' } },"
+            if (-not (EdgeExists "has_privilege_on_$escapedIdentityReference_$escapedSharePath")) {
                 $ShareGraphEdges += $privilegeEdge
                 $addedEdges["has_privilege_on_$escapedIdentityReference_$escapedSharePath"] = $true
             }
 
-            $folderGroupEdge = "{ data: { source: '$($row.FileListGroup)', target: '$escapedSharePath', label: 'hosted_on' } },"
-            if (-not $addedEdges.ContainsKey("hosted_on_$($row.FileListGroup)_$escapedSharePath")) {
+            $folderGroupEdge = "{ data: { source: '" + (EscapeSingleQuotes($row.FileListGroup)) + "', target: '$escapedSharePath', label: 'hosted_on' } },"
+            if (-not (EdgeExists "hosted_on_$($row.FileListGroup)_$escapedSharePath")) {
                 $ShareGraphEdges += $folderGroupEdge
                 $addedEdges["hosted_on_$($row.FileListGroup)_$escapedSharePath"] = $true
             }
 
-            $computerEdge = "{ data: { source: '$escapedSharePath', target: '$($row.ComputerName)', label: 'hosted_on' } },"
-            if (-not $addedEdges.ContainsKey("hosted_on_$escapedSharePath_$($row.ComputerName)")) {
+            $computerEdge = "{ data: { source: '$escapedSharePath', target: '" + (EscapeSingleQuotes($row.ComputerName)) + "', label: 'hosted_on' } },"
+            if (-not (EdgeExists "hosted_on_$escapedSharePath_$($row.ComputerName)")) {
                 $ShareGraphEdges += $computerEdge
                 $addedEdges["hosted_on_$escapedSharePath_$($row.ComputerName)"] = $true
             }
@@ -2422,6 +2442,7 @@ function Analyze-HuntSMBShares
         # Reference $ShareGraphNodesFinal and $ShareGraphEdgesFinal in Cytoscape JavaScript   
         $ShareGraphNodesFinal = $ShareGraphNodes | select -Unique
         $ShareGraphEdgesFinal = $ShareGraphEdges | select -Unique
+
 
         # ----------------------------------------------------------------------
         # Create Timeline Reports
