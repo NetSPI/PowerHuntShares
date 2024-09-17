@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.119
+# Version: v1.120
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -3737,11 +3737,11 @@ function Invoke-HuntSMBShares
 		        $ShareNameCategoryName = $_
 
 		        # Get list of that sharename and category
-                $ShareNameCategoryFilesBase = $InterestingFilesAllObjects | Where ShareName -eq "$ShareName" |  where Category -eq "$ShareNameCategoryName" | select FileName
-		        $ShareNameCategoryFiles = $InterestingFilesAllObjects | Where ShareName -eq "$ShareName" |  where Category -eq "$ShareNameCategoryName" | select FileName | ForEach-Object { $ASDF = $_.FileName; "$ASDF<br>" }  | out-string
+                $ShareNameCategoryFilesBase = $InterestingFilesAllObjects | Where ShareName -eq "$ShareName" |  where Category -eq "$ShareNameCategoryName" | where FileName -notlike "" | select FileName -Unique
+		        $ShareNameCategoryFiles = $InterestingFilesAllObjects | Where ShareName -eq "$ShareName" |  where Category -eq "$ShareNameCategoryName" | select FileName -Unique | ForEach-Object { $ASDF = $_.FileName; "$ASDF<br>" }  | out-string
 
 		        # Get category count
-		        $ShareNameCategoryFilesCount =  $ShareNameCategoryFilesBase | measure | select count -expandproperty count 
+		        $ShareNameCategoryFilesCount =  $ShareNameCategoryFilesBase | where FileName -notlike "" | select FileName -Unique | measure | select count -expandproperty count 
 
 		        # Generate HTML with Category
                 if($ShareNameCategoryFilesCount -ne 0){
@@ -3757,7 +3757,7 @@ function Invoke-HuntSMBShares
 	        }
 
             # Get total for interesting files for target share name
-	        $ShareNameInterestingFilesCount = $InterestingFilesAllObjects | Where ShareName -eq "$ShareName" | measure | select count -expandproperty count 
+	        $ShareNameInterestingFilesCount = $InterestingFilesAllObjects | Where ShareName -eq "$ShareName" | select filename -Unique | measure | select count -expandproperty count 
             if($ShareNameInterestingFilesCount -gt 0){
                 $ShareRowCountInteresting = "Yes"
             }else{
