@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.121
+# Version: v1.122
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -6883,67 +6883,110 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
 		</div>
 		
 		<!-- SHAREGRAPH CONTAINER START -->
-		<div  style="width: 100%; display: flex;">
-		
+		<div style="width: 100%; height: 800px; position: relative; display: flex;">
+
 			<!-- SHAREGRAPH TOOLBAR -->
-			<div style="width: 179px; border: .5px solid lightgray; border-radius: 6px; padding: 10px; background-color: lightgray; margin-top: -10px;">
+			<div id="sharegraphToolbar" style="width: 179px; border: .5px solid lightgray; border-radius: 6px; padding: 10px; background-color: lightgray; position: absolute; height: 530px; transition: height 0.5s ease; z-index: 10; overflow: hidden;">
 				
-				<!-- Search and shortest path -->
-				<input type="text" id="search-input" placeholder="Search nodes..." class="modern-input" style="width: 180px;">
-				<input type="text" id="src-node" placeholder="src-node..." class="modern-input" style="width: 180px;">
-				<input type="text" id="dst-node" placeholder="dst-node..." class="modern-input" style="width: 180px;">
-				<button id="find-path" class="modern-button" style="width: 176px;">Find Path</button>			
-				<br>
+				<!-- Hide Toolbar Button -->
+				<button id="toggleButton2" class="modern-button" style="margin-bottom: 5px; width: 176px;" onclick="toggleToolbar()">Hide Toolbar</button>
 
-				<!-- Configuration Options -->
-				<select id="layout-select" class="modern-dropdown" style="width: 180px;">
-					<option value="breadthfirst">Layout</option>
-					<option value="grid">Grid</option>
-					<option value="random">Random</option>
-					<option value="circle">Circle</option>
-					<option value="concentric">Concentric</option>
-					<option value="breadthfirst">Breadthfirst</option>
-					<option value="cose">Cose</option>
-					<option value="dagre">Dagre</option>
-					<option value="euler">Euler</option>
-					<option value="klay">Klay</option>
-					<option value="hierarchical">Hierarchical</option>
-					<option value="organic">Organic</option>
-					<option value="BlastZone">BlastRadius</option>
-				</select>
-				<select id="curve-style-select" class="modern-dropdown" style="width: 180px;">
-					<option value="bezier">Line Style</option>
-					<option value="bezier">Bezier</option>
-					<option value="unbundled-bezier">Unbundled Bezier</option>
-					<option value="haystack">Haystack</option>
-					<option value="segments">Segments</option>
-					<option value="straight">Straight</option>
-					<option value="taxi">Taxi</option>
-					<option value="straight-triangle">Straight-Triangle</option>
-				</select>
-				<label><input type="checkbox" id="toggle-edge-labels" checked> Show Edge Labels</label>
-				<label><input type="checkbox" id="toggle-node-labels" checked> Show Node Labels</label>
-				<label><input type="checkbox" id="toggle-visibility"> Hide Unselected</label>
+				<!-- Content to hide when collapsed -->
+				<div id="toolbarContent">
+					<!-- Search and shortest path -->
+					<input type="text" id="search-input" placeholder="Search nodes..." class="modern-input" style="width: 180px;">
+					<input type="text" id="src-node" placeholder="src-node..." class="modern-input" style="width: 180px;">
+					<input type="text" id="dst-node" placeholder="dst-node..." class="modern-input" style="width: 180px;">
+					<button id="find-path" class="modern-button" style="width: 176px;">Find Path</button>
+					<br>
 
-				<br><div style="margin-bottom: 3px;margin-top: 3px;">Blast Radius</div>
-				<input type="range" min="0" max="5" value="0" class="modern-slider" id="mySlider" style="width:160px;">&nbsp;<span id="sliderValue">0</span>
-				<br><br>					 
-	
-				<!-- Save, Reset, Show All, Zoom Buttons -->
-				<div id="buttonsleft" style="margin-left:2">
-						<button id="save-button" class="modern-button" style="width: 170px;" style="font-size: 11px;">Save as Image</button><br>
-						<button id="clear-selection" class="modern-button" onclick="ResetGraph();" style="font-size: 11px">&nbsp;&nbsp;&nbsp;Reset&nbsp;&nbsp;&nbsp;</button>
-						<button id="removeFadedClassButton" class="modern-button" style="font-size: 11px">&nbsp;Show All&nbsp;&nbsp;</button><br>
-						<button id="zoom-in" class="modern-button" style="font-size: 11px">&nbsp;Zoom In&nbsp;</button>
-						<button id="zoom-out" class="modern-button" style="font-size: 11px">Zoom Out&nbsp;</button>						
-				</div>						
+					<!-- Configuration Options -->
+						<!-- Configuration Options -->
+						<select id="layout-select" class="modern-dropdown" style="width: 180px;">
+							<option value="breadthfirst">Layout</option>
+							<option value="grid">Grid</option>
+							<option value="random">Random</option>
+							<option value="circle">Circle</option>
+							<option value="concentric">Concentric</option>
+							<option value="breadthfirst">Breadthfirst</option>
+							<option value="cose">Cose</option>
+							<option value="dagre">Dagre</option>
+							<option value="euler">Euler</option>
+							<option value="klay">Klay</option>
+							<option value="hierarchical">Hierarchical</option>
+							<option value="organic">Organic</option>
+							<option value="BlastZone">BlastRadius</option>
+						</select>
+						<select id="curve-style-select" class="modern-dropdown" style="width: 180px;">
+							<option value="bezier">Line Style</option>
+							<option value="bezier">Bezier</option>
+							<option value="unbundled-bezier">Unbundled Bezier</option>
+							<option value="haystack">Haystack</option>
+							<option value="segments">Segments</option>
+							<option value="straight">Straight</option>
+							<option value="taxi">Taxi</option>
+							<option value="straight-triangle">Straight-Triangle</option>
+						</select>
+					<label><input type="checkbox" id="toggle-edge-labels" checked> Show Edge Labels</label>
+					<label><input type="checkbox" id="toggle-node-labels" checked> Show Node Labels</label>
+					<label><input type="checkbox" id="toggle-visibility"> Hide Unselected</label>
+
+					<br><div style="margin-bottom: 3px;margin-top: 3px;">Blast Radius</div>
+					<input type="range" min="0" max="5" value="0" class="modern-slider" id="mySlider" style="width:160px;">&nbsp;<span id="sliderValue">0</span>
+					<br><br>
+
+						<!-- Save, Reset, Show All, Zoom Buttons -->
+						<div id="buttonsleft" style="margin-left:2">
+								<button id="save-button" class="modern-button" style="width: 170px;" style="font-size: 11px;">Save as Image</button><br>
+								<button id="clear-selection" class="modern-button" onclick="ResetGraph();" style="font-size: 11px">&nbsp;&nbsp;&nbsp;Reset&nbsp;&nbsp;&nbsp;</button>
+								<button id="removeFadedClassButton" class="modern-button" style="font-size: 11px">&nbsp;Show All&nbsp;&nbsp;</button><br>
+								<button id="zoom-in" class="modern-button" style="font-size: 11px">&nbsp;Zoom In&nbsp;</button>
+								<button id="zoom-out" class="modern-button" style="font-size: 11px">Zoom Out&nbsp;</button>						
+						</div>	
+				</div>
 			</div>
-			
+
 			<!-- Cytoscape Canvas -->
-			<div id="cy" style="flex: 3; height: 600px; margin-top: 10px;">
-			</div>		
-		</div>		
-		
+			<div id="cy" style=" z-index: 1;flex-grow: 1; height: 100%; background-color: #f0f3f5; position: relative;">
+				<!-- Your graph content here -->
+			</div>
+
+		</div>
+
+		<!-- JavaScript to toggle the toolbar -->
+		<script>
+			function toggleToolbar() {
+				var toolbar = document.getElementById("sharegraphToolbar");
+				var button = document.getElementById("toggleButton2");
+				var content = document.getElementById("toolbarContent");
+
+				if (toolbar.style.height === "530px" || toolbar.style.height === "") {
+					// Collapse the toolbar to 40px
+					toolbar.style.height = "40px";
+					toolbar.style.transition = "height 0.5s ease";
+
+					// Hide the content
+					content.style.display = "none";
+
+					// Update button text
+					button.innerText = "Show Toolbar";
+				} else {
+					// Expand the toolbar back to its original height
+					toolbar.style.height = "530px";
+					toolbar.style.transition = "height 0.5s ease";
+
+					// Show the content
+					setTimeout(function() {
+						content.style.display = "block";
+					}, 500); // Delay to sync with height transition
+
+					// Update button text
+					button.innerText = "Hide Toolbar";
+				}
+			}
+		</script>
+			
+				</div>				
 			<!-- Hidden Menu - right-click -->
 				<label href="#" class="dropbtn" id="tbrearrange" onClick="">
 					<div id="nodemenu" class="dropdown-content">
@@ -6972,8 +7015,7 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
 					<h2 id="popup-title">Edge Details</h2>
 					<p id="popup-content">Content goes here...</p>
 					<button id="close-popup" class="modern-button">Close</button>
-				</div>			
-	</div>
+				</div>	
 	   <script>
 	   	   
         // Custom Organic Layout
