@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.122
+# Version: v1.123
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -4213,8 +4213,7 @@ $NewHtmlReport = @"
   <script src="https://cdn.jsdelivr.net/npm/apexsankey"></script>
   <title>Report</title>
   <style>    
-
- .modern-input {
+     .modern-input {
             width: 150px;
             padding: 8px 12px;
             border: 1px solid #ccc;
@@ -4305,7 +4304,7 @@ $NewHtmlReport = @"
             box-shadow: -5px 0 15px rgba(0, 0, 0, 0.3);
             padding: 20px;
             overflow-y: auto;
-            z-index: 9999;
+            z-index: 9998;
             border-radius: 4px;
         }
 
@@ -4341,7 +4340,7 @@ $NewHtmlReport = @"
             background-color: #f1f1f1;
             min-width: 120px;
             box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-            z-index: 1;
+            z-index: 9997;
             right: 0px;
             left: 0px;
             top: 32px;
@@ -4403,7 +4402,7 @@ $NewHtmlReport = @"
 			line-height:1.15;
 			-webkit-text-size-adjust:100%;
 			-ms-text-size-adjust:100%;
-			z-index: 1;		
+			z-index: 9998;		
 			--transition: width 0.3s; /* Smooth transition when expanding/collapsing */		
 			background: linear-gradient(to bottom, #07142A 80%, rgba(0, 0, 0, 1) 98%, black 100%);			
         }
@@ -4716,7 +4715,7 @@ $NewHtmlReport = @"
 	
 	table thead th:nth-child(last){	 
 		--border-top-right-radius: 10px;	
-	}
+	}	
 	
 	table tbody tr:nth-of-type(odd){
 		--background-color:#F0E8E8;
@@ -4944,8 +4943,8 @@ $NewHtmlReport = @"
         width: 130px;
         height: 130px;
         background: radial-gradient(white 60%, transparent 41%), 
-		conic-gradient(#CE112D 0% $PercentComputerExPrivP, 
-					   #d9d7d7 $PercentComputerExPrivP 100%);
+		conic-gradient(#CE112D 0% 1.13%, 
+					   #d9d7d7 1.13% 100%);
 		border-radius: 50%;
 		text-align: center;
 		margin-top: 5px;
@@ -4957,8 +4956,8 @@ $NewHtmlReport = @"
         width: 130px;
         height: 130px;
         background: radial-gradient(white 60%, transparent 41%), 
-		conic-gradient(#CE112D 0% $PercentSharesExPrivP, 
-					   #d9d7d7 $PercentSharesExPrivP 100%);
+		conic-gradient(#CE112D 0% 2.75%, 
+					   #d9d7d7 2.75% 100%);
 		border-radius: 50%;
 		text-align: center;
 		margin-top: 5px;
@@ -4970,8 +4969,8 @@ $NewHtmlReport = @"
         width: 130px;
         height: 130px;
         background: radial-gradient(white 60%, transparent 41%), 
-		conic-gradient(#CE112D 0% $PercentAclExPrivP, 
-					   #d9d7d7 $PercentAclExPrivP 100%);
+		conic-gradient(#CE112D 0% 6.45%, 
+					   #d9d7d7 6.45% 100%);
 		border-radius: 50%;
 		text-align: center;
 		margin-top: 5px;
@@ -4983,8 +4982,8 @@ $NewHtmlReport = @"
         width: 130px;
         height: 130px;
         background: radial-gradient(white 60%, transparent 41%), 
-		conic-gradient(#CE112D 0% $ExpPrivAccessLastP , 
-					   #d9d7d7 $ExpPrivAccessLastP  100%);
+		conic-gradient(#CE112D 0% 0.00% , 
+					   #d9d7d7 0.00%  100%);
 		border-radius: 50%;
 		text-align: center;
 		margin-top: 5px;
@@ -4996,8 +4995,8 @@ $NewHtmlReport = @"
         width: 130px;
         height: 130px;
         background: radial-gradient(white 60%, transparent 41%), 
-		conic-gradient(#CE112D 0% $ExpPrivModLastP, 
-					   #d9d7d7 $ExpPrivModLastP 100%);
+		conic-gradient(#CE112D 0% , 
+					   #d9d7d7  100%);
 		border-radius: 50%;
 		text-align: center;
 		margin-top: 5px;
@@ -5295,7 +5294,7 @@ $NewHtmlReport = @"
 	line-height:1.15;
 	-webkit-text-size-adjust:100%;
 	-ms-text-size-adjust:100%;
-    z-index: 1;
+    z-index: 9999;
 }
 
 .sidenav a {
@@ -5368,7 +5367,7 @@ $NewHtmlReport = @"
     }
 .TimelineChart{
   display: grid;
-  --grid-template-columns: 1px repeat($ExcessivePrivsYearsCount, 204px) 1px;
+  --grid-template-columns: 1px repeat(, 204px) 1px;
   grid-template-rows: minmax(0px, 1fr);
   overflow-x: scroll;
   overflow-y: hidden;
@@ -5592,14 +5591,14 @@ input[type="checkbox"] {
 }
 
 input[type="checkbox"]:checked {
-    background-color: #07142A; /* Change this to your desired color */
+    background-color: #17405A; /* Change this to your desired color */
     --border-color: #07142A;	
-    border: 1px solid #07142A;
+    border: 1px solid #17405A;
 }
 
 input[type="checkbox"]:checked::before {
     content: '✔';
-    color: #F56A00;
+    color: #f08c41;
     display: block;
     text-align: center;
     line-height: 20px;
@@ -6871,7 +6870,7 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
 		<!-- Header Text, Selected Node -->
 		<div  style="width: 100%; display: flex; align-items: left; margin-left: -1px;">
 			<div style="flex: 1;">
-			This provides an interactive graph that can be used to explore the computer, share, and other relationships. Experimental. 
+			This is an experimental interactive graph for exploring share relationships.
 			</div>
 			<div style="text-align: right; margin-right: 10px;color:gray;">
 			&nbsp;Selected Node:&nbsp;<span id="selected-node" style="color:gray;">None</span><br>
@@ -6882,109 +6881,242 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
 			</div>
 		</div>
 		
-		<!-- SHAREGRAPH CONTAINER START -->
-		<div style="width: 100%; height: 800px; position: relative; display: flex;">
+<!-- SHAREGRAPH CONTAINER START -->
+<div style="width: 100%; height: 800px; position: relative; display: flex;">
 
-			<!-- SHAREGRAPH TOOLBAR -->
-			<div id="sharegraphToolbar" style="width: 179px; border: .5px solid lightgray; border-radius: 6px; padding: 10px; background-color: lightgray; position: absolute; height: 530px; transition: height 0.5s ease; z-index: 10; overflow: hidden;">
-				
-				<!-- Hide Toolbar Button -->
-				<button id="toggleButton2" class="modern-button" style="margin-bottom: 5px; width: 176px;" onclick="toggleToolbar()">Hide Toolbar</button>
+    <!-- SHAREGRAPH TOOLBAR -->
+    <div id="sharegraphToolbar" style="width: 179px; border: .5px solid lightgray; border-radius: 6px; padding: 10px; background-color: lightgray; position: absolute; height: 345px; transition: height 0.5s ease; z-index: 10; overflow: hidden;">
 
-				<!-- Content to hide when collapsed -->
-				<div id="toolbarContent">
-					<!-- Search and shortest path -->
-					<input type="text" id="search-input" placeholder="Search nodes..." class="modern-input" style="width: 180px;">
-					<input type="text" id="src-node" placeholder="src-node..." class="modern-input" style="width: 180px;">
-					<input type="text" id="dst-node" placeholder="dst-node..." class="modern-input" style="width: 180px;">
-					<button id="find-path" class="modern-button" style="width: 176px;">Find Path</button>
-					<br>
-
-					<!-- Configuration Options -->
-						<!-- Configuration Options -->
-						<select id="layout-select" class="modern-dropdown" style="width: 180px;">
-							<option value="breadthfirst">Layout</option>
-							<option value="grid">Grid</option>
-							<option value="random">Random</option>
-							<option value="circle">Circle</option>
-							<option value="concentric">Concentric</option>
-							<option value="breadthfirst">Breadthfirst</option>
-							<option value="cose">Cose</option>
-							<option value="dagre">Dagre</option>
-							<option value="euler">Euler</option>
-							<option value="klay">Klay</option>
-							<option value="hierarchical">Hierarchical</option>
-							<option value="organic">Organic</option>
-							<option value="BlastZone">BlastRadius</option>
-						</select>
-						<select id="curve-style-select" class="modern-dropdown" style="width: 180px;">
-							<option value="bezier">Line Style</option>
-							<option value="bezier">Bezier</option>
-							<option value="unbundled-bezier">Unbundled Bezier</option>
-							<option value="haystack">Haystack</option>
-							<option value="segments">Segments</option>
-							<option value="straight">Straight</option>
-							<option value="taxi">Taxi</option>
-							<option value="straight-triangle">Straight-Triangle</option>
-						</select>
-					<label><input type="checkbox" id="toggle-edge-labels" checked> Show Edge Labels</label>
-					<label><input type="checkbox" id="toggle-node-labels" checked> Show Node Labels</label>
-					<label><input type="checkbox" id="toggle-visibility"> Hide Unselected</label>
-
-					<br><div style="margin-bottom: 3px;margin-top: 3px;">Blast Radius</div>
-					<input type="range" min="0" max="5" value="0" class="modern-slider" id="mySlider" style="width:160px;">&nbsp;<span id="sliderValue">0</span>
-					<br><br>
-
-						<!-- Save, Reset, Show All, Zoom Buttons -->
-						<div id="buttonsleft" style="margin-left:2">
-								<button id="save-button" class="modern-button" style="width: 170px;" style="font-size: 11px;">Save as Image</button><br>
-								<button id="clear-selection" class="modern-button" onclick="ResetGraph();" style="font-size: 11px">&nbsp;&nbsp;&nbsp;Reset&nbsp;&nbsp;&nbsp;</button>
-								<button id="removeFadedClassButton" class="modern-button" style="font-size: 11px">&nbsp;Show All&nbsp;&nbsp;</button><br>
-								<button id="zoom-in" class="modern-button" style="font-size: 11px">&nbsp;Zoom In&nbsp;</button>
-								<button id="zoom-out" class="modern-button" style="font-size: 11px">Zoom Out&nbsp;</button>						
-						</div>	
-				</div>
-			</div>
-
-			<!-- Cytoscape Canvas -->
-			<div id="cy" style=" z-index: 1;flex-grow: 1; height: 100%; background-color: #f0f3f5; position: relative;">
-				<!-- Your graph content here -->
-			</div>
-
+		<!-- Hide Toolbar Button -->
+		<div style="width: 100%; display: flex; align-items: center; justify-content: space-between;">
+			<div id="toolbartext" style="padding-bottom: 4px; width: 120px; font-weight: bold; color: #07142A; font-size: 16;">Graph ToolBar</div>
+			<button id="toggleButton2" class="modern-button" style="margin-bottom: 5px; padding: 0; width: 25px; height: 25px; display: flex; justify-content: center; align-items: center;" onclick="toggleToolbar()">
+				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+					<path d="M18 15L12 9L6 15" stroke="#f08c41" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+				</svg>
+			</button>
+		</div>
+		
+        <!-- Tab Buttons -->
+		<div id="toolbarTabs" style="margin-bottom: 5px; width: 180px; white-space: nowrap;">
+			<button id="tab1Button" class="modern-button" style="border: .5px solid #e3e4e6; background-color: #d4d5d6; color: #07142A; font-size: 12px; width: 50px; height: 30px; padding: 0px; display: inline-block; margin-right: 2px; justify-content: center; align-items: center;" onclick="showTab(1)">Search</button>
+			<button id="tab2Button" class="modern-button" style="background-color: lightgray; color: #07142A; font-size: 12px; width: 50px; height: 30px; padding: 0px; display: inline-block; margin-right: 2px; justify-content: center; align-items: center;" onclick="showTab(2)">Filter</button>
+			<button id="tab3Button" class="modern-button" style="background-color: lightgray; color: #07142A; font-size: 12px; width: 60px; height: 30px; padding: 0px; display: inline-block; justify-content: center; align-items: center;" onclick="showTab(3)">Layout</button>
 		</div>
 
-		<!-- JavaScript to toggle the toolbar -->
-		<script>
-			function toggleToolbar() {
-				var toolbar = document.getElementById("sharegraphToolbar");
-				var button = document.getElementById("toggleButton2");
-				var content = document.getElementById("toolbarContent");
 
-				if (toolbar.style.height === "530px" || toolbar.style.height === "") {
-					// Collapse the toolbar to 40px
-					toolbar.style.height = "40px";
-					toolbar.style.transition = "height 0.5s ease";
+        <!-- Tab 1 Content (Toolbar Content) -->
+        <div id="tab1Content" class="tab-content">
+            <input type="text" id="search-input" placeholder="Search nodes..." class="modern-input" style="width: 180px;">
+            <input type="text" id="src-node" placeholder="src-node..." class="modern-input" style="width: 180px;">
+            <input type="text" id="dst-node" placeholder="dst-node..." class="modern-input" style="width: 180px;">
+            <button id="find-path" class="modern-button" style="width: 176px;">Find Path</button>
+			<div style="border-bottom: .5px solid #e3e4e6; height: 5px; width: 100%; margin-bottom: 5px;"></div>
+            <div id="buttonsleft" style="margin-left:2">
+                <button id="save-button" class="modern-button" style="width: 170px;" style="font-size: 11px;">Save as Image</button><br>				
+            </div>	
+			<div style="border-bottom: .5px solid #e3e4e6; height: 5px; width: 100%; margin-bottom: 10px;"></div>
+			<div style="margin-bottom: 0px;margin-top: 15px;">Blast Radius</div>
+            <input type="range" min="0" max="5" value="0" class="modern-slider" id="mySlider" style="width:160px;">&nbsp;<span id="sliderValue">0</span>
+        </div>
 
-					// Hide the content
-					content.style.display = "none";
+        <!-- Tab 2 Content (Hello) -->
+        <div id="tab2Content" class="tab-content" style="display: none;">
+            <p>Filters coming soon.</p>
+        </div>
+		
+        <!-- Tab 3 Content (Hello) -->
+        <div id="tab3Content" class="tab-content" style="display: none;">
+            <select id="layout-select" class="modern-dropdown" style="width: 180px;">
+                <option value="breadthfirst">Layout</option>
+                <option value="grid">Grid</option>
+                <option value="random">Random</option>
+                <option value="circle">Circle</option>
+                <option value="concentric">Concentric</option>
+                <option value="breadthfirst">Breadthfirst</option>
+                <option value="cose">Cose</option>
+                <option value="dagre">Dagre</option>
+                <option value="euler">Euler</option>
+                <option value="klay">Klay</option>
+                <option value="hierarchical">Hierarchical</option>
+                <option value="organic">Organic</option>
+                <option value="BlastZone">BlastRadius</option>
+            </select>
+            <select id="curve-style-select" class="modern-dropdown" style="width: 180px;">
+                <option value="bezier">Line Style</option>
+                <option value="bezier">Bezier</option>
+                <option value="unbundled-bezier">Unbundled Bezier</option>
+                <option value="haystack">Haystack</option>
+                <option value="segments">Segments</option>
+                <option value="straight">Straight</option>
+                <option value="taxi">Taxi</option>
+                <option value="straight-triangle">Straight-Triangle</option>
+            </select>
+            <label><input type="checkbox" id="toggle-edge-labels" checked> Show Edge Labels</label>
+            <label><input type="checkbox" id="toggle-node-labels" checked> Show Node Labels</label>
+            <label><input type="checkbox" id="toggle-visibility"> Hide Unselected</label>
+			<div style="border-bottom: .5px solid #e3e4e6; height: 5px; width: 100%; margin-bottom: 5px;"></div>
+            <div id="buttonsleft" style="margin-left:2">
+                <button id="clear-selection" class="modern-button" onclick="ResetGraph();" style="font-size: 11px">&nbsp;&nbsp;&nbsp;Reset&nbsp;&nbsp;&nbsp;</button>
+                <button id="removeFadedClassButton" class="modern-button" style="font-size: 11px">&nbsp;Show All&nbsp;&nbsp;</button><br>
+                <button id="zoom-in" class="modern-button" style="font-size: 11px">&nbsp;Zoom In&nbsp;</button>
+                <button id="zoom-out" class="modern-button" style="font-size: 11px">Zoom Out&nbsp;</button>						
+            </div>				
+        </div>		
 
-					// Update button text
-					button.innerText = "Show Toolbar";
-				} else {
-					// Expand the toolbar back to its original height
-					toolbar.style.height = "530px";
-					toolbar.style.transition = "height 0.5s ease";
+    </div>
 
-					// Show the content
-					setTimeout(function() {
-						content.style.display = "block";
-					}, 500); // Delay to sync with height transition
+    <!-- Cytoscape Canvas -->
+    <div id="cy" style="z-index: 1;flex-grow: 1; height: 100%; background-color: #f0f3f5; position: relative;">
+        <!-- Your graph content here -->
+    </div>
 
-					// Update button text
-					button.innerText = "Hide Toolbar";
-				}
+</div>
+
+<!-- JavaScript to toggle the toolbar and tabs -->
+<script>
+    function toggleToolbar() {
+        var toolbar = document.getElementById("sharegraphToolbar");
+        var button = document.getElementById("toggleButton2");
+        var tab1Content = document.getElementById("tab1Content");
+        var tab2Content = document.getElementById("tab2Content");
+		var tab3Content = document.getElementById("tab3Content");
+		var toolbarTabs = document.getElementById("toolbarTabs");
+		var tab1Button = document.getElementById("tab1Button");		
+		var tab2Button = document.getElementById("tab2Button");	
+		var tab3Button = document.getElementById("tab3Button");	
+
+        if (toolbar.style.height === "345px" || toolbar.style.height === "") {
+            // Collapse the toolbar to 40px
+            toolbar.style.height = "30px";
+            toolbar.style.transition = "height 0.5s ease";
+
+            // Hide the content
+            tab1Content.style.display = "none";
+            tab2Content.style.display = "none";
+			tab3Content.style.display = "none";
+			toolbarTabs.style.display = "none";
+
+            // Update button text
+			button.innerHTML = ``
+				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+					<path d="M6 9L12 15L18 9" stroke="#f08c41" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+				</svg>``;
+        } else {
+            // Expand the toolbar back to its original height
+            toolbar.style.height = "345px";
+            toolbar.style.transition = "height 0.5s ease";			
+			toolbarTabs.style.display = "block";
+
+            // Show the content
+            setTimeout(function() {
+			let activeTab;
+
+			if (document.getElementById("tab1Button").classList.contains("active")) {
+				activeTab = 1;
+			} else if (document.getElementById("tab2Button").classList.contains("active")) {
+				activeTab = 2;
+			} else if (document.getElementById("tab3Button").classList.contains("active")) {
+				activeTab = 3;
 			}
-		</script>
+
+			switch (activeTab) {
+				case 1:
+					tab1Content.style.display = "block";
+					tab2Content.style.display = "none";
+					tab3Content.style.display = "none";											
+					break;
+				case 2:
+					tab1Content.style.display = "none";
+					tab2Content.style.display = "block";
+					tab3Content.style.display = "none";											
+					break;
+				case 3:
+					tab1Content.style.display = "none";
+					tab2Content.style.display = "none";
+					tab3Content.style.display = "block";									
+					break;
+				default:
+					// If none are active, you can handle a default case if needed
+					tab1Content.style.display = "block";
+					tab2Content.style.display = "none";
+					tab3Content.style.display = "none";					
+					break;
+			}
+				
+            }, 500); // Delay to sync with height transition
+				
+			button.innerHTML = ``
+				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+					<path d="M18 15L12 9L6 15" stroke="#f08c41" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+				</svg>``;				
+        }
+    }
+
+    function showTab(tabNumber) {
+	
+	    var tab1Button = document.getElementById("tab1Button");
+        var tab1Content = document.getElementById("tab1Content");
+		
+		var tab2Button = document.getElementById("tab2Button");
+        var tab2Content = document.getElementById("tab2Content");
+		
+        var tab3Button = document.getElementById("tab3Button");
+        var tab3Button = document.getElementById("tab3Button");		
+
+        if (tabNumber === 1) {
+            tab1Content.style.display = "block";
+            tab1Button.classList.add("active");
+            tab2Button.classList.remove("active");
+			tab2Content.style.display = "none";
+			tab3Button.classList.remove("active");
+			tab3Content.style.display = "none";
+			
+					tab1Button.style.border = ".5px solid #e3e4e6";
+					tab2Button.style.border = "none";
+					tab3Button.style.border = "none";
+					
+					tab1Button.style.backgroundColor = "#d4d5d6";
+					tab2Button.style.backgroundColor = "lightgray";
+					tab3Button.style.backgroundColor = "lightgray";				
+        } 
+		
+		if (tabNumber === 2) {
+            tab1Content.style.display = "none";
+            tab1Button.classList.remove("active");
+			tab2Content.style.display = "block";
+            tab2Button.classList.add("active");
+			tab3Button.classList.remove("active");
+			tab3Content.style.display = "none";		
+
+								tab1Button.style.border = "none";
+					tab2Button.style.border = ".5px solid #e3e4e6";
+					tab3Button.style.border = "none";
+					
+					tab1Button.style.backgroundColor = "lightgray";
+					tab2Button.style.backgroundColor = "#d4d5d6";
+					tab3Button.style.backgroundColor = "lightgray";	
+        }
+		
+		if (tabNumber === 3) {
+		    tab1Button.classList.remove("active");
+            tab1Content.style.display = "none";
+			tab2Button.classList.remove("active");			
+			tab2Content.style.display = "none";
+			tab3Button.classList.add("active");
+			tab3Content.style.display = "block";
+					
+					tab1Button.style.border = "none";
+					tab2Button.style.border = "none";
+					tab3Button.style.border = ".5px solid #e3e4e6";
+					
+					tab1Button.style.backgroundColor = "lightgray";
+					tab2Button.style.backgroundColor = "lightgray";
+					tab3Button.style.backgroundColor = "#d4d5d6";				
+        }		
+    }
+</script>
+
 			
 				</div>				
 			<!-- Hidden Menu - right-click -->
@@ -7015,7 +7147,7 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
 					<h2 id="popup-title">Edge Details</h2>
 					<p id="popup-content">Content goes here...</p>
 					<button id="close-popup" class="modern-button">Close</button>
-				</div>	
+				</div>		
 	   <script>
 	   	   
         // Custom Organic Layout
@@ -7521,7 +7653,7 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
             document.getElementById('layout-select').selectedIndex = 0;
 
             // Set Selected to ""
-            document.getElementById('selected-node').innerText = '';
+            document.getElementById('selected-node').innerHTML = 'None';
         }
 
         // #################################
@@ -8682,7 +8814,11 @@ document.querySelector('#nodemenu a:nth-child(2)').addEventListener('click', fun
 					cy.nodes().removeClass('faded'); // Remove 'faded' class from all nodes
 					cy.edges().removeClass('faded');  // Remove 'faded' class from all edges
 					cy.nodes().removeClass('invisible'); // Remove 'faded' class from all nodes
-					cy.edges().removeClass('invisible');  // Remove 'faded' class from all edges	
+					cy.edges().removeClass('invisible');  // Remove 'faded' class from all edges
+
+                    // Set the 'Hide Unselected' checkbox to unchecked
+                    document.getElementById('toggle-visibility').checked = false;
+                    	
                     updateCounts();				
 				} else {
 					console.error('Cytoscape instance is not available.');
