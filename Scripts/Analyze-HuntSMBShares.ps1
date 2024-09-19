@@ -5,7 +5,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.94
+# Version: v1.95
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Analyze-HuntSMBShares
 {    
@@ -6463,7 +6463,7 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
 <!-- SHAREGRAPH CONTAINER START -->
 <div style="width: 100%; height: 800px; position: relative; display: flex;">
 
-    <!-- SHAREGRAPH TOOLBAR -->
+<!-- SHAREGRAPH TOOLBAR -->
     <div id="sharegraphToolbar" style="width: 179px; border: .5px solid lightgray; border-radius: 6px; padding: 10px; background-color: lightgray; position: absolute; height: 345px; transition: height 0.5s ease; z-index: 10; overflow: hidden;">
 
 		<!-- Hide Toolbar Button -->
@@ -6486,23 +6486,61 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
 
         <!-- Tab 1 Content (Toolbar Content) -->
         <div id="tab1Content" class="tab-content">
-            <input type="text" id="search-input" placeholder="Search nodes..." class="modern-input" style="width: 180px;">
-            <input type="text" id="src-node" placeholder="src-node..." class="modern-input" style="width: 180px;">
-            <input type="text" id="dst-node" placeholder="dst-node..." class="modern-input" style="width: 180px;">
-            <button id="find-path" class="modern-button" style="width: 176px;">Find Path</button>
-			<div style="border-bottom: .5px solid #e3e4e6; height: 5px; width: 100%; margin-bottom: 5px;"></div>
-            <div id="buttonsleft" style="margin-left:2">
-                <button id="save-button" class="modern-button" style="width: 170px;" style="font-size: 11px;">Save as Image</button><br>				
+		
+			<div style="color: #07142A; font-size: 12px; font-weight: bold; margin-bottom: 5px;">Seach Nodes</div>
+            <input type="text" id="search-input" placeholder="Search nodes..." class="modern-input" style="width: 180px;">			
+			<input type="range" min="0" max="5" value="0" class="modern-slider" id="mySlider" style="width:160px; margin-top: 12px;">&nbsp;<span id="sliderValue">0</span>
+			
+			<div style="border-bottom: none; height: 5px; width: 100%; margin-bottom: 4px;"></div>
+			
+			<div style="color: #07142A; font-size: 12px; font-weight: bold; margin-bottom: 5px;">Find Paths</div>
+            <input type="text" id="src-node" placeholder="source node..." class="modern-input" style="width: 180px;">
+            <input type="text" id="dst-node" placeholder="target node..." class="modern-input" style="width: 180px;">
+            <button id="find-path" class="modern-button" style="width: 176px;margin-top: 8px;">Find Path</button>
+			
+			<div style="border-bottom: .5px solid #e3e4e6; height: 5px; width: 100%; margin-bottom: 4px;"></div>
+			
+            <div id="buttonsleft" style="">
+                <button id="save-button" class="modern-button" style="width: 176px;" style="font-size: 11px;">Save as Image</button><br>				
             </div>	
-			<div style="border-bottom: .5px solid #e3e4e6; height: 5px; width: 100%; margin-bottom: 10px;"></div>
-			<div style="margin-bottom: 0px;margin-top: 15px;">Blast Radius</div>
-            <input type="range" min="0" max="5" value="0" class="modern-slider" id="mySlider" style="width:160px;">&nbsp;<span id="sliderValue">0</span>
         </div>
 
-        <!-- Tab 2 Content (Hello) -->
-        <div id="tab2Content" class="tab-content" style="display: none;">
-            <p>Filters coming soon.</p>
-        </div>
+		<!-- Tab 2 Content -->
+		<div id="tab2Content" class="tab-content" style="display: none;">
+			<div style="color: #07142A; font-size: 12px; font-weight: bold; margin-bottom: 10px;">Node Types</div>
+			<div style="color: #07142A; font-size: 10px; display: flex; flex-wrap: wrap; background-color: #e6e6e6; border-radius: 4px; margin-bottom: 10px;">
+				<div style="flex: 1 0 50%;">
+					<label><input type="checkbox" id="FilterNodeIdentity" checked style="transform: scale(0.8);margin-left: 8px;">Identity</label>
+				</div>		
+				<div style="flex: 1 0 50%;">
+					<label><input type="checkbox" id="FilterNodeComputer" checked style="transform: scale(0.8);margin-left: 8px;">Computer</label>
+				</div>
+				<div style="flex: 1 0 50%;">
+					<label><input type="checkbox" id="FilterNodeShareName" checked style="transform: scale(0.8);margin-left: 8px;">Share Name</label>
+				</div>
+				<div style="flex: 1 0 50%;">
+					<label><input type="checkbox" id="FilterNodeSharePath" checked style="transform: scale(0.8);margin-left: 8px;">Share Path</label>
+				</div>
+				<div style="flex: 1 0 50%;">
+					<label><input type="checkbox" id="FilterNodeFolderGroup" checked style="transform: scale(0.8); margin-left: 8px;">Folder Group</label>
+				</div>
+			 </div>
+			   <div style="color: #07142A; font-size: 12px; font-weight: bold; margin-bottom: 10px;">Edge Types</div>
+				<div style="color: #07142A; font-size: 10px; display: flex; flex-wrap: wrap; background-color: #e6e6e6; border-radius: 4px;">
+					<div style="flex: 1 0 50%;">
+						<label><input type="checkbox" id="FilterEdgeOwner" checked style="transform: scale(0.8); margin-left: 8px;">owner_of</label>
+					</div>
+					<div style="flex: 1 0 50%;">
+						<label><input type="checkbox" id="FilterEdgePriv" checked style="transform: scale(0.8); margin-left: 8px;">has_privilege_on</label>
+					</div>
+					<div style="flex: 1 0 50%;">
+						<label><input type="checkbox" id="FilterEdgeHosted" checked style="transform: scale(0.8); margin-left: 8px;">hosted_on</label>
+					</div>
+					<div style="flex: 1 0 50%;">
+						<label><input type="checkbox" id="FilterEdgeChild" checked style="transform: scale(0.8); margin-left: 8px;">child_of</label>
+					</div>
+				</div>                 
+		</div>
 		
         <!-- Tab 3 Content (Hello) -->
         <div id="tab3Content" class="tab-content" style="display: none;">
@@ -6531,14 +6569,15 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
                 <option value="taxi">Taxi</option>
                 <option value="straight-triangle">Straight-Triangle</option>
             </select>
-            <label><input type="checkbox" id="toggle-edge-labels" checked> Show Edge Labels</label>
-            <label><input type="checkbox" id="toggle-node-labels" checked> Show Node Labels</label>
-            <label><input type="checkbox" id="toggle-visibility"> Hide Unselected</label>
-			<div style="border-bottom: .5px solid #e3e4e6; height: 5px; width: 100%; margin-bottom: 5px;"></div>
-            <div id="buttonsleft" style="margin-left:2">
-                <button id="clear-selection" class="modern-button" onclick="ResetGraph();" style="font-size: 11px">&nbsp;&nbsp;&nbsp;Reset&nbsp;&nbsp;&nbsp;</button>
+			<div style="color: #07142A; margin-top: 8px; margin-bottom: 6px;font-size: 10px; display: flex; flex-wrap: wrap; background-color: #e6e6e6; border-radius: 4px;">
+				<label><input type="checkbox" id="toggle-edge-labels" checked style="transform: scale(0.8); margin-left: 8px;"> Show Edge Labels</label>
+				<label><input type="checkbox" id="toggle-node-labels" checked style="transform: scale(0.8); margin-left: 8px;"> Show Node Labels</label>
+				<label><input type="checkbox" id="toggle-visibility" style="transform: scale(0.8); margin-left: 8px;"> Hide Unselected</label>
+			</div>
+            <div id="buttonsleft">
+                <button id="clear-selection" class="modern-button" onclick="ResetGraph();" style="font-size: 12px">&nbsp;&nbsp;&nbsp;Reset&nbsp;&nbsp;&nbsp;</button>
                 <button id="removeFadedClassButton" class="modern-button" style="font-size: 11px">&nbsp;Show All&nbsp;&nbsp;</button><br>
-                <button id="zoom-in" class="modern-button" style="font-size: 11px">&nbsp;Zoom In&nbsp;</button>
+                <button id="zoom-in" class="modern-button" style="font-size: 12px">&nbsp;Zoom In&nbsp;</button>
                 <button id="zoom-out" class="modern-button" style="font-size: 11px">Zoom Out&nbsp;</button>						
             </div>				
         </div>		
@@ -6726,7 +6765,7 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
 					<h2 id="popup-title">Edge Details</h2>
 					<p id="popup-content">Content goes here...</p>
 					<button id="close-popup" class="modern-button">Close</button>
-				</div>			
+				</div>				
 	
 	   <script>
 	   	   
@@ -7234,6 +7273,17 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
 
             // Set Selected to ""
             document.getElementById('selected-node').innerHTML = 'None';
+
+            // Reset all filters
+			document.getElementById('FilterNodeIdentity').checked = true; 	 	 // Set the checkbox to checked
+			document.getElementById('FilterNodeComputer').checked = true;  		 // Set the checkbox to checked
+			document.getElementById('FilterNodeShareName').checked = true; 		 // Set the checkbox to checked
+			document.getElementById('FilterNodeSharePath').checked = true;  	 // Set the checkbox to checked
+			document.getElementById('FilterNodeFolderGroup').checked = true; 	 // Set the checkbox to checked
+			document.getElementById('FilterEdgeOwner').checked = true; 			 // Set the checkbox to checked
+			document.getElementById('FilterEdgePriv').checked = true; 			 // Set the checkbox to checked
+			document.getElementById('FilterEdgeHosted').checked = true; 		 // Set the checkbox to checked
+			document.getElementById('FilterEdgeChild').checked = true;  		 // Set the checkbox to checked	
         }
 
         // #################################
@@ -7881,7 +7931,9 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
             function updateLabelsVisibility() {
                 var showEdgeLabels = document.getElementById('toggle-edge-labels').checked;
                 var showNodeLabels = document.getElementById('toggle-node-labels').checked;
-
+				var showHideUnselected = document.getElementById('toggle-visibility').checked;	
+				
+				// Apply faded and invisible class styles
                 cy.edges().forEach(function (edge) {
                     if (edge.hasClass('faded') || edge.hasClass('invisible')) {
                         edge.style('text-opacity', 0);  // Hide label if faded or invisible
@@ -7897,8 +7949,46 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
                         node.style('text-opacity', showNodeLabels ? 1 : 0);  // Show or hide based on the checkbox
                     }
                 });
-            }
+				
+				// Get filter settings
+				var FilterNodeIdentity      = document.getElementById('FilterNodeIdentity').checked;
+				var FilterNodeComputer      = document.getElementById('FilterNodeComputer').checked;
+				var FilterNodeShareName     = document.getElementById('FilterNodeShareName').checked;
+				var FilterNodeSharePath     = document.getElementById('FilterNodeSharePath').checked; 
+				var FilterNodeFolderGroup 	= document.getElementById('FilterNodeFolderGroup').checked; 
+				var FilterEdgeOwner  		= document.getElementById('FilterEdgeOwner').checked;
+				var FilterEdgePriv   		= document.getElementById('FilterEdgePriv').checked;
+				var FilterEdgeHosted 		= document.getElementById('FilterEdgeHosted').checked;
+				var FilterEdgeChild  		= document.getElementById('FilterEdgeChild').checked;
 
+				// Define array of filter variables with corresponding element IDs and their types
+				var filters = [
+					{ id: 'FilterNodeIdentity', 		type: 'user' },
+					{ id: 'FilterNodeIdentity', 		type: 'owner' },
+					{ id: 'FilterNodeComputer', 	    type: 'computer' },
+					{ id: 'FilterNodeShareName', 	    type: 'sharename' },
+					{ id: 'FilterNodeSharePath', 	    type: 'sharepath' },
+					{ id: 'FilterNodeFolderGroup', 	    type: 'Folder Group' },
+					{ id: 'FilterEdgeOwner', 		    type: 'owner_of' },
+					{ id: 'FilterEdgePriv', 		    type: 'has_privilege_on' },
+					{ id: 'FilterEdgeHosted', 		    type: 'hosted_on' },
+					{ id: 'FilterEdgeChild', 		    type: 'child_of' }
+				];
+
+				// Iterate through each filter
+				filters.forEach(function(filter) {
+
+					// Get the checkbox element and check if it's unchecked
+					var isChecked = document.getElementById(filter.id).checked;
+					if (!isChecked) {
+						
+						// Add invisible class to nodes or edges based on filter type
+						cy.elements("[type = '" + filter.type + "']").addClass('invisible')
+						 .connectedEdges().addClass('invisible');  
+					}
+				});
+			
+            }
 
             // Toggle faded visibility
             document.getElementById('toggle-visibility').addEventListener('change', function () {
@@ -8111,125 +8201,249 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
                 selectedEdges.removeClass('faded');
             });
 
-// Event listener for the "Center" option from the nodemenu
-// Event listener for the "Center" option from the nodemenu
-document.querySelector('#nodemenu a:nth-child(2)').addEventListener('click', function () {
-    // Determine the centroid node
-    var centroidNode;
+            // Event listener for the "Center" option from the nodemenu
+            document.querySelector('#nodemenu a:nth-child(2)').addEventListener('click', function () {
+                // Determine the centroid node
+                var centroidNode;
 
-    // If a node is selected, use it as the centroid
-    if (selectedNode && !selectedNode.empty()) {
-        centroidNode = selectedNode;
-    } else {
-        // If no node is selected, choose the node with the most connections (highest degree)
-        centroidNode = getHighestCentralityNode(cy);
-    }
+                // If a node is selected, use it as the centroid
+                if (selectedNode && !selectedNode.empty()) {
+                    centroidNode = selectedNode;
+                } else {
+                    // If no node is selected, choose the node with the most connections (highest degree)
+                    centroidNode = getHighestCentralityNode(cy);
+                }
 
-    if (!centroidNode || centroidNode.empty()) {
-        console.error("No valid node available to center.");
-        return;
-    }
+                if (!centroidNode || centroidNode.empty()) {
+                    console.error("No valid node available to center.");
+                    return;
+                }
 
-    cy.batch(function () {
-        // Ensure the centroid node and its connected elements are visible before layout
-        centroidNode.removeClass('faded invisible');
-        var connectedEdges = centroidNode.connectedEdges();
-        var connectedNodes = connectedEdges.connectedNodes();
-        connectedEdges.removeClass('faded invisible');
-        connectedNodes.removeClass('faded invisible');
+                cy.batch(function () {
+                    // Ensure the centroid node and its connected elements are visible before layout
+                    centroidNode.removeClass('faded invisible');
+                    var connectedEdges = centroidNode.connectedEdges();
+                    var connectedNodes = connectedEdges.connectedNodes();
+                    connectedEdges.removeClass('faded invisible');
+                    connectedNodes.removeClass('faded invisible');
 
-        // Apply the BlastZone layout with the centroid node as the center
-        var layout = cy.layout({
-            name: 'BlastZone',
-            centerNode: centroidNode.id(),
-            radiusStep: 200,
-            fit: false,  // Do not fit automatically within the layout
-            animate: true
-        });
+                    // Apply the BlastZone layout with the centroid node as the center
+                    var layout = cy.layout({
+                        name: 'BlastZone',
+                        centerNode: centroidNode.id(),
+                        radiusStep: 200,
+                        fit: false,  // Do not fit automatically within the layout
+                        animate: true
+                    });
 
-        layout.run();
+                    layout.run();
 
-        // Ensure the centroid node and its connected elements remain visible after layout
-        centroidNode.removeClass('faded invisible');
-        connectedEdges.removeClass('faded invisible');
-        connectedNodes.removeClass('faded invisible');
+                    // Ensure the centroid node and its connected elements remain visible after layout
+                    centroidNode.removeClass('faded invisible');
+                    connectedEdges.removeClass('faded invisible');
+                    connectedNodes.removeClass('faded invisible');
 
-        // Fit the view to show the centroid node and its immediate connections without zooming in too much
-        var elementsToFit = centroidNode.union(connectedNodes).union(connectedEdges);
-        cy.fit(elementsToFit, 100); // Adjust the padding (100) as needed
+                    // Fit the view to show the centroid node and its immediate connections without zooming in too much
+                    var elementsToFit = centroidNode.union(connectedNodes).union(connectedEdges);
+                    cy.fit(elementsToFit, 100); // Adjust the padding (100) as needed
 
-        // Apply the same selection formatting as the "Select" functionality
-        // Remove the 'highlighted' style from the previously highlighted path
-        cy.elements().removeClass('highlighted highlighted-edge');
+                    // Apply the same selection formatting as the "Select" functionality
+                    // Remove the 'highlighted' style from the previously highlighted path
+                    cy.elements().removeClass('highlighted highlighted-edge');
 
-        // Remove the 'highlighted-edge' style and reset formatting for the previously selected node
-        if (lastSelectedNode && lastSelectedNode.id() !== centroidNode.id()) {
-            var lastConnectedEdges = lastSelectedNode.connectedEdges();
-            lastConnectedEdges.removeClass('highlighted-edge').style('line-color', 'lightgray');
-            lastConnectedEdges.connectedNodes().removeClass('highlighted');
+                    // Remove the 'highlighted-edge' style and reset formatting for the previously selected node
+                    if (lastSelectedNode && lastSelectedNode.id() !== centroidNode.id()) {
+                        var lastConnectedEdges = lastSelectedNode.connectedEdges();
+                        lastConnectedEdges.removeClass('highlighted-edge').style('line-color', 'lightgray');
+                        lastConnectedEdges.connectedNodes().removeClass('highlighted');
 
-            // Reset the last selected node's size and border to its original style
-            lastSelectedNode.style({
-                'border-color': '#ababab', // Reset to the original border color
-                'width': '60px',           // Reset to the original width
-                'height': '60px'           // Reset to the original height
+                        // Reset the last selected node's size and border to its original style
+                        lastSelectedNode.style({
+                            'border-color': '#ababab', // Reset to the original border color
+                            'width': '60px',           // Reset to the original width
+                            'height': '60px'           // Reset to the original height
+                        });
+                    }
+
+                    // Update the centroid node's style
+                    centroidNode.style({
+                        'border-color': '#25648C',
+                        'width': '80px',
+                        'height': '80px'
+                    }).addClass('highlighted'); // Add the 'highlighted' class to the centroid node
+
+                    // Add the 'highlighted-edge' style to the connected edges of the centroid node
+                    connectedEdges.addClass('highlighted-edge').style('line-color', '#25648C');
+
+                    // Also add the 'highlighted' class to the connected nodes
+                    connectedEdges.connectedNodes().addClass('highlighted');
+
+                    // Handle visibility/fading for unselected nodes and edges based on checkboxes
+                    var shouldHide = document.getElementById('toggle-visibility').checked;
+
+                    // Reset all nodes and edges
+                    cy.elements().removeClass('faded invisible');
+
+                    if (shouldHide) {
+                        // Hide all nodes and edges
+                        cy.elements().addClass('invisible');
+                    } else {
+                        // Fade all nodes and edges
+                        cy.elements().addClass('faded');
+                    }
+
+                    // Remove the "faded" or "invisible" class from the centroid node and its connected nodes/edges
+                    centroidNode.removeClass('faded invisible');
+                    connectedEdges.removeClass('faded invisible');
+                    connectedNodes.removeClass('faded invisible');
+
+                    // Update the last selected node
+                    lastSelectedNode = centroidNode;
+
+                    // Update the label to show the centroid node's ID
+                    document.getElementById('selected-node').innerText = centroidNode.id();
+
+                    // Hide the dropdown menu
+                    document.getElementById('nodemenu').style.display = 'none';
+
+                    // Ensure labels are correctly updated
+                    updateLabelsVisibility();
+
+                    // Update counts
+                    updateCounts();
+                });
             });
-        }
 
-        // Update the centroid node's style
-        centroidNode.style({
-            'border-color': '#25648C',
-            'width': '80px',
-            'height': '80px'
-        }).addClass('highlighted'); // Add the 'highlighted' class to the centroid node
+			// ----------------------------
+			// Filter Option Listeners 
+			// ----------------------------
+			
+			// Function to update nodes and edges based on applied filter 
+			function applyNodeFilter(filterElementName, type) {
+			
+				// Get visibility settings
+				var showEdgeLabels = document.getElementById('toggle-edge-labels').checked;
+                var showNodeLabels = document.getElementById('toggle-node-labels').checked;
+				var showHideUnselected = document.getElementById('toggle-visibility').checked;	
+			
+				// Get the checkbox element and check if it's unchecked
+				var isChecked = document.getElementById(filterElementName).checked;
+				
+				if (isChecked) {
+				
+					// Remove hide unselected class or faded as needed
+					if(!showHideUnselected){
+						cy.nodes("[type = '" + type + "']").removeClass('invisible')
+						.connectedEdges().removeClass('invisible');  					
+					}else{
+						cy.nodes("[type = '" + type + "']").removeClass('faded')
+						.connectedEdges().removeClass('faded'); 					
+					}						
+						
+				} else {
+				
+					// Add hide unselected class or faded as needed
+					cy.nodes("[type = '" + type + "']").addClass('invisible')
+						.connectedEdges().addClass('invisible');  // Also add classes to connected edges					
+				}
+				
+				 // Update counts
+				updateCounts();
+			}
+			
+			// Function to update edges and connected nodes based on applied filter 
+			function applyEdgeFilter(filterElementName, type) {
+				
+				// Get visibility settings
+				var showEdgeLabels = document.getElementById('toggle-edge-labels').checked;
+				var showNodeLabels = document.getElementById('toggle-node-labels').checked;
+				var showHideUnselected = document.getElementById('toggle-visibility').checked;	
 
-        // Add the 'highlighted-edge' style to the connected edges of the centroid node
-        connectedEdges.addClass('highlighted-edge').style('line-color', '#25648C');
+				// Get the checkbox element and check if it's unchecked
+				var isChecked = document.getElementById(filterElementName).checked;
 
-        // Also add the 'highlighted' class to the connected nodes
-        connectedEdges.connectedNodes().addClass('highlighted');
+				if (isChecked) {
+					// Remove hide unselected class or faded as needed
+					if(!showHideUnselected){
+						cy.edges("[label = '" + type + "']").removeClass('invisible')					
+					} else {
+						cy.edges("[label = '" + type + "']").removeClass('faded')
+							.connectedNodes().removeClass('faded'); 					
+					}						
+					
+				} else {
+					cy.edges("[label = '" + type + "']").addClass('invisible');
+				}
+				
+				// Update counts
+				updateCounts();				
+			}
+						
+			// Computer Filter Listener
+			document.getElementById('FilterNodeComputer').addEventListener('change', function () {
+				
+				// Apply the filter 
+				applyNodeFilter('FilterNodeComputer', 'computer');
+			});		
 
-        // Handle visibility/fading for unselected nodes and edges based on checkboxes
-        var shouldHide = document.getElementById('toggle-visibility').checked;
+			// Identity Filter Listener 
+			document.getElementById('FilterNodeIdentity').addEventListener('change', function () {
+				
+				// Apply the filter 
+				applyNodeFilter('FilterNodeIdentity', 'user');
+				applyNodeFilter('FilterNodeIdentity', 'owner');
+			});	
 
-        // Reset all nodes and edges
-        cy.elements().removeClass('faded invisible');
+			// Share Name Filter Listener
+			document.getElementById('FilterNodeShareName').addEventListener('change', function () {
+				
+				// Apply the filter 
+				applyNodeFilter('FilterNodeShareName', 'sharename');
+			});	
 
-        if (shouldHide) {
-            // Hide all nodes and edges
-            cy.elements().addClass('invisible');
-        } else {
-            // Fade all nodes and edges
-            cy.elements().addClass('faded');
-        }
+			// Share Path Filter Listener
+			document.getElementById('FilterNodeSharePath').addEventListener('change', function () {
+				
+				// Apply the filter 
+				applyNodeFilter('FilterNodeSharePath', 'sharepath');
+			});	
 
-        // Remove the "faded" or "invisible" class from the centroid node and its connected nodes/edges
-        centroidNode.removeClass('faded invisible');
-        connectedEdges.removeClass('faded invisible');
-        connectedNodes.removeClass('faded invisible');
+			// Folder Group Filter Listener
+			document.getElementById('FilterNodeFolderGroup').addEventListener('change', function () {
+				
+				// Apply the filter 
+				applyNodeFilter('FilterNodeFolderGroup', 'Folder Group');
+			});			
 
-        // Update the last selected node
-        lastSelectedNode = centroidNode;
+			// Owner Edge Filter Listener
+			document.getElementById('FilterEdgeOwner').addEventListener('change', function () {
+				
+				// Apply the filter 
+				applyEdgeFilter('FilterEdgeOwner', 'owner_of');
+			});		
 
-        // Update the label to show the centroid node's ID
-        document.getElementById('selected-node').innerText = centroidNode.id();
+			// Has_privilege_on Filter Listener
+			document.getElementById('FilterEdgePriv').addEventListener('change', function () {
+				
+				// Apply the filter 
+				applyEdgeFilter('FilterEdgePriv', 'has_privilege_on');
+			});	
+			
+			// Hosted_on Edge Filter Listener
+			document.getElementById('FilterEdgeHosted').addEventListener('change', function () {
+				
+				// Apply the filter 
+				applyEdgeFilter('FilterEdgeHosted', 'hosted_on');
+			});	
 
-        // Hide the dropdown menu
-        document.getElementById('nodemenu').style.display = 'none';
-
-        // Ensure labels are correctly updated
-        updateLabelsVisibility();
-
-        // Update counts
-        updateCounts();
-    });
-});
-
-
-
-
-
-
+			// Child_of Edge Filter Listener
+			document.getElementById('FilterEdgeChild').addEventListener('change', function () {
+		
+				// Apply the filter 
+				applyEdgeFilter('FilterEdgeChild', 'child_of');
+			});	
+		    
+			// Filter Option Listeners  -  END
 
             // Set curve style
             document.getElementById('curve-style-select').addEventListener('change', function () {
