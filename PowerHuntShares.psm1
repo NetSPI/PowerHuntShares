@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.125
+# Version: v1.126
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -6876,11 +6876,11 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
 			<div style="flex: 1;">
 			This is an experimental interactive graph for exploring share relationships.
 			</div>
-			<div style="text-align: right; margin-right: 10px;color:gray;">
-			&nbsp;Selected Node:&nbsp;<span id="selected-node" style="color:gray;">None</span><br>
+			<div style="text-align: right; margin-right: 10px;color:gray;">			
 				<div id="buttonsright" style="text-align: right;">						
 					<span id="node-count">Nodes: 0</span>&nbsp;&nbsp;
-					<span id="edge-count">Edges: 0</span>  					
+					<span id="edge-count">Edges: 0</span><br>	
+                    &nbsp;Selected Node:&nbsp;<span id="selected-node" style="color:gray;">None</span>		
 				</div>
 			</div>
 		</div>
