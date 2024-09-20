@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.124
+# Version: v1.125
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -2187,9 +2187,12 @@ function Invoke-HuntSMBShares
             # Get interesting files count (same as share names)
             $TargetIdentityInterestingFiles  = "tbd"
 
+            # Set format for javascript
+            $TargetIdentityJs = $TargetIdentity.Replace('\', '\\')
+
             $BuildIdentityTableRows = @"
              <tr>
-                <td>$TargetIdentity</td>
+                <td style="cursor: default;" onClick="applyFadedClassAndUpdate(cy, '$TargetIdentityJs');radiobtn = document.getElementById('ShareGraph');radiobtn.checked = true;updateLabelColors('tabs', 'btnShareGraph');">$TargetIdentity</td>
                 <td>$TargetIdentityOwnerCount</td>
                 <td>
                     <button class="collapsible" style="text-align:left;">$TargetIdentityShareAccessCount</button>
@@ -2302,12 +2305,12 @@ function Invoke-HuntSMBShares
              # Create Row
              $ComputerTableRow = @"
              <tr>
-                <td>$TargetComputers</td>
+                <td style="cursor: default;" onClick="applyFadedClassAndUpdate(cy, '$TargetComputers');radiobtn = document.getElementById('ShareGraph');radiobtn.checked = true;updateLabelColors('tabs', 'btnShareGraph');">$TargetComputers</td>
                 <td>$ComputersTopACLRiskScore $RiskLevelComputersResult</td>
                 <td>$ComputerPageShareCountHTML</td>
                 <td>$ComputerPageInterestingFilesOutsideHTML</td>
              </tr>
-"@                      
+"@                       
 
             # Add row to rows    
             $ComputerTableRows = $ComputerTableRows + $ComputerTableRow  
@@ -2980,7 +2983,7 @@ function Invoke-HuntSMBShares
 	          <td> <!-- Risk Level -->  
 	          $FileGroupNameRiskLevelRow
 	          </td>
-	          <td> <!-- Folder Group Name -->  
+	          <td style="cursor: default;" onClick="applyFadedClassAndUpdate(cy, '$FileGroupName');radiobtn = document.getElementById('ShareGraph');radiobtn.checked = true;updateLabelColors('tabs', 'btnShareGraph');"> <!-- Folder Group Name -->  
               $FileGroupName
 	          </td>		           	  
 	          </tr>
@@ -3918,7 +3921,8 @@ function Invoke-HuntSMBShares
                   <div class="content">
                   <div class="filelistparent" style="font-size: 10px;"> 
                       $ShareDescriptionSample                                                                
-                      <strong>Affected Assets</strong><br>
+                      <a style="font-size: 10px; cursor: default;" onClick="applyFadedClassAndUpdate(cy, '$ShareName');radiobtn = document.getElementById('ShareGraph');radiobtn.checked = true;updateLabelColors('tabs', 'btnShareGraph');">View in ShareGraph</a><br>
+                      <br><strong>Affected Assets</strong><br>
                       <table class="subtable">
                        <tr id="ignore">
                         <td>Computers:</td><td>&nbsp;$ComputerBar</td>
@@ -6889,7 +6893,7 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
 
 		<!-- Hide Toolbar Button -->
 		<div style="width: 100%; display: flex; align-items: center; justify-content: space-between;">
-			<div id="toolbartext" style="padding-bottom: 4px; width: 120px; font-weight: bold; color: #07142A; font-size: 16;">Graph ToolBar</div>
+			<div class="drag-handle" id="toolbartext" style="padding-bottom: 4px; width: 120px; font-weight: bold; color: #07142A; font-size: 16;">Graph ToolBar</div>
 			<button id="toggleButton2" class="modern-button" style="margin-bottom: 5px; padding: 0; width: 25px; height: 25px; display: flex; justify-content: center; align-items: center;" onclick="toggleToolbar()">
 				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 					<path d="M18 15L12 9L6 15" stroke="#f08c41" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -7014,6 +7018,88 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
 
 <!-- JavaScript to toggle the toolbar and tabs -->
 <script>
+
+    // DRAG TOOLBAR FUNCTIONS
+    // Function to make an element draggable
+    function makeDraggable(element) {
+        let isDragging = false;
+        let offsetX = 0, offsetY = 0;
+        const targetDiv = element.querySelector('.drag-handle'); // The child div with "drag-handle" class
+
+        // Function to handle mouse down event
+        function handleMouseDown(e) {
+            if (e.target !== targetDiv) return; // Only allow dragging if the target is the correct child div
+
+            isDragging = true;
+
+            // Calculate the offset between the mouse position and the element position
+            const rect = element.getBoundingClientRect();
+            offsetX = e.clientX - rect.left + 200; // Subtract 200 from X
+            offsetY = e.clientY - rect.top + 108;  // Add 200 to Y
+
+            // Set the cursor to 'grabbing' when dragging starts
+            //targetDiv.style.cursor = 'grabbing';
+
+            // Add the event listeners to track mouse movements
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+        }
+
+        // Function to handle mouse move event
+        function handleMouseMove(e) {
+            if (!isDragging) return;
+
+            // Calculate the new position of the element based on the cursor
+            const newLeft = e.clientX - offsetX;
+            const newTop = e.clientY - offsetY;
+
+            // Update the element's position
+            element.style.left = newLeft + 'px';
+            element.style.top = newTop + 'px';
+        }
+
+        // Function to handle mouse up event
+        function handleMouseUp() {
+            isDragging = false;
+		
+            //targetDiv.style.cursor = 'grab'; // Change cursor back to 'grab' after releasing the mouse
+
+            // Remove the mousemove and mouseup listeners when dragging ends
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        }
+
+        // Function to change cursor style when hovering over the "drag-handle"
+        function handleMouseEnter() {
+            targetDiv.style.cursor = 'default'; // Change to 'grab' when hovering over the handle
+        }
+
+        // Function to reset cursor style when leaving the "drag-handle"
+        function handleMouseLeave() {
+            if (!isDragging) {
+                targetDiv.style.cursor = ''; // Reset to default cursor
+            }
+        }
+
+        // Add event listeners for dragging
+        targetDiv.addEventListener('mousedown', handleMouseDown);
+
+        // Add event listeners for hover effects on the drag-handle
+        targetDiv.addEventListener('mouseenter', handleMouseEnter);
+        targetDiv.addEventListener('mouseleave', handleMouseLeave);
+    }
+
+    // Function to initialize draggable toolbar
+    function initializeDraggableToolbar() {
+        const toolbar = document.getElementById('sharegraphToolbar');
+        toolbar.style.position = 'absolute'; // Ensure the toolbar is positioned absolutely
+        makeDraggable(toolbar);
+    }
+
+    // Call the initialization function when the document is ready
+    document.addEventListener('DOMContentLoaded', initializeDraggableToolbar);
+
+    // Toggle tool bar
     function toggleToolbar() {
         var toolbar = document.getElementById("sharegraphToolbar");
         var button = document.getElementById("toggleButton2");
@@ -7704,7 +7790,56 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
 			document.getElementById('FilterEdgePriv').checked = true; 			 // Set the checkbox to checked
 			document.getElementById('FilterEdgeHosted').checked = true; 		 // Set the checkbox to checked
 			document.getElementById('FilterEdgeChild').checked = true;  		 // Set the checkbox to checked
+
+			// Update counts
+			updateCounts();
         }
+
+        // #################################
+        // MISC FUNCTIONS
+        // #################################	
+        
+        // Update counts	
+		function updateCounts() {
+			const visibleNodes = cy.nodes().filter(node => !node.hasClass('faded') && !node.hasClass('invisible'));
+			const visibleEdges = cy.edges().filter(edge => !edge.hasClass('faded') && !edge.hasClass('invisible'));
+
+			document.getElementById('node-count').textContent = visibleNodes.length + ' Nodes';
+            document.getElementById('edge-count').textContent = visibleEdges.length + ' Edges';
+		}
+
+		// Update counts
+		updateCounts();
+		
+		// Function for selecting a node from another form
+		function applyFadedClassAndUpdate(cy, selectNodeId) {
+
+				// Call reset function
+				// ResetGraph();
+	
+				// Select the node by its ID
+				var selectedNode = cy.getElementById(selectNodeId);
+				
+				// Check if the selected node exists
+				if (selectedNode.empty()) {
+					console.error("Node with ID '" + selectNodeId + "' not found");
+					return;
+				}   
+
+				// Apply faded class to all nodes and edges
+				cy.nodes().addClass('faded');
+				cy.edges().addClass('faded');
+
+				// Remove the faded and invisible classes from the selected node
+				selectedNode.removeClass('faded');
+				selectedNode.removeClass('invisible');   
+				  
+				// Center the view on the selected node first
+				cy.center(selectedNode);					
+
+				// Update counts
+				updateCounts();				
+		}				
 
         // #################################
         // START CYTOSCAPE EVENT LISTENERS
@@ -8154,6 +8289,8 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
 					var nonFadedNodes = connectedNodes.filter(function(node) {
 						return !node.hasClass('faded');
 					});		
+
+                    /*
 					
 					// Find edges connected to non-faded nodes
 					var edgesToUpdate = cy.edges().filter(function(edge) {
@@ -8162,7 +8299,9 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
 
 					// Remove 'faded' class from these edges
 					edgesToUpdate.removeClass('faded');		
-					edgesToUpdate.removeClass('invisible');		
+					edgesToUpdate.removeClass('invisible');	
+
+                    */	
 
 					// Update counts
 					updateCounts();
@@ -9061,17 +9200,6 @@ document.querySelector('#nodemenu a:nth-child(2)').addEventListener('click', fun
 					}
 				}
 			}, 100)); // Adjust debounce delay as needed	
-
-			function updateCounts() {
-				const visibleNodes = cy.nodes().filter(node => !node.hasClass('faded') && !node.hasClass('invisible'));
-				const visibleEdges = cy.edges().filter(edge => !edge.hasClass('faded') && !edge.hasClass('invisible'));
-
-				document.getElementById('node-count').textContent = visibleNodes.length + ' Nodes';
-                document.getElementById('edge-count').textContent = visibleEdges.length + ' Edges';
-			}
-
-			// Update counts
-			updateCounts();
 			
 			function escapeCyId(id) {
 				return id.replace(/([#;&,.+*~':"!^$[\]()=>|/@])/g, "\\$1");
