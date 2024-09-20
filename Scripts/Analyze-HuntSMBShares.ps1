@@ -5,7 +5,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.96
+# Version: v1.97
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Analyze-HuntSMBShares
 {    
@@ -6839,7 +6839,7 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
 				<!-- Hidden Menu - node data  -->
 				<div id="popup" class="modern-popup">
 					<div id="resizer" class="modern-resizer"></div>
-					<h2 id="popup-title">Node Details</h2>
+					
 					<p id="popup-content">Content goes here...</p>
 					<button id="close-popup" class="modern-button">Close</button>
 				</div>
