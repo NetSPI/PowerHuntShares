@@ -5,7 +5,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.97
+# Version: v1.98
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Analyze-HuntSMBShares
 {    
@@ -7369,6 +7369,9 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
 			document.getElementById('FilterEdgePriv').checked = true; 			 // Set the checkbox to checked
 			document.getElementById('FilterEdgeHosted').checked = true; 		 // Set the checkbox to checked
 			document.getElementById('FilterEdgeChild').checked = true;  		 // Set the checkbox to checked	
+
+			// Update counts
+			updateCounts();
         }
 
         // #################################
@@ -7864,6 +7867,7 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
 						return !node.hasClass('faded');
 					});		
 					
+                    /*
 					// Find edges connected to non-faded nodes
 					var edgesToUpdate = cy.edges().filter(function(edge) {
 						return nonFadedNodeIds.includes(edge.source().id()) || nonFadedNodeIds.includes(edge.target().id());
@@ -7871,7 +7875,8 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
 
 					// Remove 'faded' class from these edges
 					edgesToUpdate.removeClass('faded');		
-					edgesToUpdate.removeClass('invisible');		
+					edgesToUpdate.removeClass('invisible');	
+                    */	
 
 					// Update counts
 					updateCounts();
