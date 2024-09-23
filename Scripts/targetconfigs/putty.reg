@@ -1,0 +1,37 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_CURRENT_USER\Software\SimonTatham\PuTTY]
+"TermWidth"=dword:00000050
+"TermHeight"=dword:00000018
+"WinTitle"="PuTTY"
+
+[HKEY_CURRENT_USER\Software\SimonTatham\PuTTY\Sessions\Default%20Settings]
+"HostName"=""
+"PortNumber"=dword:00000016
+"Protocol"="ssh"
+"TerminalType"="xterm"
+"Font"="Courier New"
+"FontHeight"=dword:0000000a
+"WinHeight"=dword:00000018
+"WinWidth"=dword:00000050
+"ConnectionSharing"=dword:00000001
+
+[HKEY_CURRENT_USER\Software\SimonTatham\PuTTY\Sessions\My%20SSH%20Session]
+"HostName"="192.168.1.100"
+"PortNumber"=dword:00000016
+"Protocol"="ssh"
+"TerminalType"="xterm"
+"Font"="Courier New"
+"FontHeight"=dword:0000000a
+"WinHeight"=dword:00000018
+"WinWidth"=dword:00000050
+"Compression"=dword:00000001
+"ConnectionSharing"=dword:00000001
+"PublicKeyFile"="C:\\Users\\YourUsername\\.ssh\\id_rsa.ppk"
+"LogFileName"="C:\\putty_logs\\my_session.log"
+"LogType"=dword:00000001
+"LogFileClash"=dword:00000001
+"LogFlush"=dword:00000001
+"LogOmitPasswords"=dword:00000001
+"LogOmitData"=dword:00000000
+"UserName"="myusername"  ; Username stored here

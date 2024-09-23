@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Printers 
+           clsid="{1F577D12-3D1B-471e-A1B7-060317597B9C}" 
+           disabled="1">
+   <SharedPrinter 
+           clsid="{9A5E9697-9095-436d-A0EE-4D128FDFBCE5}" 
+           name="b35-1053-a" status="b35-1053-a" 
+           image="2" 
+           changed="2007-07-06 20:49:50" 
+           uid="{D954AF72-DDFC-498D-A185-A569A0D02FC4}">
+     <Properties 
+           action="U" 
+           comment="" 
+           path="\\PRN-CORP1\b35-1053-a" 
+           location="" 
+           default="1" 
+           skipLocal="1" 
+           deleteAll="0" 
+           persistent="0" 
+           deleteMaps="0" 
+           cpassword="5gn5fUqMaeGJkLEPgl3iH9UfLATVxRAHE8GvAvekwnicLYf2Pynj7ifihvajBRA3"
+           port=""/>
+   </SharedPrinter>
+   <PortPrinter 
+           clsid="{C3A739D2-4A44-401e-9F9D-88E5E77DFB3E}" 
+           name="10.10.10.10" 
+           status="10.10.10.10" 
+           image="2" 
+           changed="2007-07-06 20:50:43" 
+           uid="{6A331F02-C488-44B6-988C-0730C2C1E374}">
+     <Properties 
+           ipAddress="10.10.10.10" 
+           action="U" 
+           location="1st Floor" 
+           localName="Lexmark 1150S" 
+           comment="Only for use by graphics" 
+           default="1" 
+           skipLocal="1" 
+           useDNS="0" 
+           path="Lexmark 1150S (Color)" 
+           deleteAll="0" 
+           lprQueue="" 
+           snmpCommunity="Local" 
+           protocol="PROTOCOL_RAWTCP_TYPE" 
+           portNumber="9100" 
+           doubleSpool="0" 
+           snmpEnabled="1" 
+           snmpDevIndex="1"/>
+   </PortPrinter>
+   <LocalPrinter 
+           clsid="{F08996D5-568B-45f5-BB7A-D3FB1E370B0A}" 
+           name="Epsom DotMatrix" 
+           status="1st Floor Copy Room" 
+           image="2" 
+           changed="2007-07-06 20:51:47" 
+           uid="{65D3663D-BC4E-45D2-8EA8-1DB3AC7158CB}">
+     <Properties 
+           action="U" 
+           name="Epsom DotMatrix" 
+           port="LPT1:" 
+           path="EpsomDots" 
+           default="1" 
+           deleteAll="0" 
+           location="1st Floor Copy Room" 
+           comment="Old printer. Don't use."/>
+   </LocalPrinter>
+</Printers>

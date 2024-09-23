@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Drives clsid="{8FDDCC1A-0C3C-43cd-A6B4-71A6DF20DA8C}" 
+         disabled="1">
+   <Drive clsid="{935D1B74-9CB8-4e3c-9914-7DD559B7A417}" 
+          name="S:" 
+          status="S:" 
+          image="2" 
+          changed="2007-07-06 20:57:37" 
+          uid="{4DA4A7E3-F1D8-4FB1-874F-D2F7D16F7065}">
+     <Properties action="U" 
+                 thisDrive="NOCHANGE" 
+                 allDrives="NOCHANGE" 
+                 userName="test" 
+                 cpassword="5gn5fUqMaeGJkLEPgl3iH9UfLATVxRAHE8GvAvekwnicLYf2Pynj7ifihvajBRA3" 
+                 path="\\scratch" 
+                 label="SCRATCH" 
+                 persistent="1" 
+                 useLetter="1" 
+                 letter="S"/>
+   </Drive> 
+</Drives>

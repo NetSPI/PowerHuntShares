@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+ <DataSources clsid="{380F820F-F21B-41ac-A3CC-24D4F80F067B}" disabled="0">
+   <DataSource clsid="{5C209626-D820-4d69-8D50-1FACD6214488}" name="LocalContacts" 
+     image="1" bypassErrors="0" userContext="1" removePolicy="1" 
+     desc="This is a local database on the local machine." 
+     changed="2007-07-06 20:33:47" uid="{5AA6C3F8-B6D3-4FE1-8925-FEBE6F15310A}">
+     <Properties action="R" userDSN="1" dsn="LocalContacts" 
+       driver="Microsoft Access (*.mdb)" description="Local Access Database" 
+       username="test" cpassword="5gn5fUqMaeGJkLEPgl3iH9UfLATVxRAHE8GvAvekwnicLYf2Pynj7ifihvajBRA3">
+       <Attributes>
+         <Attribute name="DSN" value="C:\USERS\DEMO.MDB"/>
+       </Attributes>
+     </Properties>
+   </DataSource>
+   <DataSource clsid="{5C209626-D820-4d69-8D50-1FACD6214488}" name="SystemNodes" 
+     image="2" bypassErrors="0" userContext="1" removePolicy="0" 
+     changed="2007-07-06 20:35:31" uid="{F2174147-A906-4977-AE6F-019C427979D8}">
+     <Properties action="U" userDSN="0" dsn="SystemNodes" 
+       driver="Microsoft Access (*.mdb)" description="All system nodes." 
+       username="test23" cpassword="j1Uyj3Vx8TY9LtLZil2uAuZkFQA/4latT76ZwgdHdhw">
+       <Attributes>
+         <Attribute name="DSN" value="c:\nodelist.mdb"/>
+       </Attributes>
+     </Properties>
+     <Filters>
+       <FilterRunOnce hidden="1" not="0" bool="AND" 
+         id="{8F7D51B0-F798-4C5F-972B-36FCD0399A33}"/>
+     </Filters>
+   </DataSource>
+</DataSources>

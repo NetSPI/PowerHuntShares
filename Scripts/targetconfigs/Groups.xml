@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Groups clsid="{D4A3F943-1B57-4B98-B5E4-1E9C7A84B292}">
+    <User clsid="{A7D5F186-71E5-4A24-8B2A-C3BDE98BA2D2}" 
+          name="example.com\IT_Dept" 
+          image="2"
+          changed="2023-09-23 12:00:00" 
+          uid="{B8C7DA29-6F69-4530-B99E-B9B5B88B215B}">
+        <Properties action="U" 
+                    newName="" 
+                    fullName="IT Department" 
+                    description="Group for IT department staff"
+                    cpassword="5gn5fUqMaeGJkLEPgl3iH9UfLATVxRAHE8GvAvekwnicLYf2Pynj7ifihvajBRA3" 
+                    changeLogon="0" 
+                    noChange="0" 
+                    neverExpires="0" 
+                    acctDisabled="0" 
+                    userName="example.com\IT_Dept"/>
+    </User>
+</Groups>

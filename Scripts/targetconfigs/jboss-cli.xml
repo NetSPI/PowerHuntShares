@@ -1,0 +1,34 @@
+<jboss-cli xmlns="urn:jboss:cli:1.2">
+    <!-- The default controller host and port -->
+    <controller>
+        <host>127.0.0.1</host> <!-- Specify the host, e.g., localhost or a remote address -->
+        <port>9990</port> <!-- The management port of JBoss/WildFly, default is 9990 -->
+    </controller>
+
+    <!-- The authentication details for the controller -->
+    <authentication>
+        <username>admin</username> <!-- Your management user -->
+        <password>password</password> <!-- Your management user's password -->
+    </authentication>
+
+    <!-- Optionally enable secure connections using SSL -->
+    <ssl>
+        <enabled>false</enabled> <!-- Set to true if using SSL/TLS for the connection -->
+        <keystore-path></keystore-path>
+        <keystore-password></keystore-password>
+        <truststore-path></truststore-path>
+        <truststore-password></truststore-password>
+    </ssl>
+
+    <!-- Custom properties for the CLI session -->
+    <properties>
+        <!-- For example, to disable coloring in the CLI output -->
+        <property name="jboss.cli.color" value="false"/>
+    </properties>
+
+    <!-- Configuration of command history behavior -->
+    <history>
+        <enabled>true</enabled> <!-- Whether to enable CLI command history -->
+        <max-size>500</max-size> <!-- The maximum number of commands to store in history -->
+    </history>
+</jboss-cli>

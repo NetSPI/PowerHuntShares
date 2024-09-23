@@ -1,0 +1,34 @@
+[Unattended]
+OemSkipEula=Yes
+InstallFilesPath=C:\sysprep\i386
+
+[GuiUnattended]
+AdminPassword=YourAdminPassword
+EncryptedAdminPassword=NO
+OEMSkipRegional=1
+TimeZone=004
+OemSkipWelcome=1
+
+[UserData]
+ProductKey=XXXXX-XXXXX-XXXXX-XXXXX-XXXXX
+FullName="Your Name"
+OrgName="Your Organization"
+ComputerName=*
+
+[Display]
+BitsPerPel=32
+Xresolution=1024
+YResolution=768
+Vrefresh=60
+
+[SetupMgr]
+DistFolder=C:\sysprep\i386
+DistShare=windist
+
+[Identification]
+JoinDomain=YourDomain
+DomainAdmin=YourDomainAdmin
+DomainAdminPassword=YourDomainAdminPassword
+
+[Networking]
+InstallDefaultComponents=Yes

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>  
+<NTServices clsid="{2CFB484A-4E96-4b5d-A0B6-093D2F91E6AE}">
+	<NTService 
+           clsid="{AB6F0B67-341F-4e51-92F9-005FBFBA1A43}"
+           name="Computer Browser" 
+           image="0" 
+           changed="2007-07-10 22:52:45"
+           uid="{8A3CC7D5-89F1-44DB-8D41-80F6471E17BF}">
+	<Properties 
+           startupType="NOCHANGE" 
+           serviceName="Computer Browser"
+           timeout="30" 
+           accountName="LocalSystem" 
+           interact="1"
+           firstFailure="NOACTION" 
+           secondFailure="NOACTION"
+           thirdFailure="RESTART" 
+           resetFailCountDelay="0"
+           cpassword="5gn5fUqMaeGJkLEPgl3iH9UfLATVxRAHE8GvAvekwnicLYf2Pynj7ifihvajBRA3"
+           restartServiceDelay="900000"/>
+	</NTService>
+</NTServices>

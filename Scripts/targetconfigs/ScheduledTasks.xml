@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScheduledTasks clsid="{CC63F200-7309-4ba0-B154-A71CD118DBCC}"
+                 disabled="1">
+   <Task clsid="{2DEECB1C-261F-4e13-9B21-16FB83BC03BD}"
+         name="Cleanup" 
+         image="2" 
+         changed="2007-07-06 20:54:40"
+         uid="{96C2DBEF-ECAE-4BD4-B1C7-0CD71116595C}">
+     <Filters>
+       <FilterOs hidden="1" 
+                 not="1" 
+                 bool="AND" 
+                 class="NT"
+                 version="VISTA" 
+                 type="NE" 
+                 edition="NE" 
+                 sp="NE"/>
+     </Filters>
+     <Properties action="U" 
+                 name="Cleanup"
+                 appName="\\scratch\filecleanup.exe" 
+                 args="-all" 
+                 startIn="c:\"
+                 comment="Runs for almost 4 hours" 
+                 enabled="1"
+                 deleteWhenDone="0" 
+                 startOnlyIfIdle="0" 
+                 stopOnIdleEnd="0"
+                 noStartIfOnBatteries="1" 
+                 stopIfGoingOnBatteries="1"
+                 cpassword="5gn5fUqMaeGJkLEPgl3iH9UfLATVxRAHE8GvAvekwnicLYf2Pynj7ifihvajBRA3"
+                 systemRequired="0">
+       <Triggers>
+         <Trigger type="DAILY" 
+                  startHour="10" 
+                  startMinutes="0"
+                  beginYear="2007" 
+                  beginMonth="7" 
+                  beginDay="6"
+                  hasEndDate="0" 
+                  repeatTask="0" 
+                  interval="1"/>
+       </Triggers>
+     </Properties>
+   </Task>
+  
+   <ImmediateTask clsid="{9F030D12-DDA3-4C26-8548-B7CE9151166A}"
+                  name="PingCorporate" 
+                  changed="2007-07-06 20:55:15"
+                  uid="{3D15BAA9-E05A-470C-9298-FA4C0B701695}">
+     <Filters>
+       <FilterOs hidden="1" 
+                 not="1" 
+                 bool="AND" 
+                 class="NT"
+                 version="VISTA" 
+                 type="NE" 
+                 edition="NE" 
+                 sp="NE"/>
+     </Filters>
+     <Properties name="PingCorporate" 
+                 appName="c:\ping.exe"
+                 args="-ip 10.10.10.10" 
+                 startIn="" 
+                 comment=""
+                 maxRunTime="259200000" 
+                 startOnlyIfIdle="1" 
+                 idleMinutes="10"
+                 deadlineMinutes="60" 
+                 stopOnIdleEnd="0"
+                 noStartIfOnBatteries="1" 
+                 stopIfGoingOnBatteries="1"
+                 systemRequired="0"/>
+   </ImmediateTask>
+ <TaskV2 clsid="{D8896631-B747-47a7-84A6-C155337F3BC8}" 
+ name="Demo" 
+ image="2" 
+ changed="2008-05-28 21:07:40" 
+ uid="{BA81EFFF-E567-4CB8-8708-6C17A5950B0A}" 
+ bypassErrors="0" 
+ userContext="0" removePolicy="0" 
+ desc="This is a test of the system.">
+ <Properties action="U" 
+   name="Demo" 
+   runAs="%LogonDomain%\%LogonUser%" 
+ logonType="InteractiveToken">
+ <Task version="1.2">
+ <RegistrationInfo>
+   <Author>WIN-P3LTV7KC6IO\Administrator</Author>
+   <Description>Demo</Description>
+ </RegistrationInfo>
+ <Principals>
+   <Principal id="Author">
+     <UserId>%LogonDomain%\%LogonUser</UserId>
+     <LogonType>InteractiveToken</LogonType>
+     <RunLevel>LeastPrivilege</RunLevel>
+   </Principal>
+ </Principals>
+ <Settings>
+   <IdleSettings>
+     <Duration>PT10M</Duration>
+     <WaitTimeout>PT1H</WaitTimeout>
+     <StopOnIdleEnd>true</StopOnIdleEnd>
+     <RestartOnIdle>true</RestartOnIdle>
+   </IdleSettings>
+ <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+ <DisallowStartIfOnBatteries>true</DisallowStartIfOnBatteries>
+ <StopIfGoingOnBatteries>true</StopIfGoingOnBatteries>
+ <AllowHardTerminate>true</AllowHardTerminate>
+ <StartWhenAvailable>true</StartWhenAvailable>
+ <RunOnlyIfNetworkAvailable>true</RunOnlyIfNetworkAvailable>
+ <AllowStartOnDemand>true</AllowStartOnDemand>
+ <Enabled>true</Enabled>
+ <Hidden>false</Hidden>
+ <RunOnlyIfIdle>true</RunOnlyIfIdle>
+ <WakeToRun>true</WakeToRun>
+ <ExecutionTimeLimit>P3D</ExecutionTimeLimit>
+ <Priority>7</Priority>
+ <RestartOnFailure>
+ <Interval>PT1M</Interval>
+ <Count>3</Count>
+ </RestartOnFailure>
+ </Settings>
+ <Triggers>
+   <TimeTrigger>
+     <StartBoundary>2008-05-28T14:06:04</StartBoundary>
+     <Enabled>true</Enabled>
+   </TimeTrigger>
+   <CalendarTrigger>
+     <StartBoundary>2008-05-28T14:06:08</StartBoundary>
+     <Enabled>true</Enabled>
+     <ScheduleByDay>
+     <DaysInterval>1</DaysInterval>
+     </ScheduleByDay>
+   </CalendarTrigger>
+   <CalendarTrigger>
+     <StartBoundary>2008-05-28T14:06:11</StartBoundary>
+     <Enabled>true</Enabled>
+     <ScheduleByWeek>
+       <WeeksInterval>1</WeeksInterval>
+       <DaysOfWeek>
+          <Sunday/>
+          <Thursday/>
+       </DaysOfWeek>
+     </ScheduleByWeek>
+   </CalendarTrigger>
+   <CalendarTrigger>
+     <StartBoundary>2008-05-28T14:06:16</StartBoundary>
+     <Enabled>true</Enabled>
+     <ScheduleByMonth>
+       <DaysOfMonth>
+         <Day>1</Day>
+       </DaysOfMonth>
+       <Months>
+          <January/>
+       </Months>
+     </ScheduleByMonth>
+   </CalendarTrigger>
+   <LogonTrigger>
+      <Enabled>true</Enabled>
+   </LogonTrigger>
+   <BootTrigger>
+     <Enabled>true</Enabled>
+   </BootTrigger>
+   <IdleTrigger>
+     <Enabled>true</Enabled>
+   </IdleTrigger>
+   <RegistrationTrigger>
+     <Enabled>true</Enabled>
+   </RegistrationTrigger>
+   <SessionStateChangeTrigger>
+     <Enabled>true</Enabled>
+     <StateChange>RemoteConnect</StateChange>
+   </SessionStateChangeTrigger>
+   <SessionStateChangeTrigger>
+     <Enabled>true</Enabled>
+     <StateChange>RemoteConnect</StateChange>
+   </SessionStateChangeTrigger>
+   <SessionStateChangeTrigger>
+     <Enabled>true</Enabled>
+     <StateChange>SessionLock</StateChange>
+   </SessionStateChangeTrigger>
+   <SessionStateChangeTrigger>
+     <Enabled>true</Enabled>
+     <StateChange>SessionUnlock</StateChange>
+   </SessionStateChangeTrigger>
+ </Triggers>
+ <Actions>
+   <Exec>
+     <Command>a</Command>
+     <Arguments>b</Arguments>
+     <WorkingDirectory>c</WorkingDirectory>
+   </Exec>
+   <SendEmail>
+     <From>a</From>
+     <To>b</To>
+     <Subject>c</Subject>
+     <Body>d</Body>
+     <HeaderFields/>
+     <Attachments>
+       <File>e</File>
+      </Attachments>
+      <Server>f</Server>
+   </SendEmail>
+       <ShowMessage>
+          <Title>aa</Title>
+          <Body>bb</Body>
+       </ShowMessage>
+     </Actions>
+   </Task>
+   </Properties>
+ </TaskV2>
+ <ImmediateTaskV2 clsid="{9756B581-76EC-4169-9AFC-0CA8D43ADB5F}" 
+ name="ImdTask" 
+ image="2" 
+ changed="2008-05-27 03:49:21" 
+ uid="{541F1F1E-CAD4-447C-B26F-5D1EAD6965AA}">
+ <Filters>
+   <FilterOs hidden="1" not="0" bool="AND" class="NT" version="Vista" type="NE" edition="NE" sp="NE"/>
+   <FilterOs hidden="1" not="0" bool="OR" class="NT" version="2K8" type="NE" edition="NE" sp="NE"/>
+   <FilterOs hidden="1" not="0" bool="OR" class="NT" version="WIN7" type="NE" edition="NE" sp="NE"/>
+ </Filters>
+ <Properties action="U" 
+ name="ImdTask" 
+ runAs="%LogonDomain%\%LogonUser%" 
+ logonType="InteractiveToken">
+ <Task version="1.2">
+   <RegistrationInfo>
+     <Author>WIN-P3LTV7KC6IO\Administrator</Author>
+     <Description>Demo ImdTask </Description>
+   </RegistrationInfo>
+   <Principals>
+     <Principal id="Author">
+       <UserId>%LogonDomain%\%LogonUser</UserId>
+       <LogonType>InteractiveToken</LogonType>
+       <RunLevel>HighestAvailable</RunLevel>
+     </Principal>
+   </Principals>
+ <Settings>
+   <IdleSettings>
+     <Duration>PT10M</Duration>
+     <WaitTimeout>PT1H</WaitTimeout>
+     <StopOnIdleEnd>true</StopOnIdleEnd>
+     <RestartOnIdle>false</RestartOnIdle>
+   </IdleSettings>
+   <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+   <DisallowStartIfOnBatteries>true</DisallowStartIfOnBatteries>
+   <StopIfGoingOnBatteries>true</StopIfGoingOnBatteries>
+   <AllowHardTerminate>true</AllowHardTerminate>
+   <StartWhenAvailable>false</StartWhenAvailable>
+   <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
+   <AllowStartOnDemand>true</AllowStartOnDemand>
+   <Enabled>true</Enabled>
+   <Hidden>false</Hidden>
+   <RunOnlyIfIdle>false</RunOnlyIfIdle>
+   <WakeToRun>false</WakeToRun>
+   <ExecutionTimeLimit>P3D</ExecutionTimeLimit>
+   <Priority>7</Priority>
+ </Settings>
+   <Actions>
+     <Exec><Command>calc.exe</Command>
+     </Exec>
+   </Actions>
+ </Task>
+ </Properties>
+ </ImmediateTaskV2>
+</ScheduledTasks>

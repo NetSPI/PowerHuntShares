@@ -1,0 +1,21 @@
+MYDB =
+  (DESCRIPTION =
+    (ADDRESS = (PROTOCOL = TCP)(HOST = mydbserver.example.com)(PORT = 1521))
+    (CONNECT_DATA =
+      (SERVICE_NAME = mydbservice)
+    )
+  )
+  (USER = myusername)
+  (PASSWORD = mypassword)
+
+MYDB_ALIAS =
+  (DESCRIPTION =
+    (ADDRESS_LIST =
+      (ADDRESS = (PROTOCOL = TCP)(HOST = mydbserver.example.com)(PORT = 1521))
+    )
+    (CONNECT_DATA =
+      (SERVICE_NAME = mydbservice)
+    )
+  )
+  (USER = anotheruser)
+  (PASSWORD = anotherpassword)
