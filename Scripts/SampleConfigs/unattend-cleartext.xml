@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--Version 2.3-->
+<unattend xmlns="urn:schemas-microsoft-com:unattend">
+    <settings pass="windowsPE">
+        <component name="Microsoft-Windows-International-Core-WinPE" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+            <SetupUILanguage>
+                <UILanguage>en-US</UILanguage>
+            </SetupUILanguage>
+            <InputLocale>en-US</InputLocale>
+            <SystemLocale>en-US</SystemLocale>
+            <UILanguage>en-US</UILanguage>
+            <UserLocale>en-US</UserLocale>
+        </component>
+    </settings>
+    <settings pass="specialize">
+        <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+            <ComputerName>*</ComputerName>
+            <RegisteredOrganization>Cool Company, LLC.</RegisteredOrganization>
+            <RegisteredOwner>Cool Company, LLC.</RegisteredOwner>
+            <WindowsFeatures>
+                <ShowInternetExplorer>false</ShowInternetExplorer>
+            </WindowsFeatures>
+			<AutoLogon>
+				<Username>LocalAdmin</Username>
+				<Enabled>true</Enabled>
+				<LogonCount>10</LogonCount>
+				<Password>
+					<Value>P@ssword</Value>
+				</Password>
+			</AutoLogon>
+        </component>
+        <component name="Microsoft-Windows-Deployment" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+            <RunSynchronous>
+				<RunSynchronousCommand wcm:action="add">
+					<Description>UnfilterAdminToken</Description>
+					<Path>cmd /c reg add HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System /v FilterAdministratorToken /t REG_DWORD /d 0 /f</Path>
+					<Order>1</Order>
+				</RunSynchronousCommand>
+				<RunSynchronousCommand wcm:action="add">
+					<Description>Disable consumer features</Description>
+					<Path>reg add HKLM\Software\Policies\Microsoft\Windows\CloudContent /v DisableWindowsConsumerFeatures /t REG_DWORD /d 1 /f</Path>
+					<Order>2</Order>
+				</RunSynchronousCommand>
+				<RunSynchronousCommand wcm:action="add">
+					<Description>DISABLE_UAC_EnableLUA</Description>
+					<Path>cmd /c reg ADD HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System /v EnableLUA /t REG_DWORD /d 0 /f</Path>
+					<Order>3</Order>
+				</RunSynchronousCommand>
+				<RunSynchronousCommand wcm:action="add">
+                    <Path>Dism /online /enable-feature /featurename:NetFX3 /All /Source:C:\Temp\sxs /LimitAccess</Path>
+                    <Order>4</Order>
+                    <Description>DISM .net</Description>
+                </RunSynchronousCommand>
+            </RunSynchronous>
+        </component>
+    </settings>
+    <settings pass="oobeSystem">
+        <component name="Microsoft-Windows-International-Core" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+            <InputLocale>en-US</InputLocale>
+            <SystemLocale>en-US</SystemLocale>
+            <UILanguage>en-US</UILanguage>
+            <UserLocale>en-US</UserLocale>
+            <UILanguageFallback>en-US</UILanguageFallback>
+        </component>
+<component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<OOBE>
+		<HideEULAPage>true</HideEULAPage>
+		<HideOEMRegistrationScreen>true</HideOEMRegistrationScreen>
+		<HideWirelessSetupInOOBE>true</HideWirelessSetupInOOBE>
+		<HideOnlineAccountScreens>true</HideOnlineAccountScreens>
+		<HideLocalAccountScreen>true</HideLocalAccountScreen>
+		<ProtectYourPC>1</ProtectYourPC>
+	</OOBE>
+	<UserAccounts>
+		<LocalAccounts>
+			<LocalAccount wcm:action="add">
+				<Password>
+					<Value>P@ssword</Value>
+					<PlainText>true</PlainText>
+				</Password>
+				<Group>Administrators</Group>
+				<Description>Provisioning Admin</Description>
+				<DisplayName>LocalAdmin</DisplayName>
+				<Name>LocalAdmin</Name>
+			</LocalAccount>
+		</LocalAccounts>
+	</UserAccounts>
+	<DesktopOptimization>
+		<ShowWindowsStoreAppsOnTaskbar>false</ShowWindowsStoreAppsOnTaskbar>
+		<GoToDesktopOnSignIn>false</GoToDesktopOnSignIn>
+	</DesktopOptimization>
+	<FirstLogonCommands>
+			<SynchronousCommand wcm:action="add">
+				<CommandLine>cmd /c net start BESClient</CommandLine>
+				<Description>Start BigFix Service</Description>
+				<Order>1</Order>
+			</SynchronousCommand>
+			<SynchronousCommand wcm:action="add">
+				<CommandLine>cmd /c del C:\Windows\System32\Sysprep\unattend.xml</CommandLine>
+				<Description>Delete Unattend</Description>
+				<Order>2</Order>
+			</SynchronousCommand>
+	 </FirstLogonCommands>
+</component>
+    </settings>
+    <cpi:offlineImage cpi:source="wim:c:/provisioning/w102k/sources/install.wim#Windows 10 Enterprise" xmlns:cpi="urn:schemas-microsoft-com:cpi" />
+</unattend>

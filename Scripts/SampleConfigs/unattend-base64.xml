@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<unattend xmlns="urn:schemas-microsoft-com:unattend">
+    <settings pass="specialize">
+        <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
+            <ComputerName>*</ComputerName>
+            <RegisteredOrganization>acme corp.</RegisteredOrganization>
+            <RegisteredOwner>acme corp.</RegisteredOwner>
+            <WindowsFeatures>
+                <ShowInternetExplorer>false</ShowInternetExplorer>
+            </WindowsFeatures>
+            <AutoLogon>
+                <Username>LocalAdmin</Username>
+                <Enabled>true</Enabled>
+                <LogonCount>10</LogonCount>
+                <Password>
+                    <Value>UEBzc3dvcmQxMjMh</Value>  <!-- This is Base64 for 'P@ssword123!' -->
+                    <PlainText>false</PlainText>
+                </Password>
+            </AutoLogon>
+        </component>
+    </settings>
+
+    <settings pass="oobeSystem">
+        <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
+            <UserAccounts>
+                <LocalAccounts>
+                    <LocalAccount wcm:action="add">
+                        <Password>
+                            <Value>UEBzc3dvcmQxMjMh</Value>  <!-- This is Base64 for 'P@ssword123!' -->
+                            <PlainText>false</PlainText>
+                        </Password>
+                        <Group>Administrators</Group>
+                        <Description>Provisioning Admin</Description>
+                        <DisplayName>LocalAdmin</DisplayName>
+                        <Name>LocalAdmin</Name>
+                    </LocalAccount>
+                </LocalAccounts>
+            </UserAccounts>
+            <OOBE>
+                <HideEULAPage>true</HideEULAPage>
+                <HideOEMRegistrationScreen>true</HideOEMRegistrationScreen>
+                <HideWirelessSetupInOOBE>true</HideWirelessSetupInOOBE>
+                <HideOnlineAccountScreens>true</HideOnlineAccountScreens>
+                <HideLocalAccountScreen>true</HideLocalAccountScreen>
+                <ProtectYourPC>1</ProtectYourPC>
+            </OOBE>
+        </component>
+    </settings>
+</unattend>
