@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.127
+# Version: v1.128
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -22559,4 +22559,2229 @@ function Get-ADDomainFromFQDN {
     # Join the remaining parts to form the domain
     $domain = ($domainParts -join '.')
     return $domain
+}
+
+# ------------------------------------------------------------
+# Password Parsing Functions
+# ------------------------------------------------------------
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intented input: wp-config.php
+function Get-PwWordPressConfig {
+    param (
+        [string]$FilePath
+    )
+
+    # Check if the file exists
+    if (-Not (Test-Path $FilePath)) {
+        Write-Error "File not found: $FilePath"
+        return
+    }
+
+    # Initialize variables for username and password
+    $dbUsername = $null
+    $dbPassword = $null
+
+    # Read the file line by line
+    Get-Content $FilePath | ForEach-Object {
+        $line = $_
+
+        # Match the DB_USER line and extract the username
+        if ($line -match "define\(\s*'DB_USER'\s*,\s*'([^']+)'\s*\)") {
+            $dbUsername = $matches[1]
+        }
+
+        # Match the DB_PASSWORD line and extract the password
+        if ($line -match "define\(\s*'DB_PASSWORD'\s*,\s*'([^']+)'\s*\)") {
+            $dbPassword = $matches[1]
+        }
+    }
+
+    # Check if both username and password were found
+    if ($dbUsername -and $dbPassword) {
+        # Return the results as a PowerShell object
+        [PSCustomObject]@{
+            Username = $dbUsername
+            Password = $dbPassword
+        }
+    }
+    else {
+        Write-Error "Username or Password not found in the configuration file."
+    }
+}
+
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input: web.config
+# Function to parse configuration files for credentials
+function Get-PwWebConfig{
+    param (
+        [string]$configFilePath
+    )
+
+    # Load the config file as XML
+    [xml]$configXml = Get-Content $configFilePath
+
+    # Initialize a DataTable to store results
+    $dtCredentials = New-Object System.Data.DataTable
+    $null = $dtCredentials.Columns.Add("Name", [string])
+    $null = $dtCredentials.Columns.Add("Section", [string])
+    $null = $dtCredentials.Columns.Add("URL", [string])
+    $null = $dtCredentials.Columns.Add("Server", [string])
+    $null = $dtCredentials.Columns.Add("Port", [string])
+    $null = $dtCredentials.Columns.Add("UserName", [string])
+    $null = $dtCredentials.Columns.Add("Password", [string])
+
+    # Helper function to add rows to DataTable
+    function Add-CredentialsToDataTable {
+        param (
+            [string]$name,
+            [string]$section,
+            [string]$url,
+            [string]$server,
+            [string]$port,
+            [string]$username,
+            [string]$password
+        )
+        $null = $dtCredentials.Rows.Add($name, $section, $url, $server, $port, $username, $password)
+    }
+
+    # Dictionary to temporarily store related credentials
+    $credentialPairs = @{}
+
+    # Function to store credentials in temporary dictionary
+    function Add-CredentialPair {
+        param (
+            [string]$name,
+            [string]$section,
+            [string]$key,
+            [string]$value
+        )
+        
+        if ($credentialPairs[$name]) {
+            $credentialPairs[$name][$key] = $value
+        } else {
+            $credentialPairs[$name] = @{}
+            $credentialPairs[$name][$key] = $value
+            $credentialPairs[$name]["Section"] = $section
+        }
+
+        # If both username and password are available, add them to the DataTable
+        if ($credentialPairs[$name]["UserName"] -and $credentialPairs[$name]["Password"]) {
+            Add-CredentialsToDataTable -name $name -section $credentialPairs[$name]["Section"] `
+                -url $credentialPairs[$name]["URL"] -server $credentialPairs[$name]["Server"] `
+                -port $credentialPairs[$name]["Port"] -username $credentialPairs[$name]["UserName"] `
+                -password $credentialPairs[$name]["Password"]
+
+            # Clear the stored credential after adding it to the table
+            $credentialPairs.Remove($name)
+        }
+    }
+
+    # Parse all instances of appSettings for OAuth, WebClient, API, and other credentials
+    if ($configXml.SelectNodes('//appSettings')) {
+        foreach ($appSettings in $configXml.SelectNodes('//appSettings')) {
+            foreach ($setting in $appSettings.add) {
+                $key = $setting.key
+                $value = $setting.value
+                $section = "AppSettings"
+
+                # Handle specific cases for OAuth, API, and WebClient settings
+                switch ($key) {
+                    "OAuthServiceUrl" { Add-CredentialPair -name "OAuth" -section $section -key "URL" -value $value }
+                    "ClientId" { Add-CredentialPair -name "OAuth" -section $section -key "UserName" -value $value }
+                    "ClientSecret" { Add-CredentialPair -name "OAuth" -section $section -key "Password" -value $value }
+                    "ServiceUrl" { Add-CredentialPair -name "WebClient" -section $section -key "URL" -value $value }
+                    "ServiceUserName" { Add-CredentialPair -name "WebClient" -section $section -key "UserName" -value $value }
+                    "ServicePassword" { Add-CredentialPair -name "WebClient" -section $section -key "Password" -value $value }
+                    "ApiEndpoint" { Add-CredentialPair -name "API" -section $section -key "URL" -value $value }
+                    "ApiUserName" { Add-CredentialPair -name "API" -section $section -key "UserName" -value $value }
+                    "ApiPassword" { Add-CredentialPair -name "API" -section $section -key "Password" -value $value }
+                    "ApplicationUsername" { Add-CredentialPair -name "Application" -section $section -key "UserName" -value $value }
+                    "ApplicationPassword" { Add-CredentialPair -name "Application" -section $section -key "Password" -value $value }
+                }
+            }
+        }
+    }
+
+    # Parse custom serviceCredentials section
+    if ($configXml.configuration.serviceCredentials) {
+        foreach ($setting in $configXml.configuration.serviceCredentials.add) {
+            $key = $setting.key
+            $value = $setting.value
+            $section = "ServiceCredentials"
+
+            # Handle specific cases for custom service credentials
+            switch ($key) {
+                "ServiceUrl" { Add-CredentialPair -name "CustomService" -section $section -key "URL" -value $value }
+                "UserName" { Add-CredentialPair -name "CustomService" -section $section -key "UserName" -value $value }
+                "Password" { Add-CredentialPair -name "CustomService" -section $section -key "Password" -value $value }
+            }
+        }
+    }
+
+    # Parse connectionStrings for server, port, username, and password
+    if ($configXml.configuration.connectionStrings) {
+        foreach ($connection in $configXml.configuration.connectionStrings.add) {
+            $connectionString = $connection.connectionString
+            $providerName = $connection.providerName
+            $name = $connection.name
+
+            # Initialize variables for potential data
+            $server = $null
+            $port = $null
+            $user = $null
+            $password = $null
+            $url = $null
+
+            # Parse connection strings
+            if ($connectionString -match "Host\s*=\s*([^;]+).*?Port\s*=\s*(\d+).*?Username\s*=\s*([^;]+).*?Password\s*=\s*([^;]+)") {
+                $server = $matches[1]
+                $port = $matches[2]
+                $user = $matches[3]
+                $password = $matches[4]
+                $url = "Host=$server;Port=$port"
+            } elseif ($connectionString -match "(Server|Data Source)\s*=\s*([^;,]+)(?:,(\d+))?") {
+                $server = $matches[2]
+                if ($matches[3]) { $port = $matches[3] }
+                $url = "Server=$server"
+            }
+
+            if ($connectionString -match "User\s*Id\s*=\s*([^;]+)") {
+                $user = $matches[1]
+            }
+            if ($connectionString -match "Password\s*=\s*([^;]+)") {
+                $password = $matches[1]
+            }
+
+            # Add row to the DataTable if username and password exist
+            if ($user -and $password) {
+                Add-CredentialsToDataTable -name $name -section "ConnectionStrings ($providerName)" -url $url -server $server -port $port -username $user -password $password
+            }
+        }
+    }
+
+    # Parse system.net/mailSettings for SMTP credentials and URLs
+    if ($configXml.configuration.'system.net'.mailSettings) {
+        foreach ($smtp in $configXml.configuration.'system.net'.mailSettings.smtp) {
+            $smtpServer = $smtp.network.host
+            $smtpPort = $smtp.network.port
+            $smtpUser = $smtp.network.userName
+            $smtpPass = $smtp.network.password
+            $url = "smtp://${smtpServer}:${smtpPort}"
+
+            if ($smtpUser -and $smtpPass) {
+                Add-CredentialsToDataTable -name "SMTP Configuration" -section "SMTP" -url $url -server $smtpServer -port $smtpPort -username $smtpUser -password $smtpPass
+            }
+        }
+    }
+
+    # Output the parsed credentials using the DataTable
+    if ($dtCredentials.Rows.Count -eq 0) {
+        Write-Host "No credentials found." -ForegroundColor Red
+    } else {
+        $dtCredentials | select Name, Section, URL, Server, Port, UserName, Password
+    }
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intented input: WinSCP.ini
+function Get-PwWinSCPConfig {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$FilePath
+    )
+
+    # Check if file exists
+    if (-not (Test-Path $FilePath)) {
+        Write-Error "File not found: $FilePath"
+        return
+    }
+
+    # Read the WinSCP.ini file content
+    $content = Get-Content -Path $FilePath
+
+    # Initialize an empty object for results
+    $result = [PSCustomObject]@{
+        HostName       = $null
+        PortNumber     = $null
+        PrivateKeyFile = $null
+        UserName       = $null
+        Password       = $null
+    }
+
+    # Parse the .ini file for relevant information
+    foreach ($line in $content) {
+        if ($line -match '^HostName=(.*)') {
+            $result.HostName = $matches[1]
+        } elseif ($line -match '^PortNumber=(.*)') {
+            $result.PortNumber = [int]$matches[1]
+        } elseif ($line -match '^PrivateKeyFile=(.*)') {
+            $result.PrivateKeyFile = $matches[1]
+        } elseif ($line -match '^UserName=(.*)') {
+            $result.UserName = $matches[1]
+        } elseif ($line -match '^Password=(.*)') {
+            $result.Password = $matches[1]  # Encrypted password in .ini
+        }
+    }
+
+    # Return the result object
+    return $result
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended intput: vnc.ini
+function Get-PwVnc {
+    param (
+        [Parameter(Mandatory=$true)]
+        [string]$VncIniPath
+    )
+
+    # Define the fixed DES key used by VNC
+    $desKey = [byte[]](0x23, 0x52, 0x6A, 0x3B, 0x58, 0x92, 0x67, 0x34)
+
+    # Read the vnc.ini file
+    if (-Not (Test-Path -Path $VncIniPath)) {
+        Write-Error "The file path '$VncIniPath' does not exist."
+        return
+    }
+
+    $vncIniContent = Get-Content -Path $VncIniPath
+
+    # Extract the encrypted password from the ini file
+    $encryptedHex = ($vncIniContent | ForEach-Object {
+        if ($_ -match '^Password=(.+)$') {
+            return $matches[1]
+        }
+    }).Trim()
+
+    if (-not $encryptedHex) {
+        Write-Output "Password not found in vnc.ini"
+        return
+    }
+
+    # Convert the hex string to a byte array
+    $encryptedBytes = for ($i = 0; $i -lt $encryptedHex.Length; $i += 2) {
+        [Convert]::ToByte($encryptedHex.Substring($i, 2), 16)
+    }
+
+    # Create a DES crypto object and set the key and mode
+    $des = New-Object System.Security.Cryptography.DESCryptoServiceProvider
+    $des.Key = $desKey  # Assign the key as a byte array
+    $des.Mode = [System.Security.Cryptography.CipherMode]::ECB
+    $des.Padding = [System.Security.Cryptography.PaddingMode]::None
+
+    # Create a decryptor
+    $decryptor = $des.CreateDecryptor()
+
+    # Decrypt the encrypted password
+    $decryptedBytes = $decryptor.TransformFinalBlock($encryptedBytes, 0, $encryptedBytes.Length)
+
+    # Convert the decrypted byte array to a string, trimming null characters
+    $decryptedPassword = [System.Text.Encoding]::ASCII.GetString($decryptedBytes).Trim("`0")
+
+    # Return the decrypted password as an object
+    return [pscustomobject]@{
+        DecryptedPassword = $decryptedPassword
+    }
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input: *unattend*.xml
+# Supports cleartext and base46 encoded passwords
+function Parse-PwUnattendFile {
+    param (
+        [string]$filePath
+    )
+
+    # Load the XML file
+    [xml]$xmlContent = Get-Content -Path $filePath
+
+    # Create an array to store the parsed credentials
+    $credentials = @()
+
+    # Define namespaces used in the XML file
+    $namespace = @{ 
+        "unattend" = "urn:schemas-microsoft-com:unattend" 
+        "wcm" = "http://schemas.microsoft.com/WMIConfig/2002/State"
+    }
+
+    # Function to decode Base64 if password is encoded
+    function Decode-PasswordIfNeeded {
+        param (
+            [string]$passwordValue,
+            [bool]$isPlainText
+        )
+        
+        if ($isPlainText -eq $false) {
+            try {
+                # Decode Base64 password
+                $decodedPassword = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($passwordValue))
+                return $decodedPassword
+            } catch {
+                Write-Host "Error: Unable to decode Base64 string, returning original value."
+                return $passwordValue
+            }
+        }
+        else {
+            return $passwordValue
+        }
+    }
+
+    # Parse AutoLogon credentials
+    $autoLogon = $xmlContent.unattend.settings.component | Where-Object { 
+        $_.name -eq "Microsoft-Windows-Shell-Setup" -and $_.AutoLogon -ne $null 
+    }
+    if ($autoLogon) {
+        $username = $autoLogon.AutoLogon.Username
+        $password = $autoLogon.AutoLogon.Password.Value
+        $isPlainText = $autoLogon.AutoLogon.Password.PlainText -eq "true"
+
+        # Decode password if necessary
+        $password = Decode-PasswordIfNeeded -passwordValue $password -isPlainText $isPlainText
+
+        $credentials += [pscustomobject]@{
+            User     = $username
+            Password = $password
+            Source   = "AutoLogon"
+        }
+    }
+
+    # Parse LocalAccounts credentials
+    $localAccounts = $xmlContent.unattend.settings.component.UserAccounts.LocalAccounts.LocalAccount | Where-Object { $_ -ne $null }
+    foreach ($account in $localAccounts) {
+        $username = $account.Name
+        $password = $account.Password.Value
+        $isPlainText = $account.Password.PlainText -eq "true"
+
+        # Decode password if necessary
+        $password = Decode-PasswordIfNeeded -passwordValue $password -isPlainText $isPlainText
+
+        $credentials += [pscustomobject]@{
+            User     = $username
+            Password = $password
+            Source   = "LocalAccount"
+        }
+    }
+
+    # Return the collected credentials as an array of objects
+    return $credentials
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended intput: tomcat-users.xml
+function Get-PwTomcatUsers {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$TomcatConfigFile
+    )
+
+    # Load the XML file
+    [xml]$xml = Get-Content -Path $TomcatConfigFile
+
+    # Create an array to store the results
+    $usersList = @()
+
+    # Select the user nodes from the XML
+    $users = $xml.'tomcat-users'.user
+
+    # Loop through each user and extract the name and password attributes
+    foreach ($user in $users) {
+        # Create a PowerShell object for each user
+        $userObject = [PSCustomObject]@{
+            Username = $user.name
+            Password = $user.password
+        }
+
+        # Add the object to the list
+        $usersList += $userObject
+    }
+
+    # Display the list of users as a table
+    return $usersList
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input: tnsnames.ora
+function Get-PwTnsOra {
+    param(
+        [string]$FilePath
+    )
+
+    if (-Not (Test-Path -Path $FilePath)) {
+        Write-Error "File path does not exist: $FilePath"
+        return
+    }
+
+    # Initialize an empty array to store the results
+    $credentialsList = @()
+
+    # Read the file contents
+    $fileContent = Get-Content -Path $FilePath
+
+    # Initialize variables to store temporary values
+    $currentDatabase = $null
+    $currentUser = $null
+    $currentPassword = $null
+
+    foreach ($line in $fileContent) {
+        # Trim the line for easier processing
+        $line = $line.Trim()
+
+        # Match a database name (lines that don't start with a '(' and end with '=')
+        if ($line -match '^\w+\s*=\s*$') {
+            if ($currentDatabase -and $currentUser -and $currentPassword) {
+                # Store the previous credentials
+                $credentialsList += [pscustomobject]@{
+                    Database = $currentDatabase
+                    User     = $currentUser
+                    Password = $currentPassword
+                }
+            }
+
+            # Reset the user and password for the next database entry
+            $currentDatabase = $line -replace '\s*=\s*$', '' # Remove the equals sign
+            $currentUser = $null
+            $currentPassword = $null
+        }
+
+        # Match the USER line
+        if ($line -match 'USER\s*=\s*(.+)$') {
+            $currentUser = $matches[1]
+        }
+
+        # Match the PASSWORD line
+        if ($line -match 'PASSWORD\s*=\s*(.+)$') {
+            $currentPassword = $matches[1]
+        }
+    }
+
+    # Capture the last set of credentials
+    if ($currentDatabase -and $currentUser -and $currentPassword) {
+        $credentialsList += [pscustomobject]@{
+            Database = $currentDatabase
+            User     = $currentUser
+            Password = $currentPassword
+        }
+    }
+
+    # Output the results as a list of objects
+    return $credentialsList
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input: sysprep.inf
+function Get-PwSysprepFile {
+    param (
+        [Parameter(Mandatory=$true)]
+        [string]$FilePath
+    )
+
+    # Check if file exists
+    if (-Not (Test-Path $FilePath)) {
+        Write-Error "File does not exist: $FilePath"
+        return
+    }
+
+    # Initialize an empty hashtable to store credentials
+    $credentials = @{ 
+        AdminPassword        = $null
+        JoinDomain           = $null
+        DomainAdmin          = $null
+        DomainAdminPassword  = $null
+    }
+
+    # Read the sysprep.inf file
+    $fileContent = Get-Content -Path $FilePath
+
+    # Loop through each line and extract relevant credentials
+    foreach ($line in $fileContent) {
+        if ($line -match 'AdminPassword\s*=\s*(.+)') {
+            $credentials['AdminPassword'] = $matches[1].Trim()
+        }
+
+        if ($line -match 'JoinDomain\s*=\s*(.+)') {
+            $credentials['JoinDomain'] = $matches[1].Trim()
+        }
+
+        if ($line -match 'DomainAdmin\s*=\s*(.+)') {
+            $credentials['DomainAdmin'] = $matches[1].Trim()
+        }
+
+        if ($line -match 'DomainAdminPassword\s*=\s*(.+)') {
+            $credentials['DomainAdminPassword'] = $matches[1].Trim()
+        }
+    }
+
+    # Create and return a PowerShell object
+    $credObject = [pscustomobject]@{
+        AdminPassword        = $credentials['AdminPassword']
+        JoinDomain           = $credentials['JoinDomain']
+        DomainAdmin          = $credentials['DomainAdmin']
+        DomainAdminPassword  = $credentials['DomainAdminPassword']
+    }
+
+    return $credObject
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input: standalone.xml
+function Get-PwStandalone {
+    param (
+        [string]$ConfigPath
+    )
+    
+    # Load the XML config
+    [xml]$configXml = Get-Content -Path $ConfigPath
+
+    # Define a hashtable to store results
+    $result = @{}
+
+    # Parse the server and port from the connection URL
+    $connectionUrl = $configXml.server.subsystem.datasources.datasource."connection-url"
+    if ($connectionUrl -match "jdbc:mysql://([^:/]+)(?::(\d+))?") {
+        $result.Server = $matches[1]
+        $result.Port = if ($matches[2]) { $matches[2] } else { "3306" } # Default MySQL port
+    }
+
+    # Get the username
+    $result.Username = $configXml.server.subsystem.datasources.datasource.security."user-name"
+
+    # Get the password
+    $result.Password = $configXml.server.subsystem.datasources.datasource.security.password
+
+    # Get the keystore password from the vault section
+    $keystorePassword = $configXml.server.security.vault."vault-option" | Where-Object { $_.name -eq "KEYSTORE_PASSWORD" }
+    $result.KeystorePassword = $keystorePassword.value
+
+    # Convert hashtable to PowerShell object
+    $resultObject = [PSCustomObject]$result
+    
+    # Output the result object
+    return $resultObject
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input: sssd.conf
+function Get-PwSssdConfig {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$FilePath
+    )
+
+    # Initialize a hashtable to store extracted values
+    $configData = @{
+        Domain   = $null
+        Server   = $null
+        Username = $null
+        Password = $null
+    }
+
+    # Check if the file exists
+    if (-Not (Test-Path -Path $FilePath)) {
+        Write-Error "File not found: $FilePath"
+        return
+    }
+
+    # Read the configuration file
+    $configFile = Get-Content -Path $FilePath
+
+    # Parse the configuration file line by line
+    foreach ($line in $configFile) {
+        # Ignore comment lines and empty lines
+        if ($line -match '^\s*#' -or $line -match '^\s*$') {
+            continue
+        }
+
+        # Extract the domain (e.g., ad_domain or similar)
+        if ($line -match 'ad_domain\s*=\s*(.+)') {
+            $configData.Domain = $matches[1].Trim()
+        }
+
+        # Extract the server (e.g., krb5_server or similar)
+        if ($line -match 'krb5_server\s*=\s*(.+)') {
+            $configData.Server = $matches[1].Trim()
+        }
+
+        # Extract the username (e.g., ldap_default_bind_dn or similar)
+        if ($line -match 'ldap_default_bind_dn\s*=\s*(.+)') {
+            $configData.Username = $matches[1].Trim()
+        }
+
+        # Extract the password (e.g., ldap_default_authtok or similar)
+        if ($line -match 'ldap_default_authtok\s*=\s*(.+)') {
+            $configData.Password = $matches[1].Trim()
+        }
+    }
+
+    # Output the extracted configuration as a PowerShell object
+    [PSCustomObject]@{
+        Domain   = $configData.Domain
+        Server   = $configData.Server
+        Username = $configData.Username
+        Password = $configData.Password
+    }
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input: smb.conf
+function Get-PwSmbConf {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$FilePath
+    )
+
+    # Initialize a hashtable to store extracted values
+    $configData = @{
+        Username = $null
+        Password = $null
+    }
+
+    # Check if the file exists
+    if (-Not (Test-Path -Path $FilePath)) {
+        Write-Error "File not found: $FilePath"
+        return
+    }
+
+    # Read the configuration file
+    $configFile = Get-Content -Path $FilePath
+
+    # Parse the configuration file line by line
+    foreach ($line in $configFile) {
+        # Ignore comment lines and empty lines
+        if ($line -match '^\s*#' -or $line -match '^\s*$') {
+            continue
+        }
+
+        # Extract the username
+        if ($line -match '^\s*username\s*=\s*(.+)') {
+            $configData.Username = $matches[1].Trim()
+        }
+
+        # Extract the password
+        if ($line -match '^\s*password\s*=\s*(.+)') {
+            $configData.Password = $matches[1].Trim()
+        }
+    }
+
+    # Output the extracted configuration as a PowerShell object
+    [PSCustomObject]@{
+        Username = $configData.Username
+        Password = $configData.Password
+    }
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intented input: sitemanager.xml
+# Function to check if a string is a valid base64-encoded string
+function IsBase64String {
+    param ([string]$string)
+    if ($string -match '^[a-zA-Z0-9\+/]*={0,2}$' -and ($string.Length % 4 -eq 0)) {
+        return $true
+    }
+    return $false
+}
+
+# Function to process the SiteManager.xml file and extract server information
+function Get-PwSiteManagerConfig {
+    param (
+        [string]$xmlFilePath
+    )
+
+    # Check if the file exists
+    if (-not (Test-Path $xmlFilePath)) {
+        Write-Error "File not found: $xmlFilePath"
+        return
+    }
+
+    # Load the XML file
+    $xml = [xml](Get-Content $xmlFilePath)
+
+    # Iterate through each server entry and extract relevant information
+    $xml.FileZilla3.Servers.Server | ForEach-Object {
+        $decodedPassword = "Invalid or not present"
+
+        # Access the Pass element's inner text, ensuring it's properly treated as a string
+        [string]$base64Pass = $_.Pass.InnerText
+        # Check if the password is a valid base64 string before decoding
+        if ($base64Pass) {
+            try {
+                # Trim any extra whitespace from the base64 string
+                $cleanPass = $base64Pass.Trim()
+                $decodedPassword = [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($cleanPass))
+            } catch {
+                $decodedPassword = "Error decoding password: $_"
+            }
+        }
+
+        # Output the server details
+        [pscustomobject]@{
+            Server   = $_.Host
+            Port     = $_.Port
+            Username = $_.User
+            Password = $decodedPassword
+        }
+    }
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input: shadow
+function Get-GetPwShadow {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$FilePath
+    )
+
+    # Initialize an array to store extracted user data
+    $credentials = @()
+
+    # Check if the file exists
+    if (-Not (Test-Path -Path $FilePath)) {
+        Write-Error "File not found: $FilePath"
+        return
+    }
+
+    # Read the shadow file
+    $shadowFile = Get-Content -Path $FilePath
+
+    # Parse each line in the shadow file
+    foreach ($line in $shadowFile) {
+        # Ignore empty lines or comments (if any)
+        if ($line -match '^\s*$' -or $line -match '^\s*#') {
+            continue
+        }
+
+        # Split the line into fields using colon as a delimiter
+        $fields = $line -split ':'
+
+        # Extract username and password hash
+        $username = $fields[0]
+        $passwordHash = $fields[1]
+
+        # Create an object to store the extracted information
+        $userObject = [PSCustomObject]@{
+            Username     = $username
+            PasswordHash = $passwordHash
+        }
+
+        # Add the object to the array
+        $credentials += $userObject
+    }
+
+    # Output the array of credentials
+    return $credentials
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input: setting.ini / Generic
+function Get-PwIniFile {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$FilePath
+    )
+
+    # Initialize an array to store the credentials
+    $credentials = @()
+
+    # Check if the file exists
+    if (-Not (Test-Path -Path $FilePath)) {
+        Write-Error "File not found: $FilePath"
+        return
+    }
+
+    # Read the INI file content
+    $iniFile = Get-Content -Path $FilePath
+
+    # Initialize variables to track current section and credentials
+    $currentSection = ""
+    $username = $null
+    $password = $null
+
+    # Parse the INI file line by line
+    foreach ($line in $iniFile) {
+        # Ignore comment lines and empty lines
+        if ($line -match '^\s*;' -or $line -match '^\s*$') {
+            continue
+        }
+
+        # Detect section headers (e.g., [DatabaseSettings])
+        if ($line -match '^\s*\[(.+)\]\s*$') {
+            # If we have collected username and password, store them before moving to the next section
+            if ($username -and $password) {
+                $credentials += [PSCustomObject]@{
+                    Section   = $currentSection
+                    Username  = $username
+                    Password  = $password
+                }
+            }
+            # Reset username and password for the new section
+            $username = $null
+            $password = $null
+
+            # Update current section
+            $currentSection = $matches[1].Trim()
+            continue
+        }
+
+        # Match username and password in the lines
+        if ($line -match '^\s*username\s*=\s*(.+)$') {
+            $username = $matches[1].Trim()
+        } elseif ($line -match '^\s*password\s*=\s*(.+)$') {
+            $password = $matches[1].Trim()
+        } elseif ($line -match '^\s*user\s*=\s*(.+)$') {
+            $username = $matches[1].Trim()
+        } elseif ($line -match '^\s*pass\s*=\s*(.+)$') {
+            $password = $matches[1].Trim()
+        }
+    }
+
+    # Capture any remaining username/password pair after the last section
+    if ($username -and $password) {
+        $credentials += [PSCustomObject]@{
+            Section   = $currentSection
+            Username  = $username
+            Password  = $password
+        }
+    }
+
+    # Output the credentials as PowerShell objects
+    return $credentials
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Putty.reg does not store passwords, but can point to private keys
+# Intended input: putty.reg
+function Get-PwPuttyRegFile {
+    param (
+        [string]$filePath
+    )
+
+    # Check if the file exists
+    if (-not (Test-Path $filePath)) {
+        Write-Host "File not found: $filePath"
+        return
+    }
+
+    # Read the contents of the .reg file
+    $regContent = Get-Content -Path $filePath
+
+    # Create a list to store extracted session details
+    $sessionDetails = @()
+
+    # Variables to hold extracted data for each session
+    $currentSession = ""
+    $hostName = ""
+    $portNumber = ""
+    $userName = ""
+    $privateKeyPath = ""
+
+    # Iterate through the lines of the file
+    foreach ($line in $regContent) {
+        # Detect session headers (e.g., "[HKEY_CURRENT_USER\Software\SimonTatham\PuTTY\Sessions\My%20SSH%20Session]")
+        if ($line -match '^\[HKEY_CURRENT_USER\\Software\\SimonTatham\\PuTTY\\Sessions\\(.+?)\]') {
+            # If we're processing a new session, save the previous one
+            if ($currentSession -ne "") {
+                $sessionDetails += [pscustomobject]@{
+                    Session        = $currentSession
+                    HostName       = $hostName
+                    Port           = [int]$portNumber
+                    UserName       = $userName
+                    PrivateKeyPath = $privateKeyPath
+                }
+            }
+
+            # Reset variables for the new session
+            $currentSession = $matches[1]
+            $hostName = ""
+            $portNumber = ""
+            $userName = ""
+            $privateKeyPath = ""
+        }
+
+        # Extract HostName
+        if ($line -match '"HostName"="(.+?)"') {
+            $hostName = $matches[1]
+        }
+
+        # Extract PortNumber (convert hex to decimal)
+        if ($line -match '"PortNumber"=dword:(\w{8})') {
+            $portNumber = [convert]::ToInt32($matches[1], 16)
+        }
+
+        # Extract UserName
+        if ($line -match '"UserName"="(.+?)"') {
+            $userName = $matches[1]
+        }
+
+        # Extract PrivateKeyFile (path to the private key)
+        if ($line -match '"PublicKeyFile"="(.+?)"') {
+            $privateKeyPath = $matches[1]
+        }
+    }
+
+    # After the loop, add the last session if it exists
+    if ($currentSession -ne "") {
+        $sessionDetails += [pscustomobject]@{
+            Session        = $currentSession
+            HostName       = $hostName
+            Port           = [int]$portNumber
+            UserName       = $userName
+            PrivateKeyPath = $privateKeyPath
+        }
+    }
+
+    # Return the session details
+    return $sessionDetails
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Inteded input: server.xml
+function Get-PwServerXml {
+    param (
+        [string]$filePath
+    )
+
+    # Load the XML file
+    [xml]$xmlContent = Get-Content -Path $filePath
+
+    # Define an array to store the user credentials
+    $credentials = @()
+
+    # Parse basicRegistry user credentials
+    $xmlContent.server.basicRegistry.user | ForEach-Object {
+        $credentials += [pscustomobject]@{
+            User     = $_.name
+            Password = $_.password
+            Source   = 'basicRegistry'
+        }
+    }
+
+    # Parse variable-based credentials (DB_USER and DB_PASS)
+    $dbUser = $xmlContent.server.variable | Where-Object { $_.name -eq "DB_USER" }
+    $dbPass = $xmlContent.server.variable | Where-Object { $_.name -eq "DB_PASS" }
+
+    if ($dbUser -and $dbPass) {
+        $credentials += [pscustomobject]@{
+            User     = $dbUser.value
+            Password = $dbPass.value
+            Source   = 'variable'
+        }
+    }
+
+    # Parse containerAuthData credentials
+    $xmlContent.server.dataSource.containerAuthData | ForEach-Object {
+        $credentials += [pscustomobject]@{
+            User     = $_.user
+            Password = $_.password
+            Source   = 'containerAuthData'
+        }
+    }
+
+    # Parse authData credentials
+    $xmlContent.server.authData | ForEach-Object {
+        $credentials += [pscustomobject]@{
+            User     = $_.user
+            Password = $_.password
+            Source   = 'authData'
+        }
+    }
+
+    # Return the collected credentials as an array of objects
+    return $credentials
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input: pureftpd.passwd
+function Get-PwPureFtpConfig {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$FilePath
+    )
+
+    # Check if the file exists
+    if (-Not (Test-Path $FilePath)) {
+        Write-Error "The file at path $FilePath does not exist."
+        return
+    }
+
+    # Initialize an array to store user credentials
+    $credentials = @()
+
+    # Read the file line by line
+    Get-Content $FilePath | ForEach-Object {
+        # Skip empty lines
+        if ($_ -match '^\s*$') { return }
+
+        # Split the line into components using ':' as delimiter
+        $fields = $_ -split ':'
+
+        # Check if we have at least the username and password fields
+        if ($fields.Length -ge 2) {
+            $username = $fields[0]
+            $passwordHash = $fields[1]
+
+            # Create a custom object for each user
+            $credentialObject = [PSCustomObject]@{
+                Username     = $username
+                PasswordHash = $passwordHash
+            }
+
+            # Add the object to the credentials array
+            $credentials += $credentialObject
+        } else {
+            Write-Error "The line '$_' does not contain enough fields."
+        }
+    }
+
+    # Output the results as a PowerShell object array
+    return $credentials
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input: php.ini
+function Get-PwPhpIni {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$FilePath
+    )
+
+    # Initialize a hashtable to store extracted values
+    $configData = @{
+        Username = $null
+        Password = $null
+    }
+
+    # Check if the file exists
+    if (-Not (Test-Path -Path $FilePath)) {
+        Write-Error "File not found: $FilePath"
+        return
+    }
+
+    # Read the configuration file
+    $configFile = Get-Content -Path $FilePath
+
+    # Parse the configuration file line by line
+    foreach ($line in $configFile) {
+        # Ignore comment lines and empty lines
+        if ($line -match '^\s*;' -or $line -match '^\s*$') {
+            continue
+        }
+
+        # Extract the username (e.g., mysql.default_user)
+        if ($line -match '^\s*mysql\.default_user\s*=\s*"(.+)"') {
+            $configData.Username = $matches[1].Trim()
+        }
+
+        # Extract the password (e.g., mysql.default_password)
+        if ($line -match '^\s*mysql\.default_password\s*=\s*"(.+)"') {
+            $configData.Password = $matches[1].Trim()
+        }
+    }
+
+    # Output the extracted configuration as a PowerShell object
+    [PSCustomObject]@{
+        Username = $configData.Username
+        Password = $configData.Password
+    }
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input: my.cnf
+function Get-PwMySQLConfig {
+    param (
+        [string]$FilePath
+    )
+
+    # Check if the file exists
+    if (-Not (Test-Path -Path $FilePath)) {
+        Write-Error "File not found: $FilePath"
+        return $null
+    }
+
+    # Read the file content
+    $fileContent = Get-Content -Path $FilePath
+
+    # Initialize variables to store username and password
+    $username = $null
+    $password = $null
+
+    # Parse the file content
+    foreach ($line in $fileContent) {
+        if ($line -match '^\s*user\s*=\s*(.+)$') {
+            $username = $matches[1].Trim()
+        }
+        elseif ($line -match '^\s*password\s*=\s*(.+)$') {
+            $password = $matches[1].Trim()
+        }
+    }
+
+    # Check if both username and password are found
+    if ($username -and $password) {
+        # Create a custom PowerShell object to return the credentials
+        $credentials = [PSCustomObject]@{
+            Username = $username
+            Password = $password
+        }
+        return $credentials
+    } else {
+        Write-Warning "Username or password not found in the file."
+        return $null
+    }
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input: machine.config
+# Function to parse configuration files for credentials
+function Get-PwMachineConfig {
+    param (
+        [string]$configFilePath
+    )
+
+    # Load the config file as XML
+    [xml]$configXml = Get-Content $configFilePath
+
+    # Initialize a DataTable to store results
+    $dtCredentials = New-Object System.Data.DataTable
+    $null = $dtCredentials.Columns.Add("Name", [string])
+    $null = $dtCredentials.Columns.Add("Section", [string])
+    $null = $dtCredentials.Columns.Add("URL", [string])
+    $null = $dtCredentials.Columns.Add("Server", [string])
+    $null = $dtCredentials.Columns.Add("Port", [string])
+    $null = $dtCredentials.Columns.Add("UserName", [string])
+    $null = $dtCredentials.Columns.Add("Password", [string])
+
+    # Helper function to add rows to DataTable
+    function Add-CredentialsToDataTable {
+        param (
+            [string]$name,
+            [string]$section,
+            [string]$url,
+            [string]$server,
+            [string]$port,
+            [string]$username,
+            [string]$password
+        )
+        $null = $dtCredentials.Rows.Add($name, $section, $url, $server, $port, $username, $password)
+    }
+
+    # Dictionary to temporarily store related credentials
+    $credentialPairs = @{}
+
+    # Function to store credentials in temporary dictionary
+    function Add-CredentialPair {
+        param (
+            [string]$name,
+            [string]$section,
+            [string]$key,
+            [string]$value
+        )
+        
+        if ($credentialPairs[$name]) {
+            $credentialPairs[$name][$key] = $value
+        } else {
+            $credentialPairs[$name] = @{}
+            $credentialPairs[$name][$key] = $value
+            $credentialPairs[$name]["Section"] = $section
+        }
+
+        # If both username and password are available, add them to the DataTable
+        if ($credentialPairs[$name]["UserName"] -and $credentialPairs[$name]["Password"]) {
+            Add-CredentialsToDataTable -name $name -section $credentialPairs[$name]["Section"] `
+                -url $credentialPairs[$name]["URL"] -server $credentialPairs[$name]["Server"] `
+                -port $credentialPairs[$name]["Port"] -username $credentialPairs[$name]["UserName"] `
+                -password $credentialPairs[$name]["Password"]
+
+            # Clear the stored credential after adding it to the table
+            $credentialPairs.Remove($name)
+        }
+    }
+
+    # Parse all instances of appSettings for OAuth, WebClient, API, and other credentials
+    if ($configXml.SelectNodes('//appSettings')) {
+        foreach ($appSettings in $configXml.SelectNodes('//appSettings')) {
+            foreach ($setting in $appSettings.add) {
+                $key = $setting.key
+                $value = $setting.value
+                $section = "AppSettings"
+
+                # Handle specific cases for OAuth, API, and WebClient settings
+                switch ($key) {
+                    "OAuthServiceUrl" { Add-CredentialPair -name "OAuth" -section $section -key "URL" -value $value }
+                    "ClientId" { Add-CredentialPair -name "OAuth" -section $section -key "UserName" -value $value }
+                    "ClientSecret" { Add-CredentialPair -name "OAuth" -section $section -key "Password" -value $value }
+                    "ServiceUrl" { Add-CredentialPair -name "WebClient" -section $section -key "URL" -value $value }
+                    "ServiceUserName" { Add-CredentialPair -name "WebClient" -section $section -key "UserName" -value $value }
+                    "ServicePassword" { Add-CredentialPair -name "WebClient" -section $section -key "Password" -value $value }
+                    "ApiEndpoint" { Add-CredentialPair -name "API" -section $section -key "URL" -value $value }
+                    "ApiUserName" { Add-CredentialPair -name "API" -section $section -key "UserName" -value $value }
+                    "ApiPassword" { Add-CredentialPair -name "API" -section $section -key "Password" -value $value }
+                    "ApplicationUsername" { Add-CredentialPair -name "Application" -section $section -key "UserName" -value $value }
+                    "ApplicationPassword" { Add-CredentialPair -name "Application" -section $section -key "Password" -value $value }
+                }
+            }
+        }
+    }
+
+    # Parse custom serviceCredentials section
+    if ($configXml.configuration.serviceCredentials) {
+        foreach ($setting in $configXml.configuration.serviceCredentials.add) {
+            $key = $setting.key
+            $value = $setting.value
+            $section = "ServiceCredentials"
+
+            # Handle specific cases for custom service credentials
+            switch ($key) {
+                "ServiceUrl" { Add-CredentialPair -name "CustomService" -section $section -key "URL" -value $value }
+                "UserName" { Add-CredentialPair -name "CustomService" -section $section -key "UserName" -value $value }
+                "Password" { Add-CredentialPair -name "CustomService" -section $section -key "Password" -value $value }
+            }
+        }
+    }
+
+    # Parse connectionStrings for server, port, username, and password
+    if ($configXml.configuration.connectionStrings) {
+        foreach ($connection in $configXml.configuration.connectionStrings.add) {
+            $connectionString = $connection.connectionString
+            $providerName = $connection.providerName
+            $name = $connection.name
+
+            # Initialize variables for potential data
+            $server = $null
+            $port = $null
+            $user = $null
+            $password = $null
+            $url = $null
+
+            # Parse connection strings
+            if ($connectionString -match "Host\s*=\s*([^;]+).*?Port\s*=\s*(\d+).*?Username\s*=\s*([^;]+).*?Password\s*=\s*([^;]+)") {
+                $server = $matches[1]
+                $port = $matches[2]
+                $user = $matches[3]
+                $password = $matches[4]
+                $url = "Host=$server;Port=$port"
+            } elseif ($connectionString -match "(Server|Data Source)\s*=\s*([^;,]+)(?:,(\d+))?") {
+                $server = $matches[2]
+                if ($matches[3]) { $port = $matches[3] }
+                $url = "Server=$server"
+            }
+
+            if ($connectionString -match "User\s*Id\s*=\s*([^;]+)") {
+                $user = $matches[1]
+            }
+            if ($connectionString -match "Password\s*=\s*([^;]+)") {
+                $password = $matches[1]
+            }
+
+            # Add row to the DataTable if username and password exist
+            if ($user -and $password) {
+                Add-CredentialsToDataTable -name $name -section "ConnectionStrings ($providerName)" -url $url -server $server -port $port -username $user -password $password
+            }
+        }
+    }
+
+    # Parse system.net/mailSettings for SMTP credentials and URLs
+    if ($configXml.configuration.'system.net'.mailSettings) {
+        foreach ($smtp in $configXml.configuration.'system.net'.mailSettings.smtp) {
+            $smtpServer = $smtp.network.host
+            $smtpPort = $smtp.network.port
+            $smtpUser = $smtp.network.userName
+            $smtpPass = $smtp.network.password
+            $url = "smtp://${smtpServer}:${smtpPort}"
+
+            if ($smtpUser -and $smtpPass) {
+                Add-CredentialsToDataTable -name "SMTP Configuration" -section "SMTP" -url $url -server $smtpServer -port $smtpPort -username $smtpUser -password $smtpPass
+            }
+        }
+    }
+
+    # Output the parsed credentials using the DataTable
+    if ($dtCredentials.Rows.Count -eq 0) {
+        Write-Host "No credentials found." -ForegroundColor Red
+    } else {
+        $dtCredentials | select Name, Section, URL, Server, Port, UserName, Password
+    }
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input:  krb5.conf
+function Get-Pwkrb5Conf {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$FilePath
+    )
+
+    # Initialize a hashtable to store extracted values
+    $configData = @{
+        Domain   = $null
+        Server   = $null
+        Username = $null
+        Password = $null
+    }
+
+    # Check if the file exists
+    if (-Not (Test-Path -Path $FilePath)) {
+        Write-Error "File not found: $FilePath"
+        return
+    }
+
+    # Read the configuration file
+    $configFile = Get-Content -Path $FilePath
+
+    # Parse the configuration file line by line
+    foreach ($line in $configFile) {
+        # Ignore comment lines and empty lines
+        if ($line -match '^\s*#' -or $line -match '^\s*$') {
+            continue
+        }
+
+        # Extract the domain (e.g., default_realm or ad_domain or similar)
+        if ($line -match 'default_realm\s*=\s*(.+)') {
+            $configData.Domain = $matches[1].Trim()
+        }
+
+        # Extract the server (e.g., kdc or krb5_server or similar)
+        if ($line -match 'kdc\s*=\s*(.+)') {
+            $configData.Server = $matches[1].Trim()
+        }
+
+        # Extract the username (e.g., principal or ldap_default_bind_dn or similar)
+        if ($line -match 'principal\s*=\s*(.+)') {
+            $configData.Username = $matches[1].Trim()
+        }
+        elseif ($line -match 'ldap_default_bind_dn\s*=\s*(.+)') {
+            $configData.Username = $matches[1].Trim()
+        }
+
+        # Extract the password (e.g., password or ldap_default_authtok or similar)
+        if ($line -match 'password\s*=\s*(.+)') {
+            $configData.Password = $matches[1].Trim()
+        }
+        elseif ($line -match 'ldap_default_authtok\s*=\s*(.+)') {
+            $configData.Password = $matches[1].Trim()
+        }
+    }
+
+    # Output the extracted configuration as a PowerShell object
+    [PSCustomObject]@{
+        Domain   = $configData.Domain
+        Server   = $configData.Server
+        Username = $configData.Username
+        Password = $configData.Password
+    }
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input: jboss-cli.xml
+# Define the function to extract username and password from a jboss-cli.xml file and return an object
+function Get-PwJbossCliConfig {
+    param (
+        [string]$FilePath
+    )
+
+    # Check if the file exists
+    if (-not (Test-Path -Path $FilePath)) {
+        Write-Error "File not found: $FilePath"
+        return $null
+    }
+
+    # Load the XML file
+    [xml]$jbossCliXml = Get-Content -Path $FilePath
+
+    # Extract the username and password
+    $username = $jbossCliXml."jboss-cli".authentication.username
+    $password = $jbossCliXml."jboss-cli".authentication.password
+
+    # Return a PowerShell object with the username and password
+    return [pscustomobject]@{
+        Username = $username
+        Password = $password
+    }
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input: .htpasswd
+function Get-PwHtpasswd {
+    param (
+        [string]$FilePath
+    )
+
+    # Check if the file exists
+    if (-Not (Test-Path $FilePath)) {
+        Write-Error "File not found at path: $FilePath"
+        return
+    }
+
+    # Read the file contents
+    $lines = Get-Content $FilePath
+
+    # Initialize an array to store user objects
+    $users = @()
+
+    # Process each line
+    foreach ($line in $lines) {
+        # Split each line into username and hashed password
+        $parts = $line -split ':', 2
+        if ($parts.Length -eq 2) {
+            # Create a custom object for each user
+            $userObj = [pscustomobject]@{
+                Username = $parts[0]
+                PasswordHash = $parts[1]
+            }
+            # Add the user object to the array
+            $users += $userObj
+        }
+    }
+
+    # Output the results
+    return $users
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input: dbxdrivers.ini and generic
+# Function to extract credentials from the file
+function Get-PwDbxDriverIni {
+    param (
+        [string]$filePath
+    )
+
+    # Check if the file exists
+    if (-Not (Test-Path $filePath)) {
+        Write-Host "File not found: $filePath"
+        return
+    }
+
+    # Read the content of the file
+    $fileContent = Get-Content -Path $filePath
+
+    # Create an array to hold the results
+    $credentials = @()
+
+    # Initialize variables for the current section and credentials
+    $currentSection = ""
+    $currentUsername = ""
+    $currentPassword = ""
+
+    # Loop through each line of the file
+    foreach ($line in $fileContent) {
+        # Check if the line indicates a new section (e.g., [DB2], [MySQL])
+        if ($line -match '^\[.*\]$') {
+            # If we have collected both a username and password, store the credentials
+            if ($currentUsername -and $currentPassword) {
+                $credentials += [PSCustomObject]@{
+                    Section  = $currentSection
+                    Username = $currentUsername
+                    Password = $currentPassword
+                }
+            }
+
+            # Start a new section
+            $currentSection = $line.Trim('[]')
+            $currentUsername = ""
+            $currentPassword = ""
+        }
+
+        # Check if the line contains a User_Name field
+        if ($line -match '^User_Name=(.*)$') {
+            $currentUsername = $matches[1].Trim()
+        }
+
+        # Check if the line contains a Password field
+        if ($line -match '^Password=(.*)$') {
+            $currentPassword = $matches[1].Trim()
+        }
+    }
+
+    # If the last section contains credentials, add them to the array
+    if ($currentUsername -and $currentPassword) {
+        $credentials += [PSCustomObject]@{
+            Section  = $currentSection
+            Username = $currentUsername
+            Password = $currentPassword
+        }
+    }
+
+    # Return the results
+    return $credentials
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input: context.xml
+# Function to extract credentials from a given context.xml file
+function Get-PwContextXML {
+    param (
+        [string]$contextXmlPath
+    )
+
+    # Check if the file exists
+    if (-Not (Test-Path $contextXmlPath)) {
+        Write-Host "File not found: $contextXmlPath"
+        return
+    }
+
+    # Load the XML file
+    [xml]$xml = Get-Content $contextXmlPath
+
+    # Extract username and password from the Resource element
+    $username = $xml.Context.Resource | Where-Object { $_.name -eq 'jdbc/MyDB' } | Select-Object -ExpandProperty username
+    $password = $xml.Context.Resource | Where-Object { $_.name -eq 'jdbc/MyDB' } | Select-Object -ExpandProperty password
+
+    # Create a PowerShell object to hold the extracted information
+    $credentials = [PSCustomObject]@{
+        Username = $username
+        Password = $password
+    }
+
+    # Return the credentials object
+    return $credentials
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input: config.xml
+function Get-PwJenkinsConfig {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$FilePath
+    )
+
+    # Ensure the file exists
+    if (-Not (Test-Path $FilePath)) {
+        Write-Error "File not found: $FilePath"
+        return
+    }
+
+    # Read the XML content as plain text
+    $xmlText = Get-Content -Path $FilePath -Raw
+
+    # Replace XML version 1.1 with 1.0
+    $xmlText = $xmlText -replace "version='1.1'", "version='1.0'"
+
+    # Now parse the XML
+    [xml]$xmlContent = [xml]$xmlText
+
+    # Extract the full name (username)
+    $fullName = $xmlContent.user.fullName
+
+    # Extract the password hash
+    $passwordHash = $xmlContent.user.properties.'hudson.security.HudsonPrivateSecurityRealm_-Details'.passwordHash
+
+    # Create and return the result as a PowerShell object
+    $result = [PSCustomObject]@{
+        Username     = $fullName
+        PasswordHash = $passwordHash
+    }
+
+    return $result
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input: bootstrap.ini
+function Get-PwBootstrapConfig {
+    param (
+        [string]$FilePath
+    )
+
+    # Read all lines from the provided file path
+    $iniContent = Get-Content -Path $FilePath
+
+    # Initialize a hash table to store key-value pairs
+    $fields = @{
+        Username = $null
+        Password = $null
+        Public   = $null
+        Private  = $null
+        Key      = $null
+        Secret   = $null
+    }
+
+    # Loop through each line and look for the required fields
+    foreach ($line in $iniContent) {
+        if ($line -match 'username\s*=\s*(.*)') {
+            $fields['Username'] = $matches[1].Trim()
+        }
+        if ($line -match 'password\s*=\s*(.*)') {
+            $fields['Password'] = $matches[1].Trim()
+        }
+        if ($line -match 'public\s*=\s*(.*)') {
+            $fields['Public'] = $matches[1].Trim()
+        }
+        if ($line -match 'private\s*=\s*(.*)') {
+            $fields['Private'] = $matches[1].Trim()
+        }
+        if ($line -match 'key\s*=\s*(.*)') {
+            $fields['Key'] = $matches[1].Trim()
+        }
+        if ($line -match 'secret\s*=\s*(.*)') {
+            $fields['Secret'] = $matches[1].Trim()
+        }
+    }
+
+    # Convert the hash table into a custom PowerShell object
+    $configObject = [PSCustomObject]$fields
+
+    # Output the custom object
+    return $configObject
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input: app.config
+# Function to parse configuration files for credentials
+function Get-PwAppconfig {
+    param (
+        [string]$configFilePath
+    )
+
+    # Load the config file as XML
+    [xml]$configXml = Get-Content $configFilePath
+
+    # Initialize a DataTable to store results
+    $dtCredentials = New-Object System.Data.DataTable
+    $null = $dtCredentials.Columns.Add("Name", [string])
+    $null = $dtCredentials.Columns.Add("Section", [string])
+    $null = $dtCredentials.Columns.Add("URL", [string])
+    $null = $dtCredentials.Columns.Add("Server", [string])
+    $null = $dtCredentials.Columns.Add("Port", [string])
+    $null = $dtCredentials.Columns.Add("UserName", [string])
+    $null = $dtCredentials.Columns.Add("Password", [string])
+
+    # Helper function to add rows to DataTable
+    function Add-CredentialsToDataTable {
+        param (
+            [string]$name,
+            [string]$section,
+            [string]$url,
+            [string]$server,
+            [string]$port,
+            [string]$username,
+            [string]$password
+        )
+        $null = $dtCredentials.Rows.Add($name, $section, $url, $server, $port, $username, $password)
+    }
+
+    # Dictionary to temporarily store related credentials
+    $credentialPairs = @{}
+
+    # Function to store credentials in temporary dictionary
+    function Add-CredentialPair {
+        param (
+            [string]$name,
+            [string]$section,
+            [string]$key,
+            [string]$value
+        )
+        
+        if ($credentialPairs[$name]) {
+            $credentialPairs[$name][$key] = $value
+        } else {
+            $credentialPairs[$name] = @{}
+            $credentialPairs[$name][$key] = $value
+            $credentialPairs[$name]["Section"] = $section
+        }
+
+        # If both username and password are available, add them to the DataTable
+        if ($credentialPairs[$name]["UserName"] -and $credentialPairs[$name]["Password"]) {
+            Add-CredentialsToDataTable -name $name -section $credentialPairs[$name]["Section"] `
+                -url $credentialPairs[$name]["URL"] -server $credentialPairs[$name]["Server"] `
+                -port $credentialPairs[$name]["Port"] -username $credentialPairs[$name]["UserName"] `
+                -password $credentialPairs[$name]["Password"]
+
+            # Clear the stored credential after adding it to the table
+            $credentialPairs.Remove($name)
+        }
+    }
+
+    # Parse all instances of appSettings for OAuth, WebClient, API, and other credentials
+    if ($configXml.SelectNodes('//appSettings')) {
+        foreach ($appSettings in $configXml.SelectNodes('//appSettings')) {
+            foreach ($setting in $appSettings.add) {
+                $key = $setting.key
+                $value = $setting.value
+                $section = "AppSettings"
+
+                # Handle specific cases for OAuth, API, and WebClient settings
+                switch ($key) {
+                    "OAuthServiceUrl" { Add-CredentialPair -name "OAuth" -section $section -key "URL" -value $value }
+                    "ClientId" { Add-CredentialPair -name "OAuth" -section $section -key "UserName" -value $value }
+                    "ClientSecret" { Add-CredentialPair -name "OAuth" -section $section -key "Password" -value $value }
+                    "ServiceUrl" { Add-CredentialPair -name "WebClient" -section $section -key "URL" -value $value }
+                    "ServiceUserName" { Add-CredentialPair -name "WebClient" -section $section -key "UserName" -value $value }
+                    "ServicePassword" { Add-CredentialPair -name "WebClient" -section $section -key "Password" -value $value }
+                    "ApiEndpoint" { Add-CredentialPair -name "API" -section $section -key "URL" -value $value }
+                    "ApiUserName" { Add-CredentialPair -name "API" -section $section -key "UserName" -value $value }
+                    "ApiPassword" { Add-CredentialPair -name "API" -section $section -key "Password" -value $value }
+                    "ApplicationUsername" { Add-CredentialPair -name "Application" -section $section -key "UserName" -value $value }
+                    "ApplicationPassword" { Add-CredentialPair -name "Application" -section $section -key "Password" -value $value }
+                }
+            }
+        }
+    }
+
+    # Parse custom serviceCredentials section
+    if ($configXml.configuration.serviceCredentials) {
+        foreach ($setting in $configXml.configuration.serviceCredentials.add) {
+            $key = $setting.key
+            $value = $setting.value
+            $section = "ServiceCredentials"
+
+            # Handle specific cases for custom service credentials
+            switch ($key) {
+                "ServiceUrl" { Add-CredentialPair -name "CustomService" -section $section -key "URL" -value $value }
+                "UserName" { Add-CredentialPair -name "CustomService" -section $section -key "UserName" -value $value }
+                "Password" { Add-CredentialPair -name "CustomService" -section $section -key "Password" -value $value }
+            }
+        }
+    }
+
+    # Parse connectionStrings for server, port, username, and password
+    if ($configXml.configuration.connectionStrings) {
+        foreach ($connection in $configXml.configuration.connectionStrings.add) {
+            $connectionString = $connection.connectionString
+            $providerName = $connection.providerName
+            $name = $connection.name
+
+            # Initialize variables for potential data
+            $server = $null
+            $port = $null
+            $user = $null
+            $password = $null
+            $url = $null
+
+            # Parse connection strings
+            if ($connectionString -match "Host\s*=\s*([^;]+).*?Port\s*=\s*(\d+).*?Username\s*=\s*([^;]+).*?Password\s*=\s*([^;]+)") {
+                $server = $matches[1]
+                $port = $matches[2]
+                $user = $matches[3]
+                $password = $matches[4]
+                $url = "Host=$server;Port=$port"
+            } elseif ($connectionString -match "(Server|Data Source)\s*=\s*([^;,]+)(?:,(\d+))?") {
+                $server = $matches[2]
+                if ($matches[3]) { $port = $matches[3] }
+                $url = "Server=$server"
+            }
+
+            if ($connectionString -match "User\s*Id\s*=\s*([^;]+)") {
+                $user = $matches[1]
+            }
+            if ($connectionString -match "Password\s*=\s*([^;]+)") {
+                $password = $matches[1]
+            }
+
+            # Add row to the DataTable if username and password exist
+            if ($user -and $password) {
+                Add-CredentialsToDataTable -name $name -section "ConnectionStrings ($providerName)" -url $url -server $server -port $port -username $user -password $password
+            }
+        }
+    }
+
+    # Parse system.net/mailSettings for SMTP credentials and URLs
+    if ($configXml.configuration.'system.net'.mailSettings) {
+        foreach ($smtp in $configXml.configuration.'system.net'.mailSettings.smtp) {
+            $smtpServer = $smtp.network.host
+            $smtpPort = $smtp.network.port
+            $smtpUser = $smtp.network.userName
+            $smtpPass = $smtp.network.password
+            $url = "smtp://${smtpServer}:${smtpPort}"
+
+            if ($smtpUser -and $smtpPass) {
+                Add-CredentialsToDataTable -name "SMTP Configuration" -section "SMTP" -url $url -server $smtpServer -port $smtpPort -username $smtpUser -password $smtpPass
+            }
+        }
+    }
+
+    # Output the parsed credentials using the DataTable
+    if ($dtCredentials.Rows.Count -eq 0) {
+        Write-Host "No credentials found." -ForegroundColor Red
+    } else {
+        $dtCredentials | select Name, Section, URL, Server, Port, UserName, Password
+    }
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input: .pgpass
+function Get-PwPgPass {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$FilePath
+    )
+
+    # Ensure the file exists
+    if (-Not (Test-Path $FilePath)) {
+        Write-Error "File not found: $FilePath"
+        return
+    }
+
+    # Read the .pgpass file
+    $pgpassEntries = Get-Content -Path $FilePath
+
+    # Array to store the extracted credentials
+    $credentialsList = @()
+
+    # Loop through each line in the .pgpass file
+    foreach ($entry in $pgpassEntries) {
+        # Skip comments and empty lines
+        if ($entry -match '^\s*#' -or $entry -match '^\s*$') {
+            continue
+        }
+
+        # Split the line by colon, expecting the format: hostname:port:database:username:password
+        $fields = $entry -split ':'
+
+        if ($fields.Length -eq 5) {
+            # Create a custom object for each entry
+            $credential = [PSCustomObject]@{
+                Hostname = $fields[0]
+                Port     = $fields[1]
+                Database = $fields[2]
+                Username = $fields[3]
+                Password = $fields[4]
+            }
+
+            # Add the credential object to the list
+            $credentialsList += $credential
+        }
+        else {
+            Write-Warning "Invalid format in entry: $entry"
+        }
+    }
+
+    # Output the results as a PowerShell object
+    return $credentialsList
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# This is for parsing group policy preference files and should support groups.xml, datasources.xml, drives.xml, printers.xml, scheduletasks.xml, and services.xml
+function Get-PwGPP {
+<#
+.SYNOPSIS
+    Retrieves plaintext passwords from specified Group Policy XML files and provides functionality to encrypt passwords.
+
+.DESCRIPTION
+    This function processes specified GPP XML files and retrieves plaintext passwords for accounts pushed through Group Policy Preferences.
+    It also provides a method to encrypt passwords for use in XML files.
+
+.EXAMPLE
+    PS C:\> Get-GPPPasswordMod -InputFilePath "\\192.168.1.1\sysvol\demo.com\Policies\{31B2F340-016D-11D2-945F-00C04FB984F9}\USER\Preferences"
+#>
+    [CmdletBinding()]
+    Param(
+        [Parameter(Mandatory=$false)]
+        [string]$InputFilePath
+    )
+
+    # ----------------------------------------------------------------
+    # Function to decrypt cpassword
+    # ----------------------------------------------------------------
+    function Get-DecryptedCpassword {
+        [CmdletBinding()]
+        Param (
+            [string] $Cpassword 
+        )
+        
+        try {
+            # Append padding
+            $Mod = ($Cpassword.length % 4)
+            switch ($Mod) {
+                '1' { $Cpassword = $Cpassword.Substring(0,$Cpassword.Length -1) }
+                '2' { $Cpassword += ('=' * (4 - $Mod)) }
+                '3' { $Cpassword += ('=' * (4 - $Mod)) }
+            }
+            $Base64Decoded = [Convert]::FromBase64String($Cpassword)
+            $AesObject = New-Object System.Security.Cryptography.AesCryptoServiceProvider
+            [Byte[]] $AesKey = @(0x4e,0x99,0x06,0xe8,0xfc,0xb6,0x6c,0xc9,0xfa,0xf4,0x93,0x10,0x62,0x0f,0xfe,0xe8,0xf4,0x96,0xe8,0x06,0xcc,0x05,0x79,0x90,0x20,0x9b,0x09,0xa4,0x33,0xb6,0x6c,0x1b)
+            $AesIV = New-Object Byte[]($AesObject.IV.Length)
+            $AesObject.IV = $AesIV
+            $AesObject.Key = $AesKey
+            $DecryptorObject = $AesObject.CreateDecryptor()
+            [Byte[]] $OutBlock = $DecryptorObject.TransformFinalBlock($Base64Decoded, 0, $Base64Decoded.length)
+            return [System.Text.UnicodeEncoding]::Unicode.GetString($OutBlock)
+        } catch { Write-Error $Error[0] }
+    }
+
+
+    # ----------------------------------------------------------------
+    # Setup data table to store GPP Information
+    # ----------------------------------------------------------------
+    if ($InputFilePath) {
+        $TableGPPPasswords = New-Object System.Data.DataTable         
+        $TableGPPPasswords.Columns.Add('NewName') | Out-Null
+        $TableGPPPasswords.Columns.Add('Changed') | Out-Null
+        $TableGPPPasswords.Columns.Add('UserName') | Out-Null        
+        $TableGPPPasswords.Columns.Add('CPassword') | Out-Null
+        $TableGPPPasswords.Columns.Add('Password') | Out-Null        
+        $TableGPPPasswords.Columns.Add('File') | Out-Null           
+
+        # ----------------------------------------------------------------
+        # Find, parse, decrypt, and display results from XML files
+        # ----------------------------------------------------------------
+        $XmlFiles = Get-ChildItem -Path $InputFilePath -Recurse -ErrorAction SilentlyContinue -Include 'Groups.xml','Services.xml','ScheduledTasks.xml','DataSources.xml','Printers.xml','Drives.xml'
+
+        # Parse GPP config files
+        $XmlFiles | ForEach-Object {
+            $FileFullName = $_.FullName
+            $FileName = $_.Name
+
+            # Read the file content as a string
+            $fileContentString = Get-Content -Path "$FileFullName" -Raw
+            
+            try {
+                # Attempt to load the XML content
+                [xml]$FileContent = [xml]$fileContentString
+            } catch {
+                Write-Error "Failed to parse XML in file '$FileFullName'. Error: $_"
+                return
+            }
+            
+            # Process Drives.xml
+            if ($FileName -eq "Drives.xml") {
+                $FileContent.Drives.Drive | ForEach-Object {
+                    [string]$Username = $_.Properties.username
+                    [string]$CPassword = $_.Properties.cpassword
+                    [string]$Password = Get-DecryptedCpassword $CPassword
+                    [datetime]$Changed = $_.Changed
+                    [string]$NewName = ""         
+                    $TableGPPPasswords.Rows.Add($NewName, $Changed, $Username, $CPassword, $Password, $FileFullName) | Out-Null      
+                }
+            }
+
+            # Process Groups.xml
+            if ($FileName -eq "Groups.xml") {
+                $FileContent.Groups.User | ForEach-Object {
+                    [string]$Username = $_.Properties.username
+                    [string]$CPassword = $_.Properties.cpassword
+                    [string]$Password = Get-DecryptedCpassword $CPassword
+                    [datetime]$Changed = $_.Changed
+                    [string]$NewName = $_.Properties.newname        
+                    $TableGPPPasswords.Rows.Add($NewName, $Changed, $Username, $CPassword, $Password, $FileFullName) | Out-Null      
+                }
+            }
+
+            # Process Services.xml
+            if ($FileName -eq "Services.xml") {
+                $FileContent.NTServices.NTService | ForEach-Object {
+                    [string]$Username = $_.Properties.accountname
+                    [string]$CPassword = $_.Properties.cpassword
+                    [string]$Password = Get-DecryptedCpassword $CPassword
+                    [datetime]$Changed = $_.Changed
+                    [string]$NewName = ""         
+                    $TableGPPPasswords.Rows.Add($NewName, $Changed, $Username, $CPassword, $Password, $FileFullName) | Out-Null      
+                }
+            }
+
+            # Process ScheduledTasks.xml
+            if ($FileName -eq "ScheduledTasks.xml") {
+                $FileContent.ScheduledTasks.Task | ForEach-Object {
+                    [string]$Username = $_.Properties.runas
+                    [string]$CPassword = $_.Properties.cpassword
+                    [string]$Password = Get-DecryptedCpassword $CPassword
+                    [datetime]$Changed = $_.Changed
+                    [string]$NewName = ""         
+                    $TableGPPPasswords.Rows.Add($NewName, $Changed, $Username, $CPassword, $Password, $FileFullName) | Out-Null      
+                }
+            }
+
+            # Process DataSources.xml
+            if ($FileName -eq "DataSources.xml") {
+                $FileContent.DataSources.DataSource | ForEach-Object {
+                    [string]$Username = $_.Properties.username
+                    [string]$CPassword = $_.Properties.cpassword
+                    [string]$Password = Get-DecryptedCpassword $CPassword
+                    [datetime]$Changed = $_.Changed
+                    [string]$NewName = ""         
+                    $TableGPPPasswords.Rows.Add($NewName, $Changed, $Username, $CPassword, $Password, $FileFullName) | Out-Null      
+                }
+            }
+
+            # Process Printers.xml
+            if ($FileName -eq "Printers.xml") {
+                $FileContent.Printers.SharedPrinter | ForEach-Object {
+                    [string]$Username = $_.Properties.username
+                    [string]$CPassword = $_.Properties.cpassword
+                    [string]$Password = Get-DecryptedCpassword $CPassword
+                    [datetime]$Changed = $_.Changed
+                    [string]$NewName = ""         
+                    $TableGPPPasswords.Rows.Add($NewName, $Changed, $Username, $CPassword, $Password, $FileFullName) | Out-Null      
+                }
+            }
+        }
+
+        # Check if anything was found
+        if (-not $XmlFiles) {
+            throw 'No preference files found.'
+            return
+        }
+
+        # Display results
+        $TableGPPPasswords
+    }
+
+    # Allow users to encrypt passwords
+    function Set-EncryptedCpassword {
+        [CmdletBinding()]
+        Param (
+            [Parameter(Mandatory=$true)]
+            [string]$Password
+        )
+        
+        # Create a new AES .NET Crypto Object
+        $AesObject = New-Object System.Security.Cryptography.AesCryptoServiceProvider
+        [Byte[]] $AesKey = @(0x4e,0x99,0x06,0xe8,0xfc,0xb6,0x6c,0xc9,0xfa,0xf4,0x93,0x10,0x62,0x0f,0xfe,0xe8,0xf4,0x96,0xe8,0x06,0xcc,0x05,0x79,0x90,0x20,0x9b,0x09,0xa4,0x33,0xb6,0x6c,0x1b)
+        $AesIV = New-Object Byte[]($AesObject.IV.Length)
+        $AesObject.IV = $AesIV
+        $AesObject.Key = $AesKey
+        $EncryptorObject = $AesObject.CreateEncryptor()
+        
+        # Convert password to byte array and encrypt
+        [Byte[]] $InputBytes = [System.Text.Encoding]::Unicode.GetBytes($Password)
+        [Byte[]] $EncryptedBytes = $EncryptorObject.TransformFinalBlock($InputBytes, 0, $InputBytes.Length)
+        $EncryptedCpassword = [Convert]::ToBase64String($EncryptedBytes)
+
+        return $EncryptedCpassword
+    }
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input: *dtsx
+function Get-PwSsisDtsx {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$FilePath
+    )
+
+    # Check if the file exists
+    if (-not (Test-Path -Path $FilePath)) {
+        Write-Error "File not found: $FilePath"
+        return
+    }
+
+    # Load the XML content from the file
+    [xml]$xmlContent = [xml](Get-Content -Path $FilePath -Raw)
+
+    # Ensure the XML content is valid
+    if (-not $xmlContent) {
+        Write-Error "Failed to load XML content."
+        return
+    }
+
+    # Define the namespace manager and add the DTS namespace
+    $namespaceManager = New-Object System.Xml.XmlNamespaceManager($xmlContent.NameTable)
+    $namespaceManager.AddNamespace("DTS", "http://schemas.microsoft.com/sqlserver/Dts")
+
+    # Prepare an array to hold extracted credentials
+    $credentials = @()
+
+    # Extract OLEDB connection credentials
+    $dbConnections = $xmlContent.SelectNodes("//DTS:ConnectionManager[@DTS:CreationName='OLEDB']/DTS:Properties", $namespaceManager)
+    foreach ($dbConnection in $dbConnections) {
+        $connString = $dbConnection.SelectSingleNode("DTS:Property[@DTS:Name='ConnectionString']", $namespaceManager).'#text'
+        if ($connString -match "Data Source=([^;]+);.*User ID=([^;]+);.*Password=([^;]+);") {
+            $credentials += [pscustomobject]@{
+                ConnectionType = "Database"
+                Server         = $matches[1]
+                Port           = "N/A"  # OLEDB typically does not specify a port
+                Username       = $matches[2]
+                Password       = $matches[3]
+            }
+        }
+    }
+
+    # Extract FTP connection credentials
+    $ftpConnections = $xmlContent.SelectNodes("//DTS:ConnectionManager[@DTS:CreationName='FTP']/DTS:Properties", $namespaceManager)
+    foreach ($ftpConnection in $ftpConnections) {
+        $server = $ftpConnection.SelectSingleNode("DTS:Property[@DTS:Name='ServerName']", $namespaceManager).'#text'
+        $port = $ftpConnection.SelectSingleNode("DTS:Property[@DTS:Name='ServerPort']", $namespaceManager).'#text'
+        $username = $ftpConnection.SelectSingleNode("DTS:Property[@DTS:Name='ServerUserName']", $namespaceManager).'#text'
+        $password = $ftpConnection.SelectSingleNode("DTS:Property[@DTS:Name='ServerPassword']", $namespaceManager).'#text'
+
+        $credentials += [pscustomobject]@{
+            ConnectionType = "FTP"
+            Server         = $server
+            Port           = $port
+            Username       = $username
+            Password       = $password
+        }
+    }
+
+    # Extract SMTP connection credentials
+    $smtpConnections = $xmlContent.SelectNodes("//DTS:ConnectionManager[@DTS:CreationName='SMTP']/DTS:Properties", $namespaceManager)
+    foreach ($smtpConnection in $smtpConnections) {
+        $server = $smtpConnection.SelectSingleNode("DTS:Property[@DTS:Name='SmtpServer']", $namespaceManager).'#text'
+        $port = $smtpConnection.SelectSingleNode("DTS:Property[@DTS:Name='Port']", $namespaceManager).'#text'
+        $username = $smtpConnection.SelectSingleNode("DTS:Property[@DTS:Name='UserName']", $namespaceManager).'#text'
+        $password = $smtpConnection.SelectSingleNode("DTS:Property[@DTS:Name='Password']", $namespaceManager).'#text'
+
+        $credentials += [pscustomobject]@{
+            ConnectionType = "SMTP"
+            Server         = $server
+            Port           = $port
+            Username       = $username
+            Password       = $password
+        }
+    }
+
+    # Return all credentials
+    return $credentials
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input: all .rdp
+function Get-PwRdpInfo {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$FilePath
+    )
+
+    # Check if the file exists
+    if (-not (Test-Path -Path $FilePath)) {
+        Write-Error "File not found: $FilePath"
+        return
+    }
+
+    # Read the RDP file contents
+    $rdpContent = Get-Content -Path $FilePath
+
+    # Initialize variables to store username and password
+    $username = ""
+    $encryptedPassword = ""
+    $decryptedPassword = ""
+
+    # Parse the RDP file for username and encrypted password fields
+    foreach ($line in $rdpContent) {
+        if ($line -match "^username:s:(.+)$") {
+            $username = $matches[1]
+        }
+        if ($line -match "^password 51:b:(.+)$") {
+            $encryptedPassword = $matches[1]
+        }
+    }
+
+    # Attempt to decrypt the password if it exists
+    if ($encryptedPassword) {
+        try {
+            # Convert the encrypted password from Base64 to byte array
+            $passwordBytes = [Convert]::FromBase64String($encryptedPassword)
+
+            # Use DPAPI to decrypt the password
+            $decryptedPassword = [System.Text.Encoding]::Unicode.GetString([System.Security.Cryptography.ProtectedData]::Unprotect($passwordBytes, $null, [System.Security.Cryptography.DataProtectionScope]::CurrentUser))
+        } catch {
+            Write-Warning "Unable to decrypt password: $_"
+            $decryptedPassword = "Unable to decrypt; must run on target system"
+        }
+    } else {
+        $encryptedPassword = "No password found"
+        $decryptedPassword = "No password found"
+    }
+
+    # Create a PowerShell object to return the results
+    $result = [PSCustomObject]@{
+        Username           = $username
+        EncryptedPassword  = $encryptedPassword
+        DecryptedPassword  = $decryptedPassword
+    }
+
+    return $result
 }
