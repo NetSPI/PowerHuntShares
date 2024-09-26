@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.129
+# Version: v1.130
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1548,7 +1548,7 @@ function Invoke-HuntSMBShares
         $FileNamePatternsAll.Rows.Add("SAM","","None.","Secret","Get-PrivateKeyFilePath")                    | Out-Null
         $FileNamePatternsAll.Rows.Add("SAM-*","","None.","Secret","Get-PrivateKeyFilePath")                  | Out-Null
         $FileNamePatternsAll.Rows.Add("SAM_*","","None.","Secret","Get-PrivateKeyFilePath")                  | Out-Null
-        $FileNamePatternsAll.Rows.Add("SYSTEM","","None.","Secret","Get-PrivateKeyFilePath")                 | Out-Null 
+        $FileNamePatternsAll.Rows.Add("SYSTEM","","None.","Secret","")                                       | Out-Null 
         $FileNamePatternsAll.Rows.Add("server.xml*","","None.","Secret","Get-PwServerXml")                   | Out-Null
         $FileNamePatternsAll.Rows.Add("shadow*","","None.","Secret","Get-PwShadow")                          | Out-Null
         $FileNamePatternsAll.Rows.Add("standalone.xml*","","None.","Secret","Get-PwStandalone")              | Out-Null
@@ -1852,7 +1852,7 @@ function Invoke-HuntSMBShares
         #>
 
         # Download the Files
-        $MySecretsTbl = $MySecrets | 
+        $MySecretsTbl = $MySecrets | where ComputerName -notlike "" |
         Foreach {                        
             
             # "ComputerName","ShareName","SharePath","UncPath","FileName","Category"
@@ -1874,20 +1874,72 @@ function Invoke-HuntSMBShares
                     if($MySecretsFile -like "$MySecretKeywordCheck"){
 
                        # Call function to prase file
-                       # write-output "Parsing $MySecretsFile with $MySecretKeywordFunction"
+                       write-verbose "Parsing $MySecretsFile with $MySecretKeywordFunction"
                        $FunctionToCall = Get-Command $MySecretKeywordFunction
                         & $FunctionToCall -ComputerName $MySecretsComputer -ShareName $MySecretsShare -FileName $MySecretsFile -UncFilePath $MySecretsFilePath -FilePath $MySecretsFileLocalPath 
                     }
             }            
 
-        }
+        } 
 
         # Write passwords to file
-        $MySecretsTbl | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Recovered-Passwords.csv" 
+        $MySecretsTbl | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Recovered-Passwords.csv"         
 
         # Generate counts for dashabord summary and for "Recovered Secrets" Page
+        $SecretsRecoveredCount = $MySecretsTbl | Select-Object ComputerName, ShareName, UncFilePath, FileName, Section, ObjectName, TargetURL, TargetServer, TargetPort, Database, Domain, Username, Password, PasswordEnc, KeyFilePath -Unique | measure | select count -ExpandProperty count 
 
         # Generate table content for "Recovered Secrets" Page 
+
+        $SecretsRecoveredString	= $MySecretsTbl | Select-Object ComputerName, ShareName, UncFilePath, FileName, Section, ObjectName, TargetURL, TargetServer, TargetPort, Database, Domain, Username, Password, PasswordEnc, KeyFilePath -Unique | where ComputerName -NotLike "" |
+        Foreach {
+
+            # Retrieve values for each column using the $_.<ColumnName> format
+            $MySecretsTblComputerName  = $_.ComputerName
+            $MySecretsTblShareName     = $_.ShareName
+            $MySecretsTblUncFilePath   = $_.UncFilePath
+            $MySecretsTblFileName      = $_.FileName
+            $MySecretsTblSection       = $_.Section
+            $MySecretsTblObjectName    = $_.ObjectName
+            $MySecretsTblTargetURL     = $_.TargetURL
+            $MySecretsTblTargetServer  = $_.TargetServer
+            $MySecretsTblTargetPort    = $_.TargetPort
+            $MySecretsTblDatabase      = $_.Database
+            $MySecretsTblDomain        = $_.Domain
+            $MySecretsTblUsername      = $_.Username
+            $MySecretsTblPassword      = $_.Password
+            $MySecretsTblPasswordEnc   = $_.PasswordEnc
+            $MySecretsTblKeyFilePath   = $_.KeyFilePath
+
+            # Generate the HTML table row
+            $MySecretsTbl = @"
+            <tr>
+                <td>$MySecretsTblComputerName</td>
+                <td>$MySecretsTblShareName</td>
+                <td>$MySecretsTblFileName</td>
+                <td >$MySecretsTblUncFilePath</td>                
+                <td>$MySecretsTblUsername</td>
+                <td>$MySecretsTblPassword</td>
+                <td>$MySecretsTblPasswordEnc</td>
+                <td>$MySecretsTblKeyFilePath</td>
+                <td style = "font-size: 10px;">
+		            <button class="collapsible">Details</button>
+                    <div class="content" style="font-size:11px;width:100px;">
+                        Section: $MySecretsTblSection <Br>
+                        Object Name: $MySecretsTblObjectName <Br>
+                        Target URL: $MySecretsTblTargetURL <Br>
+                        Target Server: $MySecretsTblTargetServer <Br>
+                        Target Port: $MySecretsTblTargetPort <Br>
+                        Database: $MySecretsTblDatabase <Br>
+                        Domain: $MySecretsTblDomain <Br>
+                    </div>
+                </td>
+            </tr>
+"@
+
+           # Output or append the generated HTML table row
+           $MySecretsTbl
+        }
+
         
         # ----------------------------------------------------------------------
         # Calculate risk score per acl - ace insights
@@ -4292,6 +4344,19 @@ $NewHtmlReport = @"
   <script src="https://cdn.jsdelivr.net/npm/apexsankey"></script>
   <title>Report</title>
   <style>    
+
+    #recoveredsecretstable th, #recoveredsecretstable td {
+        max-width: 100px;
+        overflow-wrap: break-word;
+        white-space: normal;
+    }
+
+    #aceTable th, #aceTable td {
+        max-width: 100px;
+        overflow-wrap: break-word;
+        white-space: normal;
+    }
+
      .modern-input {
             width: 150px;
             padding: 8px 12px;
@@ -5750,6 +5815,7 @@ input[type="checkbox"]:checked::before {
         <label id="btnidentities" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('IdentityInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnidentities');">Identities</label>
 		<label id="noactionmenubar2" href="#" class="stuff" style="background-color: transparent;border-bottom: 0.25px dashed gray; opacity: 0.25; width:85%; margin-bottom: 6px; margin-top:-1px;border-radius: 0px;outline: none;"></label>			
         <label id="btnif" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF');updateLabelColors('tabs', 'btnif');">Interesting Files</label>			        			
+        <label id="btnSecretsPage" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('SecretsPage');radiobtn.checked = true;updateLabelColors('tabs', 'btnSecretsPage');">Recovered Secrets</label>	
         <label id="btnShareGraph" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareGraph');radiobtn.checked = true;updateLabelColors('tabs', 'btnShareGraph');">ShareGraph</label>	
 		<label id="noactionmenuheader3"class="tabLabel" style="background-color: transparent;width:100%;color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:2px;font-weight:bolder;"><strong>Recommendations</strong></label>
 		<label id="btnexploit" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Attacks');radiobtn.checked = true;updateLabelColors('tabs', 'btnexploit');">Exploiting Access</label>		
@@ -6933,6 +6999,61 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
   </tbody>
 </table>
 <div id="paginationfg" style="margin:10px;"></div>
+</div>
+
+<!--  
+|||||||||| PAGE: Secrets
+-->
+
+<input class="tabInput"  name="tabs" type="radio" id="SecretsPage"/> 
+<label class="tabLabel" onClick="updateTab('SecretsPage',false)" for="SecretsPage"></label>
+<div id="tabPanel" class="tabPanel">
+<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Recovered Secrets</h2>
+<div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>
+<div style="margin-left:10px;margin-top:3px;width:95%;">
+This page includes a list of the credentials that were recovered during data collection.
+</div>
+
+                    <div class="card" style="width: 20%">	
+	                    <div class="cardtitle" style="color:gray;font-size: 16px; font-weight: bold;">
+		                   Credentials Recovered
+	                    </div>		
+                                    <br><br>
+				                    <span class="percentagetext" style = "color:#f08c41;">                    
+					                    $SecretsRecoveredCount &nbsp;                     
+				                    </span>	
+			                    <Br>
+                    </div>
+					
+					
+<div class="searchbar" style="margin-top:10px; text-align:left; display: flex;" >
+        <input type="text" id="secretsInputTwo" placeholder=" Search..." style="margin-top: 8px; height: 25px; font-size: 14px; padding-left:3px;margin-left: 10px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
+        <div style="font-size:12;text-align: left;cursor: pointer;color:gray; margin-top: 13px; margin-left: 5px;" onmouseover="this.style.color='white';" onmouseout="this.style.textDecoration='';this.style.fontWeight='normal';this.style.color='gray';" onclick="document.getElementById('secretsInputTwo').value = '';applyFiltersAndSort('recoveredsecretstable', 'secretsInputTwo', 'secretsCounterTwo', 'paginationsecrets');">Clear</div>
+		<br><br>
+</div>		
+<div style="display: flex; margin-left:10px; font-size:11; text-align:left;" >	
+        <div id="secretsCounterTwo" style="margin-top:5px;">Loading...</div>        
+        <a style="font-size:11; margin-top: 5px; margin-left: 5px;" href="#" onclick="extractAndDownloadCSV('recoveredsecretstable', 1)">Export</a>
+</div>	
+<table class="table table-striped table-hover tabledrop" id="recoveredsecretstable" style="width:95%;">
+  <thead>
+    <tr>  
+      <th onclick="sortTable('recoveredsecretstable',0,'alpha')" align="left" style="cursor: pointer;">ComputerName</th>
+      <th onclick="sortTable('recoveredsecretstable',1,'alpha')" align="left" style="cursor: pointer;">ShareName</th> 
+      <th onclick="sortTable('recoveredsecretstable',2,'alpha')" align="left" style="cursor: pointer;">FileName</th>
+      <th onclick="sortTable('recoveredsecretstable',3,'alpha')" align="left" style="cursor: pointer;  width:50px;">FilePath</th>         	 	 
+      <th onclick="sortTable('recoveredsecretstable',4,'alpha')"  align="left" style="cursor: pointer; ">Username</th>      	 	 
+      <th onclick="sortTable('recoveredsecretstable',5,'alpha')"  align="left" style="cursor: pointer;">Password</th>
+      <th onclick="sortTable('recoveredsecretstable',6,'alpha')"  align="left" style="cursor: pointer;">PasswordEnc</th>
+      <th onclick="sortTable('recoveredsecretstable',7,'alpha')"  align="left" style="cursor: pointer;  width:50px;">KeyfilePath</th>         
+      <th onclick="sortTable('recoveredsecretstable',8,'alpha')" align="left" style="cursor: pointer;">Details</th>         
+    </tr>
+  </thead>
+  <tbody>
+  $SecretsRecoveredString	
+  </tbody>
+</table>
+<div id="paginationsecrets" style="margin:10px;"></div>
 </div>
 
 <!--  
@@ -11170,6 +11291,10 @@ applyFiltersAndSort('sharenametable', 'filterInput', 'filterCounter', 'paginatio
 // Initialize folder group table    
 document.getElementById('filterInputTwo').addEventListener("keyup", () => applyFiltersAndSort('foldergrouptable', 'filterInputTwo', 'filterCounterTwo', 'paginationfg'));
 applyFiltersAndSort('foldergrouptable', 'filterInputTwo', 'filterCounterTwo', 'paginationfg');	
+
+// Initialize secrets name table 
+document.getElementById('secretsInputTwo').addEventListener("keyup", () => applyFiltersAndSort('recoveredsecretstable', 'secretsInputTwo', 'secretsCounterTwo', 'paginationsecrets'));
+applyFiltersAndSort('recoveredsecretstable', 'secretsInputTwo', 'secretsCounterTwo', 'paginationsecrets');
 
 // Initialize interesting files table
 document.getElementById('filterInputIF').addEventListener("keyup", () => applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF'));
@@ -24309,7 +24434,7 @@ function Get-PwMySQLConfig {
         }
         return $credentials
     } else {
-        Write-Warning "Username or password not found in the file."
+        # Write-Warning "Username or password not found in the file."
         return $null
     }
 }
@@ -25839,15 +25964,13 @@ function Get-PrivateKeyFilePath {
                 TargetURL    = "NA"
                 TargetServer = "NA"
                 TargetPort   = "NA"
-		        Database     = "NA"
-		        Domain       = "NA"
+		Database     = "NA"
+		Domain       = "NA"
                 Username     = "NA"
                 Password     = "NA"
                 PasswordEnc  = "NA"
-		        KeyFilePath  = $FilePath 
+		KeyFilePath  = $FilePath 
     }
 
     return $result
 }
-
-
