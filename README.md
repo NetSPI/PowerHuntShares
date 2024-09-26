@@ -223,15 +223,12 @@ Todos
 * Add active sessions data to help identify potential owners/users of share.
 * Pull spns and computer description/spn account descriptions to help identify owner/business unit.
 * Create bloodhound import file / edge (highrisk share)
-* Research to identify additional high risk share names based on common technology
 * Add better support for IPv6
-* Modify sim weight to include sharename; 
-* Modify sim weight to be granular based on number of files that exist across all shares. Right now it look for one....as that number increases, increase the weight.
 * Dynamic identification of spikes in high risk share creation/common groupings, need to better summarize supporting detail beyond just the timeline. For each of the data insights, add average number of shares created for insight grouping by year/month (for folder hash / name etc), and the increase the month/year it spikes. (attempt to provide some historical context); maybe even list the most common non default directories being used by each of those. Potentially adding "first seen date" as well. (in alpha)
 * Dynamic identification of share creation, modification, and access cadence across a share population that share a name and have a high similarity level.
 * add showing share permissions (along with the already displayed NTFS permissions) and resultant access (most restrictive wins)
 * Use LLM to categorize share name groups based on share name, affected file lists, share owners, and users with acls to the affected shares.
-* add depth, file/directory flag, filename/dirname parse, parent direname parse to depth listing
+* add depth, file/directory flag
  
 </pre>
  
