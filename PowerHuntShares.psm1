@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.130
+# Version: v1.131
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -356,10 +356,15 @@ function Invoke-HuntSMBShares
             $DomainComputers = $DomainComputersRecord | 
             foreach{
                 
-                $DnsHostName = [string]$_.Properties['dnshostname']
+                $DnsHostName     = [string]$_.Properties['dnshostname']
+                $DnsHostNameOS   = [string]$_.Properties['OperatingSystem'] 
+                $DnsHostNameOSSP = [string]$_.Properties['OperatingSystemServicePack'] 
+
                 if($DnsHostName -notlike ""){
                     $object = New-Object psobject
-                    $Object | Add-Member Noteproperty ComputerName $DnsHostName
+                    $Object | Add-Member Noteproperty ComputerName    $DnsHostName
+                    $Object | Add-Member Noteproperty OperatingSystem $DnsHostNameOS
+                    $Object | Add-Member Noteproperty ServicePack     $DnsHostNameOSSP
                     $Object      
                 }
             }
