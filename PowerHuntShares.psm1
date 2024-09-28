@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.132
+# Version: v1.133
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -2478,7 +2478,7 @@ function Invoke-HuntSMBShares
         }
 
         # Create java script chart objects - names
-        $DomainComputerOSSum |  Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Computers-Versions.csv"
+        $DomainComputerOSSum |  Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Domain-Computers-Versions.csv"
         $DomainComputerOSListJsNames  = ""
         $DomainComputerOSListJsValues = ""
         $DomainComputerOSSum |
