@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.131
+# Version: v1.132
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -2448,8 +2448,52 @@ function Invoke-HuntSMBShares
             $ComputerTableRows = $ComputerTableRows + $ComputerTableRow  
         }
 
+        # Get count of all computer objects
+        $DomainComputerFullCount = $DomainComputers | measure | select count -ExpandProperty count
+
+        # Get unique list of operating systems
+        $DomainComputerOSList    = $DomainComputers | Select OperatingSystem -Unique
+        
+        # Get count of unique operating systems
+        $DomainComputerOSCount = $DomainComputerOSList | measure | select count -ExpandProperty count
+
+        # Get percentage of each operating system
+        $DomainComputerOSSum = $DomainComputerOSList | 
+        Foreach {
+            
+            $TargetComputerOS = $_.OperatingSystem
+            
+            # Get count
+            $TargetComputerOSCount = $DomainComputers | where OperatingSystem -eq "$TargetComputerOS" | measure | select count -ExpandProperty count
+
+            # Calculate percentage           
+            $TargetComputerOSP = [math]::Round($TargetComputerOSCount/$DomainComputerFullCount,2) * 100   
+
+            # Return powershell object os,count,percent
+            $object = New-Object psobject
+            $object | add-member noteproperty os       $TargetComputerOS
+            $object | add-member noteproperty count    $TargetComputerOSCount
+            $object | add-member noteproperty percent  $TargetComputerOSP
+            $object 
+        }
+
+        # Create java script chart objects - names
+        $DomainComputerOSSum |  Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Computers-Versions.csv"
+        $DomainComputerOSListJsNames  = ""
+        $DomainComputerOSListJsValues = ""
+        $DomainComputerOSSum |
+        foreach{
+            $TargetOSName  = $_.os 
+            $TargetOSValue = $_.percent
+            $DomainComputerOSListJsNames  = $DomainComputerOSListJsNames  + "'" + $TargetOSName + "'"
+            $DomainComputerOSListJsValues = $DomainComputerOSListJsValues + "'" + $TargetOSValue + "'"
+        }
+        $DomainComputerOSListJsNames  = "[" + $DomainComputerOSListJsNames + "]"
+        $DomainComputerOSListJsValues = "[" + $DomainComputerOSListJsValues + "]"       
+
+
         # ----------------------------------------------------------------------
-        # Create Share Name Summary Information
+        # Create Share Name Insights Data
         # ----------------------------------------------------------------------  
 
         # Get unique share name count
@@ -2507,7 +2551,7 @@ function Invoke-HuntSMBShares
         } 
 
         # ----------------------------------------------------------------------
-        # Create Folder Group Summary Information
+        # Create Folder Group Insights Data
         # ---------------------------------------------------------------------- 
 
         $RiskLevelFolderGroupCountCritical = 0
