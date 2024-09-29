@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.99
+# Version: v1.101
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Analyze-HuntSMBShares
 {    
@@ -1890,6 +1890,79 @@ function Analyze-HuntSMBShares
 
             # Add row to rows    
             $ComputerTableRows = $ComputerTableRows + $ComputerTableRow  
+        }
+
+        # Check for new format to import os vers information
+        $DomainComputersOsCheck = $DomainComputers | gm | select name | where name -like 'OperatingSystem'
+        $DomainComputersOsCheckCount = $DomainComputersOsCheck | measure | select count -ExpandProperty count
+        if( $DomainComputersOsCheckCount -gt 0)
+        {
+ 
+            # Get opn445 computer with os version
+            $DomainComputerFull = $Computers445Open | 
+            foreach{
+            
+                # Get computer
+                $Target445Comp = $_.ComputerName
+
+                # Get of version
+                $Target445OS   = $DomainComputers | where ComputerName -eq $Target445Comp | Select OperatingSystem -ExpandProperty OperatingSystem
+
+                # Create new object
+                $myObject = New-Object PSObject
+                $myObject | Add-Member -MemberType NoteProperty -Name "ComputerName"    -Value $Target445Comp 
+                $myObject | Add-Member -MemberType NoteProperty -Name "OperatingSystem" -Value $Target445OS
+
+                # Return object
+                $myObject
+            }
+
+            # Get count of all computer objects
+            $DomainComputerFullCount = $DomainComputerFull | measure | select count -ExpandProperty count
+
+            # Get unique list of operating systems
+            $DomainComputerOSList    = $DomainComputerFull | Select OperatingSystem -Unique
+        
+            # Get count of unique operating systems
+            $DomainComputerOSCount = $DomainComputerOSList | measure | select count -ExpandProperty count
+
+            # Get percentage of each operating system
+            $DomainComputerOSSum = $DomainComputerOSList | 
+            Foreach {
+            
+                $TargetComputerOS = $_.OperatingSystem
+            
+                # Get count
+                $TargetComputerOSCount = $DomainComputers | where OperatingSystem -eq "$TargetComputerOS" | measure | select count -ExpandProperty count
+
+                # Calculate percentage           
+                $TargetComputerOSP = [math]::Round($TargetComputerOSCount/$DomainComputerFullCount,2) * 100   
+
+                # Return powershell object os,count,percent
+                $object = New-Object psobject
+                $object | add-member noteproperty os       $TargetComputerOS
+                $object | add-member noteproperty count    $TargetComputerOSCount
+                $object | add-member noteproperty percent  $TargetComputerOSP
+                $object 
+            }
+
+            # Save results to a csv 
+            $DomainComputerOSSum |  Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Domain-Computers-Open445-OSVer.csv"
+
+            # Create java script chart objects - names
+            $DomainComputerOSListJsNames  = ""
+            $DomainComputerOSListJsValues = ""
+            $DomainComputerOSSum |
+            foreach{
+                $TargetOSName  = $_.os 
+                $TargetOSValue = $_.percent
+                $DomainComputerOSListJsNames  = $DomainComputerOSListJsNames  + "'" + $TargetOSName + "'"
+                $DomainComputerOSListJsValues = $DomainComputerOSListJsValues + "'" + $TargetOSValue + "'"
+            }
+            $DomainComputerOSListJsNames  = "[" + $DomainComputerOSListJsNames + "]"
+            $DomainComputerOSListJsValues = "[" + $DomainComputerOSListJsValues + "]"       
+        }else{
+            Write-Verbose "No operating system column to import from computer list."
         }
 
         # ----------------------------------------------------------------------
@@ -22110,14 +22183,211 @@ function Get-ADDomainFromFQDN {
 }
 
 # ------------------------------------------------------------
+# Password File Download Function 
+# ------------------------------------------------------------
+
+function Copy-FileWithStructure {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$FilePath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ComputerName,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ShareName,
+
+        [Parameter(Mandatory = $false)]
+        [string]$OutputDirectory = (Get-Location).Path
+    )
+
+    # Step 1: Check if the file exists and is a file, not a directory
+    if (-Not (Test-Path $FilePath)) {
+        Write-Error "Path not found: $FilePath"
+        return
+    }
+    if (-Not (Get-Item $FilePath).PSIsContainer) {
+        # Step 2: Get file size and check if it's greater than 5MB
+        $fileSize = (Get-Item $FilePath).Length
+        if ($fileSize -gt 5MB) {
+            Write-Output "File size is greater than 5MB, exiting."
+            return
+        }
+
+        # Step 3: Create "secrets" subdirectory if it doesn't exist
+        $secretsDir = Join-Path $OutputDirectory "secrets"
+        if (-Not (Test-Path $secretsDir)) {
+            $null = New-Item -Path $secretsDir -ItemType Directory -Force
+        }
+
+        # Step 4: Create subfolder for computer name if it doesn't exist
+        $computerDir = Join-Path $secretsDir $ComputerName
+        if (-Not (Test-Path $computerDir)) {
+            $null = New-Item -Path $computerDir -ItemType Directory -Force
+        }
+
+        # Step 5: Create subfolder for share name if it doesn't exist
+        $shareDir = Join-Path $computerDir $ShareName
+        if (-Not (Test-Path $shareDir)) {
+            $null = New-Item -Path $shareDir -ItemType Directory -Force
+        }
+
+        # Step 6: Handle subfolder structure from file path in share name folder
+        $relativePath = $FilePath -replace "^\\\\$ComputerName\\$ShareName\\", ''
+        $targetDir = [System.IO.Path]::GetDirectoryName($relativePath)
+
+        if ($targetDir -ne '') {
+            $fullTargetDir = Join-Path $shareDir $targetDir
+            if (-Not (Test-Path $fullTargetDir)) {
+                $null = New-Item -Path $fullTargetDir -ItemType Directory -Force
+            }
+        } else {
+            $fullTargetDir = $shareDir
+        }
+
+        # Step 7: Copy the file to the target directory with error handling
+        try {
+            $destinationFile = Join-Path $fullTargetDir (Get-Item $FilePath).Name
+            Copy-Item -Path $FilePath -Destination $destinationFile -ErrorAction Stop
+            Write-Verbose "File successfully copied to $destinationFile"
+        } catch {
+            Write-Error "Error copying file: $_"
+        }
+    } else {
+        Write-Error "The path provided is a directory, not a file: $FilePath"
+    }
+
+    # Return local file path
+    $destinationFile
+}
+
+# ------------------------------------------------------------
 # Password Parsing Functions
 # ------------------------------------------------------------
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input: web.config
+function Get-PwWebConfig {
+    param (
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required - $configFilePath
+    )
+
+    $configFilePath = $FilePath
+
+    # Load the config file as XML
+    [xml]$configXml = Get-Content $configFilePath
+
+    # Initialize a DataTable to store results
+    $dtCredentials = New-Object System.Data.DataTable
+    $null = $dtCredentials.Columns.Add("ComputerName", [string])
+    $null = $dtCredentials.Columns.Add("ShareName", [string])
+    $null = $dtCredentials.Columns.Add("UncFilePath", [string])
+    $null = $dtCredentials.Columns.Add("FileName", [string])
+    $null = $dtCredentials.Columns.Add("Section", [string])
+    $null = $dtCredentials.Columns.Add("ObjectName", [string])
+    $null = $dtCredentials.Columns.Add("TargetURL", [string])
+    $null = $dtCredentials.Columns.Add("TargetServer", [string])
+    $null = $dtCredentials.Columns.Add("TargetPort", [string])
+    $null = $dtCredentials.Columns.Add("Database", [string])
+    $null = $dtCredentials.Columns.Add("Domain", [string])
+    $null = $dtCredentials.Columns.Add("Username", [string])
+    $null = $dtCredentials.Columns.Add("Password", [string])
+    $null = $dtCredentials.Columns.Add("PasswordEnc", [string])
+    $null = $dtCredentials.Columns.Add("KeyFilePath", [string])
+
+    # Helper function to add rows to DataTable
+    function Add-CredentialsToDataTable {
+        param (
+            [string]$computerName,
+            [string]$shareName,
+            [string]$uncFilePath,
+            [string]$fileName,
+            [string]$section,
+            [string]$name,
+            [string]$url,
+            [string]$server,
+            [string]$port,
+            [string]$database,
+            [string]$domain,
+            [string]$username,
+            [string]$password,
+            [string]$passwordEnc = "NA",
+            [string]$KeyFilePath = "NA"
+        )
+        $null = $dtCredentials.Rows.Add($computerName, $shareName, $uncFilePath, $fileName, $section, $name, $url, $server, $port, $database, $domain, $username, $password, $passwordEnc, $KeyFilePath)
+    }
+
+    # Parse connectionStrings for server, port, username, password, and database
+    if ($configXml.configuration.connectionStrings) {
+        foreach ($connection in $configXml.configuration.connectionStrings.add) {
+            $connectionString = $connection.connectionString
+            $providerName = $connection.providerName
+            $name = $connection.name
+
+            # Initialize variables for potential data
+            $server = $null
+            $port = $null
+            $user = $null
+            $password = $null
+            $url = $null
+            $database = $null
+
+            # Parse connection strings
+            if ($connectionString -match "Host\s*=\s*([^;]+).*?Port\s*=\s*(\d+).*?Username\s*=\s*([^;]+).*?Password\s*=\s*([^;]+)") {
+                $server = $matches[1]
+                $port = $matches[2]
+                $user = $matches[3]
+                $password = $matches[4]
+                $url = "Host=$server;Port=$port"
+            } elseif ($connectionString -match "(Server|Data Source)\s*=\s*([^;,]+)(?:,(\d+))?") {
+                $server = $matches[2]
+                if ($matches[3]) { $port = $matches[3] }
+                $url = "Server=$server"
+            }
+
+            # Capture the database/catalog if found
+            if ($connectionString -match "(Initial Catalog|Database|Data Source)\s*=\s*([^;]+)") {
+                $database = $matches[2]
+            }
+
+            if ($connectionString -match "User\s*Id\s*=\s*([^;]+)") {
+                $user = $matches[1]
+            }
+            if ($connectionString -match "Password\s*=\s*([^;]+)") {
+                $password = $matches[1]
+            }
+
+            # Add row to the DataTable if username and password exist
+            if ($user -and $password) {
+                Add-CredentialsToDataTable -computerName $ComputerName -shareName $ShareName -uncFilePath $UncFilePath -fileName $FileName `
+                    -section "ConnectionStrings ($providerName)" -name $name -url $url -server $server -port $port -database $database -username $user -password $password
+            }
+        }
+    }
+
+    # Output the parsed credentials using the DataTable
+    if ($dtCredentials.Rows.Count -eq 0) {
+        Write-Host "No credentials found." -ForegroundColor Red
+    } else {
+        $dtCredentials | select ComputerName, ShareName, UncFilePath, FileName, Section, ObjectName, TargetURL, TargetServer, TargetPort, Database, Domain, Username, Password, PasswordEnc, KeyFilePath
+    }
+}
+# Get-PwWebConfig -FilePath "C:\tools\Sample Configuration Files\configs\web.config" -ComputerName 'computer' -ShareName 'share' -FileName 'file.txt' -UncFilePath '\\computer\share\file.txt'
+
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Intented input: wp-config.php
 function Get-PwWordPressConfig {
     param (
-        [string]$FilePath
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
     )
 
     # Check if the file exists
@@ -22149,195 +22419,40 @@ function Get-PwWordPressConfig {
     if ($dbUsername -and $dbPassword) {
         # Return the results as a PowerShell object
         [PSCustomObject]@{
-            Username = $dbUsername
-            Password = $dbPassword
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "NA"
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = "NA"
+                TargetPort   = "NA"
+                Database     = "NA"
+                Domain       = "NA"
+                Username     = $dbUsername
+                Password     = $dbPassword
+                PasswordEnc  = "NA"
+                KeyFilePath  = "NA"
         }
     }
     else {
         Write-Error "Username or Password not found in the configuration file."
     }
 }
+#Get-PwWordPressConfig -FilePath 'C:\tools\Sample Configuration Files\configs\wp-config.php' -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt' 
 
-
-# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
-# Intended input: web.config
-# Function to parse configuration files for credentials
-function Get-PwWebConfig{
-    param (
-        [string]$configFilePath
-    )
-
-    # Load the config file as XML
-    [xml]$configXml = Get-Content $configFilePath
-
-    # Initialize a DataTable to store results
-    $dtCredentials = New-Object System.Data.DataTable
-    $null = $dtCredentials.Columns.Add("Name", [string])
-    $null = $dtCredentials.Columns.Add("Section", [string])
-    $null = $dtCredentials.Columns.Add("URL", [string])
-    $null = $dtCredentials.Columns.Add("Server", [string])
-    $null = $dtCredentials.Columns.Add("Port", [string])
-    $null = $dtCredentials.Columns.Add("UserName", [string])
-    $null = $dtCredentials.Columns.Add("Password", [string])
-
-    # Helper function to add rows to DataTable
-    function Add-CredentialsToDataTable {
-        param (
-            [string]$name,
-            [string]$section,
-            [string]$url,
-            [string]$server,
-            [string]$port,
-            [string]$username,
-            [string]$password
-        )
-        $null = $dtCredentials.Rows.Add($name, $section, $url, $server, $port, $username, $password)
-    }
-
-    # Dictionary to temporarily store related credentials
-    $credentialPairs = @{}
-
-    # Function to store credentials in temporary dictionary
-    function Add-CredentialPair {
-        param (
-            [string]$name,
-            [string]$section,
-            [string]$key,
-            [string]$value
-        )
-        
-        if ($credentialPairs[$name]) {
-            $credentialPairs[$name][$key] = $value
-        } else {
-            $credentialPairs[$name] = @{}
-            $credentialPairs[$name][$key] = $value
-            $credentialPairs[$name]["Section"] = $section
-        }
-
-        # If both username and password are available, add them to the DataTable
-        if ($credentialPairs[$name]["UserName"] -and $credentialPairs[$name]["Password"]) {
-            Add-CredentialsToDataTable -name $name -section $credentialPairs[$name]["Section"] `
-                -url $credentialPairs[$name]["URL"] -server $credentialPairs[$name]["Server"] `
-                -port $credentialPairs[$name]["Port"] -username $credentialPairs[$name]["UserName"] `
-                -password $credentialPairs[$name]["Password"]
-
-            # Clear the stored credential after adding it to the table
-            $credentialPairs.Remove($name)
-        }
-    }
-
-    # Parse all instances of appSettings for OAuth, WebClient, API, and other credentials
-    if ($configXml.SelectNodes('//appSettings')) {
-        foreach ($appSettings in $configXml.SelectNodes('//appSettings')) {
-            foreach ($setting in $appSettings.add) {
-                $key = $setting.key
-                $value = $setting.value
-                $section = "AppSettings"
-
-                # Handle specific cases for OAuth, API, and WebClient settings
-                switch ($key) {
-                    "OAuthServiceUrl" { Add-CredentialPair -name "OAuth" -section $section -key "URL" -value $value }
-                    "ClientId" { Add-CredentialPair -name "OAuth" -section $section -key "UserName" -value $value }
-                    "ClientSecret" { Add-CredentialPair -name "OAuth" -section $section -key "Password" -value $value }
-                    "ServiceUrl" { Add-CredentialPair -name "WebClient" -section $section -key "URL" -value $value }
-                    "ServiceUserName" { Add-CredentialPair -name "WebClient" -section $section -key "UserName" -value $value }
-                    "ServicePassword" { Add-CredentialPair -name "WebClient" -section $section -key "Password" -value $value }
-                    "ApiEndpoint" { Add-CredentialPair -name "API" -section $section -key "URL" -value $value }
-                    "ApiUserName" { Add-CredentialPair -name "API" -section $section -key "UserName" -value $value }
-                    "ApiPassword" { Add-CredentialPair -name "API" -section $section -key "Password" -value $value }
-                    "ApplicationUsername" { Add-CredentialPair -name "Application" -section $section -key "UserName" -value $value }
-                    "ApplicationPassword" { Add-CredentialPair -name "Application" -section $section -key "Password" -value $value }
-                }
-            }
-        }
-    }
-
-    # Parse custom serviceCredentials section
-    if ($configXml.configuration.serviceCredentials) {
-        foreach ($setting in $configXml.configuration.serviceCredentials.add) {
-            $key = $setting.key
-            $value = $setting.value
-            $section = "ServiceCredentials"
-
-            # Handle specific cases for custom service credentials
-            switch ($key) {
-                "ServiceUrl" { Add-CredentialPair -name "CustomService" -section $section -key "URL" -value $value }
-                "UserName" { Add-CredentialPair -name "CustomService" -section $section -key "UserName" -value $value }
-                "Password" { Add-CredentialPair -name "CustomService" -section $section -key "Password" -value $value }
-            }
-        }
-    }
-
-    # Parse connectionStrings for server, port, username, and password
-    if ($configXml.configuration.connectionStrings) {
-        foreach ($connection in $configXml.configuration.connectionStrings.add) {
-            $connectionString = $connection.connectionString
-            $providerName = $connection.providerName
-            $name = $connection.name
-
-            # Initialize variables for potential data
-            $server = $null
-            $port = $null
-            $user = $null
-            $password = $null
-            $url = $null
-
-            # Parse connection strings
-            if ($connectionString -match "Host\s*=\s*([^;]+).*?Port\s*=\s*(\d+).*?Username\s*=\s*([^;]+).*?Password\s*=\s*([^;]+)") {
-                $server = $matches[1]
-                $port = $matches[2]
-                $user = $matches[3]
-                $password = $matches[4]
-                $url = "Host=$server;Port=$port"
-            } elseif ($connectionString -match "(Server|Data Source)\s*=\s*([^;,]+)(?:,(\d+))?") {
-                $server = $matches[2]
-                if ($matches[3]) { $port = $matches[3] }
-                $url = "Server=$server"
-            }
-
-            if ($connectionString -match "User\s*Id\s*=\s*([^;]+)") {
-                $user = $matches[1]
-            }
-            if ($connectionString -match "Password\s*=\s*([^;]+)") {
-                $password = $matches[1]
-            }
-
-            # Add row to the DataTable if username and password exist
-            if ($user -and $password) {
-                Add-CredentialsToDataTable -name $name -section "ConnectionStrings ($providerName)" -url $url -server $server -port $port -username $user -password $password
-            }
-        }
-    }
-
-    # Parse system.net/mailSettings for SMTP credentials and URLs
-    if ($configXml.configuration.'system.net'.mailSettings) {
-        foreach ($smtp in $configXml.configuration.'system.net'.mailSettings.smtp) {
-            $smtpServer = $smtp.network.host
-            $smtpPort = $smtp.network.port
-            $smtpUser = $smtp.network.userName
-            $smtpPass = $smtp.network.password
-            $url = "smtp://${smtpServer}:${smtpPort}"
-
-            if ($smtpUser -and $smtpPass) {
-                Add-CredentialsToDataTable -name "SMTP Configuration" -section "SMTP" -url $url -server $smtpServer -port $smtpPort -username $smtpUser -password $smtpPass
-            }
-        }
-    }
-
-    # Output the parsed credentials using the DataTable
-    if ($dtCredentials.Rows.Count -eq 0) {
-        Write-Host "No credentials found." -ForegroundColor Red
-    } else {
-        $dtCredentials | select Name, Section, URL, Server, Port, UserName, Password
-    }
-}
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Intented input: WinSCP.ini
 function Get-PwWinSCPConfig {
     param (
-        [Parameter(Mandatory = $true)]
-        [string]$FilePath
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
     )
 
     # Check if file exists
@@ -22351,21 +22466,31 @@ function Get-PwWinSCPConfig {
 
     # Initialize an empty object for results
     $result = [PSCustomObject]@{
-        HostName       = $null
-        PortNumber     = $null
-        PrivateKeyFile = $null
-        UserName       = $null
-        Password       = $null
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "NA"
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = $null
+                TargetPort   = $null
+                Database     = "NA"
+                Domain       = "NA"
+                Username     = $null
+                Password     = $null
+                PasswordEnc  = "NA"
+                KeyFilePath  = "NA"
     }
 
     # Parse the .ini file for relevant information
     foreach ($line in $content) {
         if ($line -match '^HostName=(.*)') {
-            $result.HostName = $matches[1]
+            $result.TargetServer = $matches[1]
         } elseif ($line -match '^PortNumber=(.*)') {
-            $result.PortNumber = [int]$matches[1]
+            $result.TargetPort = [int]$matches[1]
         } elseif ($line -match '^PrivateKeyFile=(.*)') {
-            $result.PrivateKeyFile = $matches[1]
+            $result.KeyFilePath  = $matches[1]
         } elseif ($line -match '^UserName=(.*)') {
             $result.UserName = $matches[1]
         } elseif ($line -match '^Password=(.*)') {
@@ -22376,14 +22501,22 @@ function Get-PwWinSCPConfig {
     # Return the result object
     return $result
 }
+# Get-PwWinSCPConfig -FilePath "C:\tools\Sample Configuration Files\configs\WinSCP.ini"  -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt' 
+
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Intended intput: vnc.ini
 function Get-PwVnc {
     param (
-        [Parameter(Mandatory=$true)]
-        [string]$VncIniPath
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
     )
+
+    # Set vnc inipath
+    $VncIniPath = $FilePath 
 
     # Define the fixed DES key used by VNC
     $desKey = [byte[]](0x23, 0x52, 0x6A, 0x3B, 0x58, 0x92, 0x67, 0x34)
@@ -22430,16 +22563,37 @@ function Get-PwVnc {
 
     # Return the decrypted password as an object
     return [pscustomobject]@{
-        DecryptedPassword = $decryptedPassword
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "NA"
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = "NA"
+                TargetPort   = "NA"
+                Database     = "NA"
+                Domain       = "NA"
+                Username     = "NA"
+                Password     = $decryptedPassword
+                PasswordEnc  = $encryptedHex
+		        KeyFilePath  = "NA"
     }
 }
+# Get-PwVnc -FilePath "C:\tools\Sample Configuration Files\configs\vnc.ini"  -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt' 
+
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Intended input: *unattend*.xml
 # Supports cleartext and base46 encoded passwords
-function Parse-PwUnattendFile {
+function Get-PwUnattendFile {
     param (
-        [string]$filePath
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
     )
 
     # Load the XML file
@@ -22467,7 +22621,7 @@ function Parse-PwUnattendFile {
                 $decodedPassword = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($passwordValue))
                 return $decodedPassword
             } catch {
-                Write-Host "Error: Unable to decode Base64 string, returning original value."
+                # Write-Host "Error: Unable to decode Base64 string, returning original value."
                 return $passwordValue
             }
         }
@@ -22489,9 +22643,22 @@ function Parse-PwUnattendFile {
         $password = Decode-PasswordIfNeeded -passwordValue $password -isPlainText $isPlainText
 
         $credentials += [pscustomobject]@{
-            User     = $username
-            Password = $password
-            Source   = "AutoLogon"
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "AutoLogon"
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = "NA"
+                TargetPort   = "NA"
+                Database     = "NA"
+                Domain       = "NA"
+                Username     = $username
+                Password     = $password
+                PasswordEnc  = "NA"
+		        KeyFilePath  = "NA"
         }
     }
 
@@ -22506,23 +22673,45 @@ function Parse-PwUnattendFile {
         $password = Decode-PasswordIfNeeded -passwordValue $password -isPlainText $isPlainText
 
         $credentials += [pscustomobject]@{
-            User     = $username
-            Password = $password
-            Source   = "LocalAccount"
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "LocalAccount"
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = "NA"
+                TargetPort   = "NA"
+                Database     = "NA"
+                Domain       = "NA"
+                Username     = $username
+                Password     = $password
+                PasswordEnc  = "NA"
+		        KeyFilePath  = "NA"
         }
     }
 
     # Return the collected credentials as an array of objects
     return $credentials
 }
+# Get-PwUnattendFile -filePath "C:\tools\Sample Configuration Files\configs\unattend-base64.xml" -ComputerName 'computer' -ShareName 'share' -FileName 'asdf' -UncFilePath '\\computer\share\file.txt'
+# Get-PwUnattendFile -filePath "C:\tools\Sample Configuration Files\configs\unattend-cleartext.xml"  -ComputerName 'computer' -ShareName 'share' -FileName 'asdf' -UncFilePath '\\computer\share\file.txt'
+
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Intended intput: tomcat-users.xml
 function Get-PwTomcatUsers {
     param (
-        [Parameter(Mandatory = $true)]
-        [string]$TomcatConfigFile
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
     )
+
+    # Set file
+    $TomcatConfigFile = $FilePath 
 
     # Load the XML file
     [xml]$xml = Get-Content -Path $TomcatConfigFile
@@ -22537,8 +22726,22 @@ function Get-PwTomcatUsers {
     foreach ($user in $users) {
         # Create a PowerShell object for each user
         $userObject = [PSCustomObject]@{
-            Username = $user.name
-            Password = $user.password
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "NA"
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = "NA"
+                TargetPort   = "NA"
+                Database     = "NA"
+                Domain       = "NA"
+                Username     = $user.name
+                Password     = $user.password
+                PasswordEnc  = "NA"
+		        KeyFilePath  = "NA"
         }
 
         # Add the object to the list
@@ -22548,12 +22751,18 @@ function Get-PwTomcatUsers {
     # Display the list of users as a table
     return $usersList
 }
+# Get-PwTomcatUsers -FilePath "C:\tools\Sample Configuration Files\configs\tomcat-users.xml" -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt' 
+
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Intended input: tnsnames.ora
 function Get-PwTnsOra {
     param(
-        [string]$FilePath
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
     )
 
     if (-Not (Test-Path -Path $FilePath)) {
@@ -22581,9 +22790,21 @@ function Get-PwTnsOra {
             if ($currentDatabase -and $currentUser -and $currentPassword) {
                 # Store the previous credentials
                 $credentialsList += [pscustomobject]@{
-                    Database = $currentDatabase
-                    User     = $currentUser
-                    Password = $currentPassword
+                    ComputerName = $ComputerName
+                    ShareName    = $ShareName
+                    UncFilePath  = $UncFilePath
+                    FileName     = $FileName
+                    Section      = "NA"
+                    ObjectName   = "NA"
+                    TargetURL    = "NA"
+                    TargetServer = "NA"
+                    TargetPort   = "NA"
+                    Database     = $currentDatabase
+                    Domain       = "NA"
+                    Username     = $currentUser
+                    Password     = $currentPassword
+                    PasswordEnc  = "NA"
+		            KeyFilePath  = "NA"
                 }
             }
 
@@ -22593,13 +22814,13 @@ function Get-PwTnsOra {
             $currentPassword = $null
         }
 
-        # Match the USER line
-        if ($line -match 'USER\s*=\s*(.+)$') {
+        # Match the USER line and remove the trailing ')'
+        if ($line -match 'USER\s*=\s*(.+)\)$') {
             $currentUser = $matches[1]
         }
 
-        # Match the PASSWORD line
-        if ($line -match 'PASSWORD\s*=\s*(.+)$') {
+        # Match the PASSWORD line and remove the trailing ')'
+        if ($line -match 'PASSWORD\s*=\s*(.+)\)$') {
             $currentPassword = $matches[1]
         }
     }
@@ -22607,22 +22828,39 @@ function Get-PwTnsOra {
     # Capture the last set of credentials
     if ($currentDatabase -and $currentUser -and $currentPassword) {
         $credentialsList += [pscustomobject]@{
-            Database = $currentDatabase
-            User     = $currentUser
-            Password = $currentPassword
+            ComputerName = $ComputerName
+            ShareName    = $ShareName
+            UncFilePath  = $UncFilePath
+            FileName     = $FileName
+            Section      = "NA"
+            ObjectName   = "NA"
+            TargetURL    = "NA"
+            TargetServer = "NA"
+            TargetPort   = "NA"
+            Database     = $currentDatabase
+            Domain       = "NA"
+            Username     = $currentUser
+            Password     = $currentPassword
+            PasswordEnc  = "NA"
+		    KeyFilePath  = "NA"
         }
     }
 
     # Output the results as a list of objects
     return $credentialsList
 }
+# Get-PwTnsOra  -FilePath "C:\tools\Sample Configuration Files\configs\tnsnames.ora" -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt' 
+
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Intended input: sysprep.inf
 function Get-PwSysprepFile {
     param (
-        [Parameter(Mandatory=$true)]
-        [string]$FilePath
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
     )
 
     # Check if file exists
@@ -22644,78 +22882,170 @@ function Get-PwSysprepFile {
 
     # Loop through each line and extract relevant credentials
     foreach ($line in $fileContent) {
-        if ($line -match 'AdminPassword\s*=\s*(.+)') {
+        # Match exactly 'AdminPassword' and exclude DomainAdminPassword
+        if ($line -match '^AdminPassword\s*=\s*(.+)$') {
             $credentials['AdminPassword'] = $matches[1].Trim()
         }
 
-        if ($line -match 'JoinDomain\s*=\s*(.+)') {
+        if ($line -match '^JoinDomain\s*=\s*(.+)$') {
             $credentials['JoinDomain'] = $matches[1].Trim()
         }
 
-        if ($line -match 'DomainAdmin\s*=\s*(.+)') {
+        if ($line -match '^DomainAdmin\s*=\s*(.+)$') {
             $credentials['DomainAdmin'] = $matches[1].Trim()
         }
 
-        if ($line -match 'DomainAdminPassword\s*=\s*(.+)') {
+        if ($line -match '^DomainAdminPassword\s*=\s*(.+)$') {
             $credentials['DomainAdminPassword'] = $matches[1].Trim()
         }
     }
 
-    # Create and return a PowerShell object
-    $credObject = [pscustomobject]@{
-        AdminPassword        = $credentials['AdminPassword']
-        JoinDomain           = $credentials['JoinDomain']
-        DomainAdmin          = $credentials['DomainAdmin']
-        DomainAdminPassword  = $credentials['DomainAdminPassword']
+    # Create objects with Domain, Username, and Password properties
+    $adminObject = [pscustomobject]@{
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "NA"
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = "NA"
+                TargetPort   = "NA"
+		        Database     = "NA"
+		        Domain       = 'localhost'
+                Username     = 'Administrator'
+                Password     = if ($credentials['AdminPassword']) { $credentials['AdminPassword'] } else { '' }
+                PasswordEnc  = 'NA'
+		        KeyFilePath  = "NA"
     }
 
-    return $credObject
+    $domainAdminObject = [pscustomobject]@{
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "NA"
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = "NA"
+                TargetPort   = "NA"
+		        Database     = "NA"
+		        Domain       = if ($credentials['JoinDomain']) { $credentials['JoinDomain'] } else { '' }
+                Username     = if ($credentials['DomainAdmin']) { $credentials['DomainAdmin'] } else { '' }
+                Password     = if ($credentials['DomainAdminPassword']) { $credentials['DomainAdminPassword'] } else { '' }
+                PasswordEnc  = "NA"
+		        KeyFilePath  = "NA"
+    }
+
+    # Return both objects without "name" and "value" format, just as PowerShell objects
+    return $domainAdminObject, $adminObject
 }
+# Get-PwSysprepFile -FilePath "C:\tools\Sample Configuration Files\configs\sysprep.inf" -ComputerName 'computer' -ShareName 'share' -FileName 'file.txt' -UncFilePath '\\computer\share\file.txt'
+
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Intended input: standalone.xml
 function Get-PwStandalone {
     param (
-        [string]$ConfigPath
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
     )
+
+    # Set path
+    $ConfigPath = $FilePath 
     
     # Load the XML config
     [xml]$configXml = Get-Content -Path $ConfigPath
 
-    # Define a hashtable to store results
-    $result = @{}
+    # Define a list to store the objects (one for connection info, one for keystore info)
+    $results = @()
 
     # Parse the server and port from the connection URL
     $connectionUrl = $configXml.server.subsystem.datasources.datasource."connection-url"
+    $server = ''
+    $port = '3306'  # Default MySQL port
     if ($connectionUrl -match "jdbc:mysql://([^:/]+)(?::(\d+))?") {
-        $result.Server = $matches[1]
-        $result.Port = if ($matches[2]) { $matches[2] } else { "3306" } # Default MySQL port
+        $server = $matches[1]
+        if ($matches[2]) {
+            $port = $matches[2]
+        }
     }
 
-    # Get the username
-    $result.Username = $configXml.server.subsystem.datasources.datasource.security."user-name"
+    # Get the username and password for the connection
+    $username = $configXml.server.subsystem.datasources.datasource.security."user-name"
+    $password = $configXml.server.subsystem.datasources.datasource.security.password
 
-    # Get the password
-    $result.Password = $configXml.server.subsystem.datasources.datasource.security.password
+    # Create the connection info object
+    $connectionObject = [PSCustomObject]@{
 
-    # Get the keystore password from the vault section
-    $keystorePassword = $configXml.server.security.vault."vault-option" | Where-Object { $_.name -eq "KEYSTORE_PASSWORD" }
-    $result.KeystorePassword = $keystorePassword.value
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "NA"
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = $server
+                TargetPort   = $port
+		        Database     = "NA"
+		        Domain       = "NA"
+                Username     = $username
+                Password     = $password
+                PasswordEnc  = "NA"
+		        KeyFilePath  = "NA"
+    }
 
-    # Convert hashtable to PowerShell object
-    $resultObject = [PSCustomObject]$result
-    
-    # Output the result object
-    return $resultObject
+    # Add the connection info object to the list
+    $results += $connectionObject
+
+    # Parse the keystore password from the vault section
+    $keystorePasswordEntry = $configXml.server.security.vault."vault-option" | Where-Object { $_.name -eq "KEYSTORE_PASSWORD" }
+    $keystorePassword = if ($keystorePasswordEntry) { $keystorePasswordEntry.value } else { '' }
+
+    # Create the keystore password object with the same schema
+    $keystoreObject = [PSCustomObject]@{
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "NA"
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = "NA"
+                TargetPort   = "NA"
+		        Database     = "NA"
+		        Domain       = "NA"
+                Username     = 'Keystore'
+                Password     = $keystorePassword
+                PasswordEnc  = "NA"
+		        KeyFilePath  = "NA"
+    }
+
+    # Add the keystore object to the list
+    $results += $keystoreObject
+
+    # Return the list of both objects
+    return $results
 }
+# Get-PwStandalone -FilePath  "C:\tools\Sample Configuration Files\configs\standalone.xml" -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt' 
+
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Intended input: sssd.conf
 function Get-PwSssdConfig {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory = $true)]
-        [string]$FilePath
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
     )
 
     # Initialize a hashtable to store extracted values
@@ -22765,20 +23095,37 @@ function Get-PwSssdConfig {
 
     # Output the extracted configuration as a PowerShell object
     [PSCustomObject]@{
-        Domain   = $configData.Domain
-        Server   = $configData.Server
-        Username = $configData.Username
-        Password = $configData.Password
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "NA"
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = $configData.Server
+                TargetPort   = "NA"
+		        Database     = "NA"
+		        Domain       = $configData.Domain
+                Username     = $configData.Username
+                Password     = $configData.Password
+                PasswordEnc  = "NA"
+		        KeyFilePath  = "NA"
     }
 }
+# Get-PwSssdConfig -FilePath "C:\tools\Sample Configuration Files\configs\sssd.conf" -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt' 
+
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Intended input: smb.conf
 function Get-PwSmbConf {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory = $true)]
-        [string]$FilePath
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
     )
 
     # Initialize a hashtable to store extracted values
@@ -22816,10 +23163,26 @@ function Get-PwSmbConf {
 
     # Output the extracted configuration as a PowerShell object
     [PSCustomObject]@{
-        Username = $configData.Username
-        Password = $configData.Password
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "NA"
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = "NA"
+                TargetPort   = "NA"
+		        Database     = "NA"
+		        Domain       = "NA"
+                Username     = $configData.Username
+                Password     = $configData.Password
+                PasswordEnc  = "NA"
+		        KeyFilePath  = "NA"
     }
 }
+# Get-PwSmbConf -FilePath "C:\tools\Sample Configuration Files\configs\smb.conf" -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt' 
+
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Intented input: sitemanager.xml
@@ -22831,12 +23194,19 @@ function IsBase64String {
     }
     return $false
 }
-
 # Function to process the SiteManager.xml file and extract server information
 function Get-PwSiteManagerConfig {
     param (
-        [string]$xmlFilePath
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
     )
+
+
+    # Set path
+    $xmlFilePath = $FilePath  
 
     # Check if the file exists
     if (-not (Test-Path $xmlFilePath)) {
@@ -22866,21 +23236,39 @@ function Get-PwSiteManagerConfig {
 
         # Output the server details
         [pscustomobject]@{
-            Server   = $_.Host
-            Port     = $_.Port
-            Username = $_.User
-            Password = $decodedPassword
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "NA"
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = $_.Host
+                TargetPort   = $_.Port
+		        Database     = "NA"
+		        Domain       = "NA"
+                Username     = $_.User
+                Password     = $decodedPassword
+                PasswordEnc  = $base64Pass
+		        KeyFilePath  = "NA"
         }
     }
 }
+#Get-PwSiteManagerConfig -FilePath "C:\tools\Sample Configuration Files\configs\SiteManager.xml" -ComputerName 'computer' -ShareName 'share' -FileName 'file.txt' -UncFilePath '\\computer\share\file.txt'
+
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Intended input: shadow
-function Get-GetPwShadow {
+function Get-PwShadow {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory = $true)]
-        [string]$FilePath
+
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
     )
 
     # Initialize an array to store extracted user data
@@ -22911,8 +23299,23 @@ function Get-GetPwShadow {
 
         # Create an object to store the extracted information
         $userObject = [PSCustomObject]@{
-            Username     = $username
-            PasswordHash = $passwordHash
+      
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "NA"
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = "NA"
+                TargetPort   = "NA"
+		        Database     = "NA"
+		        Domain       = "NA"
+                Username     = $username
+                Password     = "NA"
+                PasswordEnc  = $passwordHash
+		        KeyFilePath  = "NA"
+               
         }
 
         # Add the object to the array
@@ -22922,14 +23325,19 @@ function Get-GetPwShadow {
     # Output the array of credentials
     return $credentials
 }
+# Get-GetPwShadow -FilePath "C:\tools\Sample Configuration Files\configs\shadow" -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt' 
+
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Intended input: setting.ini / Generic
 function Get-PwIniFile {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory = $true)]
-        [string]$FilePath
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
     )
 
     # Initialize an array to store the credentials
@@ -22961,9 +23369,22 @@ function Get-PwIniFile {
             # If we have collected username and password, store them before moving to the next section
             if ($username -and $password) {
                 $credentials += [PSCustomObject]@{
-                    Section   = $currentSection
-                    Username  = $username
-                    Password  = $password
+
+                    ComputerName = $ComputerName
+                    ShareName    = $ShareName
+                    UncFilePath  = $UncFilePath
+                    FileName     = $FileName
+                    Section      = $currentSection
+                    ObjectName   = "NA"
+                    TargetURL    = "NA"
+                    TargetServer = "NA"
+                    TargetPort   = "NA"
+		            Database     = "NA"
+		            Domain       = "NA"
+                    Username     = $username
+                    Password     = $password
+                    PasswordEnc  = "NA"
+		            KeyFilePath  = "NA"
                 }
             }
             # Reset username and password for the new section
@@ -22990,22 +23411,41 @@ function Get-PwIniFile {
     # Capture any remaining username/password pair after the last section
     if ($username -and $password) {
         $credentials += [PSCustomObject]@{
-            Section   = $currentSection
-            Username  = $username
-            Password  = $password
+
+                    ComputerName = $ComputerName
+                    ShareName    = $ShareName
+                    UncFilePath  = $UncFilePath
+                    FileName     = $FileName
+                    Section      = $currentSection
+                    ObjectName   = "NA"
+                    TargetURL    = "NA"
+                    TargetServer = "NA"
+                    TargetPort   = "NA"
+		            Database     = "NA"
+		            Domain       = "NA"
+                    Username     = $username
+                    Password     = $password
+                    PasswordEnc  = "NA"
+		            KeyFilePath  = "NA"
         }
     }
 
     # Output the credentials as PowerShell objects
     return $credentials
 }
+# Get-PwIniFile -FilePath "C:\tools\Sample Configuration Files\configs\setting.ini" -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt' 
+
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Putty.reg does not store passwords, but can point to private keys
 # Intended input: putty.reg
 function Get-PwPuttyRegFile {
     param (
-        [string]$filePath
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
     )
 
     # Check if the file exists
@@ -23034,11 +23474,22 @@ function Get-PwPuttyRegFile {
             # If we're processing a new session, save the previous one
             if ($currentSession -ne "") {
                 $sessionDetails += [pscustomobject]@{
-                    Session        = $currentSession
-                    HostName       = $hostName
-                    Port           = [int]$portNumber
-                    UserName       = $userName
-                    PrivateKeyPath = $privateKeyPath
+
+                    ComputerName = $ComputerName
+                    ShareName    = $ShareName
+                    UncFilePath  = $UncFilePath
+                    FileName     = $FileName
+                    Section      = $currentSession
+                    ObjectName   = "NA"
+                    TargetURL    = "NA"
+                    TargetServer = $hostName
+                    TargetPort   = $portNumber
+		            Database     = "NA"
+		            Domain       = "NA"
+                    Username     = $userName
+                    Password     = "NA"
+                    PasswordEnc  = "NA"
+		            KeyFilePath  = $privateKeyPath
                 }
             }
 
@@ -23074,23 +23525,40 @@ function Get-PwPuttyRegFile {
     # After the loop, add the last session if it exists
     if ($currentSession -ne "") {
         $sessionDetails += [pscustomobject]@{
-            Session        = $currentSession
-            HostName       = $hostName
-            Port           = [int]$portNumber
-            UserName       = $userName
-            PrivateKeyPath = $privateKeyPath
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = $currentSession
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = $hostName
+                TargetPort   = $portNumber
+		        Database     = "NA"
+		        Domain       = "NA"
+                Username     = $userName
+                Password     = "NA"
+                PasswordEnc  = "NA"
+		        KeyFilePath  = $privateKeyPath
         }
     }
 
     # Return the session details
     return $sessionDetails
 }
+# Get-PwPuttyRegFile -FilePath "C:\tools\Sample Configuration Files\configs\putty.reg" -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt'
+
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Inteded input: server.xml
 function Get-PwServerXml {
     param (
-        [string]$filePath
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
     )
 
     # Load the XML file
@@ -23102,9 +23570,22 @@ function Get-PwServerXml {
     # Parse basicRegistry user credentials
     $xmlContent.server.basicRegistry.user | ForEach-Object {
         $credentials += [pscustomobject]@{
-            User     = $_.name
-            Password = $_.password
-            Source   = 'basicRegistry'
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = 'basicRegistry'
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = "NA"
+                TargetPort   = "NA"
+		        Database     = "NA"
+		        Domain       = "NA"
+                Username     = $_.name
+                Password     = $_.password
+                PasswordEnc  = "NA"
+		        KeyFilePath  = "NA"
         }
     }
 
@@ -23114,40 +23595,84 @@ function Get-PwServerXml {
 
     if ($dbUser -and $dbPass) {
         $credentials += [pscustomobject]@{
-            User     = $dbUser.value
-            Password = $dbPass.value
-            Source   = 'variable'
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = 'variable'
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = "NA"
+                TargetPort   = "NA"
+		        Database     = "NA"
+		        Domain       = "NA"
+                Username     = $dbUser.value
+                Password     = $dbPass.value
+                PasswordEnc  = "NA"
+		        KeyFilePath  = "NA"
         }
     }
 
     # Parse containerAuthData credentials
     $xmlContent.server.dataSource.containerAuthData | ForEach-Object {
         $credentials += [pscustomobject]@{
-            User     = $_.user
-            Password = $_.password
-            Source   = 'containerAuthData'
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = 'containerAuthData'
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = "NA"
+                TargetPort   = "NA"
+		        Database     = "NA"
+		        Domain       = "NA"
+                Username     = $_.user
+                Password     = $_.password
+                PasswordEnc  = "NA"
+		        KeyFilePath  = "NA"
         }
     }
 
     # Parse authData credentials
     $xmlContent.server.authData | ForEach-Object {
         $credentials += [pscustomobject]@{
-            User     = $_.user
-            Password = $_.password
-            Source   = 'authData'
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = 'authData'
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = "NA"
+                TargetPort   = "NA"
+		        Database     = "NA"
+		        Domain       = "NA"
+                Username     = $_.user
+                Password     = $_.password
+                PasswordEnc  = "NA"
+		        KeyFilePath  = "NA"
         }
     }
 
     # Return the collected credentials as an array of objects
     return $credentials
 }
+# Get-PwServerXml -FilePath "C:\tools\Sample Configuration Files\configs\server.xml" -ComputerName 'computer' -ShareName 'share' -FileName 'file.txt' -UncFilePath '\\computer\share\file.txt'
+
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Intended input: pureftpd.passwd
 function Get-PwPureFtpConfig {
     param (
-        [Parameter(Mandatory = $true)]
-        [string]$FilePath
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
     )
 
     # Check if the file exists
@@ -23174,8 +23699,22 @@ function Get-PwPureFtpConfig {
 
             # Create a custom object for each user
             $credentialObject = [PSCustomObject]@{
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "NA"
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = "NA"
+                TargetPort   = "NA"
+		        Database     = "NA"
+		        Domain       = "NA"
                 Username     = $username
-                PasswordHash = $passwordHash
+                Password     = "NA"
+                PasswordEnc  = $passwordHash
+		        KeyFilePath  = "NA"
             }
 
             # Add the object to the credentials array
@@ -23188,14 +23727,19 @@ function Get-PwPureFtpConfig {
     # Output the results as a PowerShell object array
     return $credentials
 }
+# Get-PwPureFtpConfig -FilePath "C:\tools\Sample Configuration Files\configs\pureftpd.passwd"  -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt'
+
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Intended input: php.ini
 function Get-PwPhpIni {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory = $true)]
-        [string]$FilePath
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
     )
 
     # Initialize a hashtable to store extracted values
@@ -23233,16 +23777,36 @@ function Get-PwPhpIni {
 
     # Output the extracted configuration as a PowerShell object
     [PSCustomObject]@{
-        Username = $configData.Username
-        Password = $configData.Password
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "NA"
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = "NA"
+                TargetPort   = "NA"
+		        Database     = "NA"
+		        Domain       = "NA"
+                Username     = $configData.Username
+                Password     = $configData.Password
+                PasswordEnc  = "NA"
+		        KeyFilePath  = "NA"
     }
 }
+# Get-PwPhpIni -FilePath "C:\tools\Sample Configuration Files\configs\php.ini" -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt'
+
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Intended input: my.cnf
 function Get-PwMySQLConfig {
     param (
-        [string]$FilePath
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
     )
 
     # Check if the file exists
@@ -23272,8 +23836,22 @@ function Get-PwMySQLConfig {
     if ($username -and $password) {
         # Create a custom PowerShell object to return the credentials
         $credentials = [PSCustomObject]@{
-            Username = $username
-            Password = $password
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "NA"
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = "NA"
+                TargetPort   = "NA"
+		        Database     = "NA"
+		        Domain       = "NA"
+                Username     = $username
+                Password     = $password
+                PasswordEnc  = "NA"
+		        KeyFilePath  = "NA"
         }
         return $credentials
     } else {
@@ -23281,40 +23859,62 @@ function Get-PwMySQLConfig {
         return $null
     }
 }
+# Get-PwMySQLConfig -FilePath "C:\tools\Sample Configuration Files\configs\my.cnf" -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt'
+
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Intended input: machine.config
 # Function to parse configuration files for credentials
 function Get-PwMachineConfig {
     param (
-        [string]$configFilePath
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
     )
+
+    # Set path
+    $configFilePath = $FilePath 
 
     # Load the config file as XML
     [xml]$configXml = Get-Content $configFilePath
 
     # Initialize a DataTable to store results
     $dtCredentials = New-Object System.Data.DataTable
-    $null = $dtCredentials.Columns.Add("Name", [string])
+    $null = $dtCredentials.Columns.Add("ComputerName", [string])
+    $null = $dtCredentials.Columns.Add("ShareName", [string])
+    $null = $dtCredentials.Columns.Add("UncFilePath", [string])
+    $null = $dtCredentials.Columns.Add("FileName", [string])
     $null = $dtCredentials.Columns.Add("Section", [string])
-    $null = $dtCredentials.Columns.Add("URL", [string])
-    $null = $dtCredentials.Columns.Add("Server", [string])
-    $null = $dtCredentials.Columns.Add("Port", [string])
-    $null = $dtCredentials.Columns.Add("UserName", [string])
+    $null = $dtCredentials.Columns.Add("ObjectName", [string])
+    $null = $dtCredentials.Columns.Add("TargetURL", [string])
+    $null = $dtCredentials.Columns.Add("TargetServer", [string])
+    $null = $dtCredentials.Columns.Add("TargetPort", [string])
+    $null = $dtCredentials.Columns.Add("Database", [string])
+    $null = $dtCredentials.Columns.Add("Domain", [string])
+    $null = $dtCredentials.Columns.Add("Username", [string])
     $null = $dtCredentials.Columns.Add("Password", [string])
+    $null = $dtCredentials.Columns.Add("PasswordEnc", [string])
+    $null = $dtCredentials.Columns.Add("KeyFilePath", [string])
 
     # Helper function to add rows to DataTable
     function Add-CredentialsToDataTable {
         param (
-            [string]$name,
+            [string]$computerName,
+            [string]$shareName,
+            [string]$uncFilePath,
+            [string]$fileName,
             [string]$section,
+            [string]$name,
             [string]$url,
             [string]$server,
             [string]$port,
             [string]$username,
-            [string]$password
+            [string]$password,
+            [string]$passwordEnc = "NA"
         )
-        $null = $dtCredentials.Rows.Add($name, $section, $url, $server, $port, $username, $password)
+        $null = $dtCredentials.Rows.Add($computerName, $shareName, $uncFilePath, $fileName, $section, $name, $url, $server, $port, $database, $domain, $username, $password, $passwordEnc)
     }
 
     # Dictionary to temporarily store related credentials
@@ -23339,7 +23939,7 @@ function Get-PwMachineConfig {
 
         # If both username and password are available, add them to the DataTable
         if ($credentialPairs[$name]["UserName"] -and $credentialPairs[$name]["Password"]) {
-            Add-CredentialsToDataTable -name $name -section $credentialPairs[$name]["Section"] `
+            Add-CredentialsToDataTable -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name $name -section $credentialPairs[$name]["Section"] `
                 -url $credentialPairs[$name]["URL"] -server $credentialPairs[$name]["Server"] `
                 -port $credentialPairs[$name]["Port"] -username $credentialPairs[$name]["UserName"] `
                 -password $credentialPairs[$name]["Password"]
@@ -23359,17 +23959,17 @@ function Get-PwMachineConfig {
 
                 # Handle specific cases for OAuth, API, and WebClient settings
                 switch ($key) {
-                    "OAuthServiceUrl" { Add-CredentialPair -name "OAuth" -section $section -key "URL" -value $value }
-                    "ClientId" { Add-CredentialPair -name "OAuth" -section $section -key "UserName" -value $value }
-                    "ClientSecret" { Add-CredentialPair -name "OAuth" -section $section -key "Password" -value $value }
-                    "ServiceUrl" { Add-CredentialPair -name "WebClient" -section $section -key "URL" -value $value }
-                    "ServiceUserName" { Add-CredentialPair -name "WebClient" -section $section -key "UserName" -value $value }
-                    "ServicePassword" { Add-CredentialPair -name "WebClient" -section $section -key "Password" -value $value }
-                    "ApiEndpoint" { Add-CredentialPair -name "API" -section $section -key "URL" -value $value }
-                    "ApiUserName" { Add-CredentialPair -name "API" -section $section -key "UserName" -value $value }
-                    "ApiPassword" { Add-CredentialPair -name "API" -section $section -key "Password" -value $value }
-                    "ApplicationUsername" { Add-CredentialPair -name "Application" -section $section -key "UserName" -value $value }
-                    "ApplicationPassword" { Add-CredentialPair -name "Application" -section $section -key "Password" -value $value }
+                    "OAuthServiceUrl" { Add-CredentialPair -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name "OAuth" -section $section -key "URL" -value $value }
+                    "ClientId" { Add-CredentialPair -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name "OAuth" -section $section -key "UserName" -value $value }
+                    "ClientSecret" { Add-CredentialPair -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name "OAuth" -section $section -key "Password" -value $value }
+                    "ServiceUrl" { Add-CredentialPair -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name "WebClient" -section $section -key "URL" -value $value }
+                    "ServiceUserName" { Add-CredentialPair -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name "WebClient" -section $section -key "UserName" -value $value }
+                    "ServicePassword" { Add-CredentialPair -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name "WebClient" -section $section -key "Password" -value $value }
+                    "ApiEndpoint" { Add-CredentialPair -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name "API" -section $section -key "URL" -value $value }
+                    "ApiUserName" { Add-CredentialPair -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name "API" -section $section -key "UserName" -value $value }
+                    "ApiPassword" { Add-CredentialPair -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name "API" -section $section -key "Password" -value $value }
+                    "ApplicationUsername" { Add-CredentialPair -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name "Application" -section $section -key "UserName" -value $value }
+                    "ApplicationPassword" { Add-CredentialPair -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name "Application" -section $section -key "Password" -value $value }
                 }
             }
         }
@@ -23384,9 +23984,9 @@ function Get-PwMachineConfig {
 
             # Handle specific cases for custom service credentials
             switch ($key) {
-                "ServiceUrl" { Add-CredentialPair -name "CustomService" -section $section -key "URL" -value $value }
-                "UserName" { Add-CredentialPair -name "CustomService" -section $section -key "UserName" -value $value }
-                "Password" { Add-CredentialPair -name "CustomService" -section $section -key "Password" -value $value }
+                "ServiceUrl" { Add-CredentialPair -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name "CustomService" -section $section -key "URL" -value $value }
+                "UserName" { Add-CredentialPair -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name "CustomService" -section $section -key "UserName" -value $value }
+                "Password" { Add-CredentialPair -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name "CustomService" -section $section -key "Password" -value $value }
             }
         }
     }
@@ -23427,7 +24027,7 @@ function Get-PwMachineConfig {
 
             # Add row to the DataTable if username and password exist
             if ($user -and $password) {
-                Add-CredentialsToDataTable -name $name -section "ConnectionStrings ($providerName)" -url $url -server $server -port $port -username $user -password $password
+                Add-CredentialsToDataTable -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name $name -section "ConnectionStrings ($providerName)" -url $url -server $server -port $port -username $user -password $password
             }
         }
     }
@@ -23442,7 +24042,7 @@ function Get-PwMachineConfig {
             $url = "smtp://${smtpServer}:${smtpPort}"
 
             if ($smtpUser -and $smtpPass) {
-                Add-CredentialsToDataTable -name "SMTP Configuration" -section "SMTP" -url $url -server $smtpServer -port $smtpPort -username $smtpUser -password $smtpPass
+                Add-CredentialsToDataTable -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name "SMTP Configuration" -section "SMTP" -url $url -server $smtpServer -port $smtpPort -username $smtpUser -password $smtpPass
             }
         }
     }
@@ -23451,17 +24051,22 @@ function Get-PwMachineConfig {
     if ($dtCredentials.Rows.Count -eq 0) {
         Write-Host "No credentials found." -ForegroundColor Red
     } else {
-        $dtCredentials | select Name, Section, URL, Server, Port, UserName, Password
+        $dtCredentials | select ComputerName, ShareName, UncFilePath, FileName, Section, ObjectName, TargetURL, TargetServer, TargetPort, Database, Domain, Username, Password, PasswordEnc
     }
 }
+# Get-PwMachineConfig -FilePath "C:\tools\Sample Configuration Files\configs\machine.config" -ComputerName 'computer' -ShareName 'share' -FileName 'file.txt' -UncFilePath '\\computer\share\file.txt'
+
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Intended input:  krb5.conf
 function Get-Pwkrb5Conf {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory = $true)]
-        [string]$FilePath
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
     )
 
     # Initialize a hashtable to store extracted values
@@ -23517,19 +24122,37 @@ function Get-Pwkrb5Conf {
 
     # Output the extracted configuration as a PowerShell object
     [PSCustomObject]@{
-        Domain   = $configData.Domain
-        Server   = $configData.Server
-        Username = $configData.Username
-        Password = $configData.Password
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "NA"
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = $configData.Server
+                TargetPort   = "NA"
+		        Database     = "NA"
+		        Domain       = $configData.Domain
+                Username     = $configData.Username
+                Password     = $configData.Password
+                PasswordEnc  = "NA"
+		        KeyFilePath  = "NA"
     }
 }
+# Get-Pwkrb5Conf -FilePath "C:\tools\Sample Configuration Files\configs\krb5.conf" -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt'
+
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Intended input: jboss-cli.xml
 # Define the function to extract username and password from a jboss-cli.xml file and return an object
 function Get-PwJbossCliConfig {
     param (
-        [string]$FilePath
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
     )
 
     # Check if the file exists
@@ -23547,16 +24170,36 @@ function Get-PwJbossCliConfig {
 
     # Return a PowerShell object with the username and password
     return [pscustomobject]@{
-        Username = $username
-        Password = $password
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "NA"
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = "NA"
+                TargetPort   = "NA"
+		        Database     = "NA"
+		        Domain       = "NA"
+                Username     = $username
+                Password     = $password
+                PasswordEnc  = "NA"
+		        KeyFilePath  = "NA"
     }
 }
+# Get-PwJbossCliConfig -FilePath "C:\tools\Sample Configuration Files\configs\jboss-cli.xml"  -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt'
+
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Intended input: .htpasswd
 function Get-PwHtpasswd {
     param (
-        [string]$FilePath
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
     )
 
     # Check if the file exists
@@ -23578,8 +24221,22 @@ function Get-PwHtpasswd {
         if ($parts.Length -eq 2) {
             # Create a custom object for each user
             $userObj = [pscustomobject]@{
-                Username = $parts[0]
-                PasswordHash = $parts[1]
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "NA"
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = "NA"
+                TargetPort   = "NA"
+		        Database     = "NA"
+		        Domain       = "NA"
+                Username     = $parts[0]
+                Password     = "NA"
+                PasswordEnc  = $parts[1]
+		        KeyFilePath  = "NA"
             }
             # Add the user object to the array
             $users += $userObj
@@ -23589,13 +24246,19 @@ function Get-PwHtpasswd {
     # Output the results
     return $users
 }
+# Get-PwHtpasswd -FilePath "C:\tools\Sample Configuration Files\configs\.htpasswd" -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt'
+
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Intended input: dbxdrivers.ini and generic
 # Function to extract credentials from the file
 function Get-PwDbxDriverIni {
     param (
-        [string]$filePath
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
     )
 
     # Check if the file exists
@@ -23622,9 +24285,22 @@ function Get-PwDbxDriverIni {
             # If we have collected both a username and password, store the credentials
             if ($currentUsername -and $currentPassword) {
                 $credentials += [PSCustomObject]@{
-                    Section  = $currentSection
-                    Username = $currentUsername
-                    Password = $currentPassword
+
+                    ComputerName = $ComputerName
+                    ShareName    = $ShareName
+                    UncFilePath  = $UncFilePath
+                    FileName     = $FileName
+                    Section      = $currentSection
+                    ObjectName   = "NA"
+                    TargetURL    = "NA"
+                    TargetServer = "NA"
+                    TargetPort   = "NA"
+		            Database     = "NA"
+		            Domain       = "NA"
+                    Username     = $currentUsername
+                    Password     = $currentPassword
+                    PasswordEnc  = "NA"
+		            KeyFilePath  = "NA"
                 }
             }
 
@@ -23648,23 +24324,45 @@ function Get-PwDbxDriverIni {
     # If the last section contains credentials, add them to the array
     if ($currentUsername -and $currentPassword) {
         $credentials += [PSCustomObject]@{
-            Section  = $currentSection
-            Username = $currentUsername
-            Password = $currentPassword
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = $currentSection
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = "NA"
+                TargetPort   = "NA"
+		        Database     = "NA"
+		        Domain       = "NA"
+                Username     = $currentUsername
+                Password     = $currentPassword
+                PasswordEnc  = "NA"
+		        KeyFilePath  = "NA"
         }
     }
 
     # Return the results
     return $credentials
 }
+# Get-PwDbxDriverIni -FilePath $filePath "C:\tools\Sample Configuration Files\configs\dbxdrivers.ini" -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt'
+
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Intended input: context.xml
 # Function to extract credentials from a given context.xml file
 function Get-PwContextXML {
     param (
-        [string]$contextXmlPath
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
     )
+
+    # Set file path
+    $contextXmlPath = $FilePath 
 
     # Check if the file exists
     if (-Not (Test-Path $contextXmlPath)) {
@@ -23681,20 +24379,39 @@ function Get-PwContextXML {
 
     # Create a PowerShell object to hold the extracted information
     $credentials = [PSCustomObject]@{
-        Username = $username
-        Password = $password
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "NA"
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = "NA"
+                TargetPort   = "NA"
+		        Database     = "NA"
+		        Domain       = "NA"
+                Username     = $username
+                Password     = $password
+                PasswordEnc  = "NA"
+		        KeyFilePath  = "NA"
     }
 
     # Return the credentials object
     return $credentials
 }
+# Get-PwContextXML -FilePath "C:\tools\Sample Configuration Files\configs\context.xml" -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt'
+
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Intended input: config.xml
 function Get-PwJenkinsConfig {
     param (
-        [Parameter(Mandatory = $true)]
-        [string]$FilePath
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
     )
 
     # Ensure the file exists
@@ -23720,95 +24437,214 @@ function Get-PwJenkinsConfig {
 
     # Create and return the result as a PowerShell object
     $result = [PSCustomObject]@{
-        Username     = $fullName
-        PasswordHash = $passwordHash
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "NA"
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = "NA"
+                TargetPort   = "NA"
+		        Database     = "NA"
+		        Domain       = "NA"
+                Username     = $fullName
+                Password     = $passwordHash
+                PasswordEnc  = "NA"
+		        KeyFilePath  = "NA"
     }
 
     return $result
 }
+# Get-PwJenkinsConfig -FilePath "C:\tools\Sample Configuration Files\configs\config.xml"  -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt'
+
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Intended input: bootstrap.ini
 function Get-PwBootstrapConfig {
     param (
-        [string]$FilePath
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
     )
 
     # Read all lines from the provided file path
     $iniContent = Get-Content -Path $FilePath
 
-    # Initialize a hash table to store key-value pairs
-    $fields = @{
-        Username = $null
-        Password = $null
-        Public   = $null
-        Private  = $null
-        Key      = $null
-        Secret   = $null
-    }
+    # Initialize an array to store custom objects for each key-value pair
+    $output = @()
 
     # Loop through each line and look for the required fields
     foreach ($line in $iniContent) {
         if ($line -match 'username\s*=\s*(.*)') {
-            $fields['Username'] = $matches[1].Trim()
+            $Username    = $matches[1].Trim()
         }
+
         if ($line -match 'password\s*=\s*(.*)') {
-            $fields['Password'] = $matches[1].Trim()
+            $output += [PSCustomObject]@{
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "NA"
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = "NA"
+                TargetPort   = "NA"
+		        Database     = "NA"
+		        Domain       = "NA"
+                Username     = $Username 
+                Password     = $matches[1].Trim() 
+                PasswordEnc  = "NA"
+		        KeyFilePath  = "NA"
+            }
         }
+
         if ($line -match 'public\s*=\s*(.*)') {
-            $fields['Public'] = $matches[1].Trim()
+            $output += [PSCustomObject]@{
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "NA"
+                ObjectName   = 'Public'
+                TargetURL    = "NA"
+                TargetServer = "NA"
+                TargetPort   = "NA"
+		        Database     = "NA"
+		        Domain       = "NA"
+                Username     = "NA"
+                Password     = $matches[1].Trim()
+                PasswordEnc  = "NA"
+		        KeyFilePath  = "NA"
+            }
         }
         if ($line -match 'private\s*=\s*(.*)') {
-            $fields['Private'] = $matches[1].Trim()
+            $output += [PSCustomObject]@{
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "NA"
+                ObjectName   = 'Private'
+                TargetURL    = "NA"
+                TargetServer = "NA"
+                TargetPort   = "NA"
+		        Database     = "NA"
+		        Domain       = "NA"
+                Username     = "NA"
+                Password     = $matches[1].Trim()
+                PasswordEnc  = "NA"
+		        KeyFilePath  = "NA"
+            }
         }
         if ($line -match 'key\s*=\s*(.*)') {
-            $fields['Key'] = $matches[1].Trim()
+            $output += [PSCustomObject]@{
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "NA"
+                ObjectName   = 'Key'
+                TargetURL    = "NA"
+                TargetServer = "NA"
+                TargetPort   = "NA"
+		        Database     = "NA"
+		        Domain       = "NA"
+                Username     = "NA"
+                Password     = $matches[1].Trim()
+                PasswordEnc  = "NA"
+		        KeyFilePath  = "NA"
+            }
         }
         if ($line -match 'secret\s*=\s*(.*)') {
-            $fields['Secret'] = $matches[1].Trim()
+            $output += [PSCustomObject]@{
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "NA"
+                ObjectName   = 'Secret'
+                TargetURL    = "NA"
+                TargetServer = "NA"
+                TargetPort   = "NA"
+		        Database     = "NA"
+		        Domain       = "NA"
+                Username     = "NA"
+                Password     = $matches[1].Trim()
+                PasswordEnc  = "NA"
+		        KeyFilePath  = "NA"
+            }
         }
     }
 
-    # Convert the hash table into a custom PowerShell object
-    $configObject = [PSCustomObject]$fields
-
-    # Output the custom object
-    return $configObject
+    # Output the array of custom objects
+    return $output
 }
+# Get-PwBootstrapConfig -FilePath "C:\tools\Sample Configuration Files\configs\bootstrap.ini" -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt'
+
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Intended input: app.config
 # Function to parse configuration files for credentials
 function Get-PwAppconfig {
     param (
-        [string]$configFilePath
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
     )
 
+    # Set filepath
+    $configFilePath = $FilePath
+     
     # Load the config file as XML
     [xml]$configXml = Get-Content $configFilePath
 
     # Initialize a DataTable to store results
     $dtCredentials = New-Object System.Data.DataTable
-    $null = $dtCredentials.Columns.Add("Name", [string])
+    $null = $dtCredentials.Columns.Add("ComputerName", [string])
+    $null = $dtCredentials.Columns.Add("ShareName", [string])
+    $null = $dtCredentials.Columns.Add("UncFilePath", [string])
+    $null = $dtCredentials.Columns.Add("FileName", [string])
     $null = $dtCredentials.Columns.Add("Section", [string])
-    $null = $dtCredentials.Columns.Add("URL", [string])
-    $null = $dtCredentials.Columns.Add("Server", [string])
-    $null = $dtCredentials.Columns.Add("Port", [string])
-    $null = $dtCredentials.Columns.Add("UserName", [string])
+    $null = $dtCredentials.Columns.Add("ObjectName", [string])
+    $null = $dtCredentials.Columns.Add("TargetURL", [string])
+    $null = $dtCredentials.Columns.Add("TargetServer", [string])
+    $null = $dtCredentials.Columns.Add("TargetPort", [string])
+    $null = $dtCredentials.Columns.Add("Database", [string])
+    $null = $dtCredentials.Columns.Add("Domain", [string])
+    $null = $dtCredentials.Columns.Add("Username", [string])
     $null = $dtCredentials.Columns.Add("Password", [string])
+    $null = $dtCredentials.Columns.Add("PasswordEnc", [string])
+    $null = $dtCredentials.Columns.Add("KeyFilePath", [string])
 
     # Helper function to add rows to DataTable
     function Add-CredentialsToDataTable {
         param (
-            [string]$name,
+            [string]$computerName,
+            [string]$shareName,
+            [string]$uncFilePath,
+            [string]$fileName,
             [string]$section,
+            [string]$name,
             [string]$url,
             [string]$server,
             [string]$port,
             [string]$username,
-            [string]$password
+            [string]$password,
+            [string]$passwordEnc = "NA"
         )
-        $null = $dtCredentials.Rows.Add($name, $section, $url, $server, $port, $username, $password)
+        $null = $dtCredentials.Rows.Add($computerName, $shareName, $uncFilePath, $fileName, $section, $name, $url, $server, $port, $database, $domain, $username, $password, $passwordEnc)
     }
 
     # Dictionary to temporarily store related credentials
@@ -23833,7 +24669,7 @@ function Get-PwAppconfig {
 
         # If both username and password are available, add them to the DataTable
         if ($credentialPairs[$name]["UserName"] -and $credentialPairs[$name]["Password"]) {
-            Add-CredentialsToDataTable -name $name -section $credentialPairs[$name]["Section"] `
+            Add-CredentialsToDataTable -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name $name -section $credentialPairs[$name]["Section"] `
                 -url $credentialPairs[$name]["URL"] -server $credentialPairs[$name]["Server"] `
                 -port $credentialPairs[$name]["Port"] -username $credentialPairs[$name]["UserName"] `
                 -password $credentialPairs[$name]["Password"]
@@ -23853,17 +24689,17 @@ function Get-PwAppconfig {
 
                 # Handle specific cases for OAuth, API, and WebClient settings
                 switch ($key) {
-                    "OAuthServiceUrl" { Add-CredentialPair -name "OAuth" -section $section -key "URL" -value $value }
-                    "ClientId" { Add-CredentialPair -name "OAuth" -section $section -key "UserName" -value $value }
-                    "ClientSecret" { Add-CredentialPair -name "OAuth" -section $section -key "Password" -value $value }
-                    "ServiceUrl" { Add-CredentialPair -name "WebClient" -section $section -key "URL" -value $value }
-                    "ServiceUserName" { Add-CredentialPair -name "WebClient" -section $section -key "UserName" -value $value }
-                    "ServicePassword" { Add-CredentialPair -name "WebClient" -section $section -key "Password" -value $value }
-                    "ApiEndpoint" { Add-CredentialPair -name "API" -section $section -key "URL" -value $value }
-                    "ApiUserName" { Add-CredentialPair -name "API" -section $section -key "UserName" -value $value }
-                    "ApiPassword" { Add-CredentialPair -name "API" -section $section -key "Password" -value $value }
-                    "ApplicationUsername" { Add-CredentialPair -name "Application" -section $section -key "UserName" -value $value }
-                    "ApplicationPassword" { Add-CredentialPair -name "Application" -section $section -key "Password" -value $value }
+                    "OAuthServiceUrl" { Add-CredentialPair -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name "OAuth" -section $section -key "URL" -value $value }
+                    "ClientId" { Add-CredentialPair -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name "OAuth" -section $section -key "UserName" -value $value }
+                    "ClientSecret" { Add-CredentialPair -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name "OAuth" -section $section -key "Password" -value $value }
+                    "ServiceUrl" { Add-CredentialPair -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name "WebClient" -section $section -key "URL" -value $value }
+                    "ServiceUserName" { Add-CredentialPair -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name "WebClient" -section $section -key "UserName" -value $value }
+                    "ServicePassword" { Add-CredentialPair -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name "WebClient" -section $section -key "Password" -value $value }
+                    "ApiEndpoint" { Add-CredentialPair -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name "API" -section $section -key "URL" -value $value }
+                    "ApiUserName" { Add-CredentialPair -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name "API" -section $section -key "UserName" -value $value }
+                    "ApiPassword" { Add-CredentialPair -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name "API" -section $section -key "Password" -value $value }
+                    "ApplicationUsername" { Add-CredentialPair -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name "Application" -section $section -key "UserName" -value $value }
+                    "ApplicationPassword" { Add-CredentialPair -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name "Application" -section $section -key "Password" -value $value }
                 }
             }
         }
@@ -23878,9 +24714,9 @@ function Get-PwAppconfig {
 
             # Handle specific cases for custom service credentials
             switch ($key) {
-                "ServiceUrl" { Add-CredentialPair -name "CustomService" -section $section -key "URL" -value $value }
-                "UserName" { Add-CredentialPair -name "CustomService" -section $section -key "UserName" -value $value }
-                "Password" { Add-CredentialPair -name "CustomService" -section $section -key "Password" -value $value }
+                "ServiceUrl" { Add-CredentialPair -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name "CustomService" -section $section -key "URL" -value $value }
+                "UserName" { Add-CredentialPair -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name "CustomService" -section $section -key "UserName" -value $value }
+                "Password" { Add-CredentialPair -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name "CustomService" -section $section -key "Password" -value $value }
             }
         }
     }
@@ -23921,7 +24757,7 @@ function Get-PwAppconfig {
 
             # Add row to the DataTable if username and password exist
             if ($user -and $password) {
-                Add-CredentialsToDataTable -name $name -section "ConnectionStrings ($providerName)" -url $url -server $server -port $port -username $user -password $password
+                Add-CredentialsToDataTable -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name $name -section "ConnectionStrings ($providerName)" -url $url -server $server -port $port -username $user -password $password
             }
         }
     }
@@ -23936,7 +24772,7 @@ function Get-PwAppconfig {
             $url = "smtp://${smtpServer}:${smtpPort}"
 
             if ($smtpUser -and $smtpPass) {
-                Add-CredentialsToDataTable -name "SMTP Configuration" -section "SMTP" -url $url -server $smtpServer -port $smtpPort -username $smtpUser -password $smtpPass
+                Add-CredentialsToDataTable -computer $ComputerName -shareName $ShareName -fileName $FileName -uncFilePath $UncFilePath -name "SMTP Configuration" -section "SMTP" -url $url -server $smtpServer -port $smtpPort -username $smtpUser -password $smtpPass
             }
         }
     }
@@ -23945,16 +24781,22 @@ function Get-PwAppconfig {
     if ($dtCredentials.Rows.Count -eq 0) {
         Write-Host "No credentials found." -ForegroundColor Red
     } else {
-        $dtCredentials | select Name, Section, URL, Server, Port, UserName, Password
+        $dtCredentials | select ComputerName, ShareName, UncFilePath, FileName, Section, ObjectName, TargetURL, TargetServer, TargetPort, Database, Domain, Username, Password, PasswordEnc
     }
 }
+# Get-PwAppconfig -FilePath "C:\tools\Sample Configuration Files\configs\app.config" -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt'
+
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Intended input: .pgpass
 function Get-PwPgPass {
     param (
-        [Parameter(Mandatory = $true)]
-        [string]$FilePath
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
+
     )
 
     # Ensure the file exists
@@ -23982,11 +24824,22 @@ function Get-PwPgPass {
         if ($fields.Length -eq 5) {
             # Create a custom object for each entry
             $credential = [PSCustomObject]@{
-                Hostname = $fields[0]
-                Port     = $fields[1]
-                Database = $fields[2]
-                Username = $fields[3]
-                Password = $fields[4]
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "NA"
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = $fields[0]
+                TargetPort   = $fields[1]
+		        Database     = $fields[2]
+		        Domain       = "NA"
+                Username     = $fields[3]
+                Password     = $fields[4]
+                PasswordEnc  = "NA"
+		        KeyFilePath  = "NA"
             }
 
             # Add the credential object to the list
@@ -24000,6 +24853,8 @@ function Get-PwPgPass {
     # Output the results as a PowerShell object
     return $credentialsList
 }
+# Get-PwPgPass -FilePath "C:\tools\Sample Configuration Files\configs\.pgpass" -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt'
+
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # This is for parsing group policy preference files and should support groups.xml, datasources.xml, drives.xml, printers.xml, scheduletasks.xml, and services.xml
@@ -24017,9 +24872,15 @@ function Get-PwGPP {
 #>
     [CmdletBinding()]
     Param(
-        [Parameter(Mandatory=$false)]
-        [string]$InputFilePath
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
     )
+
+    # Set path
+    $InputFilePath = $FilePath 
 
     # ----------------------------------------------------------------
     # Function to decrypt cpassword
@@ -24055,13 +24916,21 @@ function Get-PwGPP {
     # Setup data table to store GPP Information
     # ----------------------------------------------------------------
     if ($InputFilePath) {
-        $TableGPPPasswords = New-Object System.Data.DataTable         
-        $TableGPPPasswords.Columns.Add('NewName') | Out-Null
-        $TableGPPPasswords.Columns.Add('Changed') | Out-Null
-        $TableGPPPasswords.Columns.Add('UserName') | Out-Null        
-        $TableGPPPasswords.Columns.Add('CPassword') | Out-Null
-        $TableGPPPasswords.Columns.Add('Password') | Out-Null        
-        $TableGPPPasswords.Columns.Add('File') | Out-Null           
+        $dtCredentials = New-Object System.Data.DataTable         
+        $null = $dtCredentials.Columns.Add("ComputerName", [string])
+        $null = $dtCredentials.Columns.Add("ShareName", [string])
+        $null = $dtCredentials.Columns.Add("UncFilePath", [string])
+        $null = $dtCredentials.Columns.Add("FileName", [string])
+        $null = $dtCredentials.Columns.Add("Section", [string])
+        $null = $dtCredentials.Columns.Add("ObjectName", [string])
+        $null = $dtCredentials.Columns.Add("TargetURL", [string])
+        $null = $dtCredentials.Columns.Add("TargetServer", [string])
+        $null = $dtCredentials.Columns.Add("TargetPort", [string])
+        $null = $dtCredentials.Columns.Add("Database", [string])
+        $null = $dtCredentials.Columns.Add("Username", [string])
+        $null = $dtCredentials.Columns.Add("Password", [string])
+        $null = $dtCredentials.Columns.Add("PasswordEnc", [string])
+        $null = $dtCredentials.Columns.Add("KeyFilePath", [string])               
 
         # ----------------------------------------------------------------
         # Find, parse, decrypt, and display results from XML files
@@ -24091,8 +24960,24 @@ function Get-PwGPP {
                     [string]$CPassword = $_.Properties.cpassword
                     [string]$Password = Get-DecryptedCpassword $CPassword
                     [datetime]$Changed = $_.Changed
-                    [string]$NewName = ""         
-                    $TableGPPPasswords.Rows.Add($NewName, $Changed, $Username, $CPassword, $Password, $FileFullName) | Out-Null      
+                    [string]$NewName = ""             
+                    $dtCredentials.Rows.Add(
+                        $ComputerName,    # For "ComputerName"
+                        $ShareName,       # For "ShareName"
+                        $UncFilePath,     # For "UncFilePath"
+                        $FileName,        # For "FileName"
+                        "NA",             # For "Section"
+                        "NA",             # For "ObjectName"
+                        "NA",             # For "TargetURL"
+                        "NA",             # For "TargetServer"
+                        "NA",             # For "TargetPort"
+                        "NA",             # For "Database"
+                        $Username,        # For "Username"
+                        $Password,        # For "Password"
+                        $CPassword,       # For "PasswordEnc"
+                        "NA"              # For "KeyFilePath"
+                    ) | Out-Null
+    
                 }
             }
 
@@ -24104,7 +24989,22 @@ function Get-PwGPP {
                     [string]$Password = Get-DecryptedCpassword $CPassword
                     [datetime]$Changed = $_.Changed
                     [string]$NewName = $_.Properties.newname        
-                    $TableGPPPasswords.Rows.Add($NewName, $Changed, $Username, $CPassword, $Password, $FileFullName) | Out-Null      
+                    $dtCredentials.Rows.Add(
+                        $ComputerName,    # For "ComputerName"
+                        $ShareName,       # For "ShareName"
+                        $UncFilePath,     # For "UncFilePath"
+                        $FileName,        # For "FileName"
+                        "NA",             # For "Section"
+                        "NA",             # For "ObjectName"
+                        "NA",             # For "TargetURL"
+                        "NA",             # For "TargetServer"
+                        "NA",             # For "TargetPort"
+                        "NA",             # For "Database"
+                        $Username,        # For "Username"
+                        $Password,        # For "Password"
+                        $CPassword,       # For "PasswordEnc"
+                        "NA"              # For "KeyFilePath"
+                    ) | Out-Null     
                 }
             }
 
@@ -24116,7 +25016,22 @@ function Get-PwGPP {
                     [string]$Password = Get-DecryptedCpassword $CPassword
                     [datetime]$Changed = $_.Changed
                     [string]$NewName = ""         
-                    $TableGPPPasswords.Rows.Add($NewName, $Changed, $Username, $CPassword, $Password, $FileFullName) | Out-Null      
+                    $dtCredentials.Rows.Add(
+                        $ComputerName,    # For "ComputerName"
+                        $ShareName,       # For "ShareName"
+                        $UncFilePath,     # For "UncFilePath"
+                        $FileName,        # For "FileName"
+                        "NA",             # For "Section"
+                        "NA",             # For "ObjectName"
+                        "NA",             # For "TargetURL"
+                        "NA",             # For "TargetServer"
+                        "NA",             # For "TargetPort"
+                        "NA",             # For "Database"
+                        $Username,        # For "Username"
+                        $Password,        # For "Password"
+                        $CPassword,       # For "PasswordEnc"
+                        "NA"              # For "KeyFilePath"
+                    ) | Out-Null      
                 }
             }
 
@@ -24128,7 +25043,22 @@ function Get-PwGPP {
                     [string]$Password = Get-DecryptedCpassword $CPassword
                     [datetime]$Changed = $_.Changed
                     [string]$NewName = ""         
-                    $TableGPPPasswords.Rows.Add($NewName, $Changed, $Username, $CPassword, $Password, $FileFullName) | Out-Null      
+                    $dtCredentials.Rows.Add(
+                        $ComputerName,    # For "ComputerName"
+                        $ShareName,       # For "ShareName"
+                        $UncFilePath,     # For "UncFilePath"
+                        $FileName,        # For "FileName"
+                        "NA",             # For "Section"
+                        "NA",             # For "ObjectName"
+                        "NA",             # For "TargetURL"
+                        "NA",             # For "TargetServer"
+                        "NA",             # For "TargetPort"
+                        "NA",             # For "Database"
+                        $Username,        # For "Username"
+                        $Password,        # For "Password"
+                        $CPassword,       # For "PasswordEnc"
+                        "NA"              # For "KeyFilePath"
+                    ) | Out-Null   
                 }
             }
 
@@ -24140,7 +25070,22 @@ function Get-PwGPP {
                     [string]$Password = Get-DecryptedCpassword $CPassword
                     [datetime]$Changed = $_.Changed
                     [string]$NewName = ""         
-                    $TableGPPPasswords.Rows.Add($NewName, $Changed, $Username, $CPassword, $Password, $FileFullName) | Out-Null      
+                    $dtCredentials.Rows.Add(
+                        $ComputerName,    # For "ComputerName"
+                        $ShareName,       # For "ShareName"
+                        $UncFilePath,     # For "UncFilePath"
+                        $FileName,        # For "FileName"
+                        "NA",             # For "Section"
+                        "NA",             # For "ObjectName"
+                        "NA",             # For "TargetURL"
+                        "NA",             # For "TargetServer"
+                        "NA",             # For "TargetPort"
+                        "NA",             # For "Database"
+                        $Username,        # For "Username"
+                        $Password,        # For "Password"
+                        $CPassword,       # For "PasswordEnc"
+                        "NA"              # For "KeyFilePath"
+                    ) | Out-Null     
                 }
             }
 
@@ -24152,7 +25097,22 @@ function Get-PwGPP {
                     [string]$Password = Get-DecryptedCpassword $CPassword
                     [datetime]$Changed = $_.Changed
                     [string]$NewName = ""         
-                    $TableGPPPasswords.Rows.Add($NewName, $Changed, $Username, $CPassword, $Password, $FileFullName) | Out-Null      
+                    $dtCredentials.Rows.Add(
+                        $ComputerName,    # For "ComputerName"
+                        $ShareName,       # For "ShareName"
+                        $UncFilePath,     # For "UncFilePath"
+                        $FileName,        # For "FileName"
+                        "NA",             # For "Section"
+                        "NA",             # For "ObjectName"
+                        "NA",             # For "TargetURL"
+                        "NA",             # For "TargetServer"
+                        "NA",             # For "TargetPort"
+                        "NA",             # For "Database"
+                        $Username,        # For "Username"
+                        $Password,        # For "Password"
+                        $CPassword,       # For "PasswordEnc"
+                        "NA"              # For "KeyFilePath"
+                    ) | Out-Null      
                 }
             }
         }
@@ -24164,7 +25124,7 @@ function Get-PwGPP {
         }
 
         # Display results
-        $TableGPPPasswords
+        $dtCredentials
     }
 
     # Allow users to encrypt passwords
@@ -24191,13 +25151,23 @@ function Get-PwGPP {
         return $EncryptedCpassword
     }
 }
+# Get-PwGPP -FilePath "C:\tools\Sample Configuration Files\configs\Drives.xml" -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt'
+# Get-PwGPP -FilePath "C:\tools\Sample Configuration Files\configs\DataSources.xml" -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt'
+# Get-PwGPP -FilePath "C:\tools\Sample Configuration Files\configs\Groups.xml" -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt'
+# Get-PwGPP -FilePath "C:\tools\Sample Configuration Files\configs\Services.xml" -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt'
+# Get-PwGPP -FilePath "C:\tools\Sample Configuration Files\configs\ScheduledTasks.xml" -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt'
+# Get-PwGPP -FilePath "C:\tools\Sample Configuration Files\configs\Printers.xml" -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt'
+
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Intended input: *dtsx
 function Get-PwSsisDtsx {
     param (
-        [Parameter(Mandatory = $true)]
-        [string]$FilePath
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
     )
 
     # Check if the file exists
@@ -24228,11 +25198,22 @@ function Get-PwSsisDtsx {
         $connString = $dbConnection.SelectSingleNode("DTS:Property[@DTS:Name='ConnectionString']", $namespaceManager).'#text'
         if ($connString -match "Data Source=([^;]+);.*User ID=([^;]+);.*Password=([^;]+);") {
             $credentials += [pscustomobject]@{
-                ConnectionType = "Database"
-                Server         = $matches[1]
-                Port           = "N/A"  # OLEDB typically does not specify a port
-                Username       = $matches[2]
-                Password       = $matches[3]
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "Database"
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = $matches[1]
+                TargetPort   = "NA"
+		        Database     = "NA"
+		        Domain       = "NA"
+                Username     = $matches[2]
+                Password     = $matches[3]
+                PasswordEnc  = "NA"
+		        KeyFilePath  = "NA"
             }
         }
     }
@@ -24246,11 +25227,22 @@ function Get-PwSsisDtsx {
         $password = $ftpConnection.SelectSingleNode("DTS:Property[@DTS:Name='ServerPassword']", $namespaceManager).'#text'
 
         $credentials += [pscustomobject]@{
-            ConnectionType = "FTP"
-            Server         = $server
-            Port           = $port
-            Username       = $username
-            Password       = $password
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "FTP"
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = $server
+                TargetPort   = $port
+		        Database     = "NA"
+		        Domain       = "NA"
+                Username     = $username
+                Password     = $password
+                PasswordEnc  = "NA"
+		        KeyFilePath  = "NA"
         }
     }
 
@@ -24263,24 +25255,40 @@ function Get-PwSsisDtsx {
         $password = $smtpConnection.SelectSingleNode("DTS:Property[@DTS:Name='Password']", $namespaceManager).'#text'
 
         $credentials += [pscustomobject]@{
-            ConnectionType = "SMTP"
-            Server         = $server
-            Port           = $port
-            Username       = $username
-            Password       = $password
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "SMTP"
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = $server
+                TargetPort   = $port
+		        Database     = "NA"
+		        Domain       = "NA"
+                Username     = $username
+                Password     = $password
+                PasswordEnc  = "NA"
+		        KeyFilePath  = "NA"
         }
     }
 
     # Return all credentials
     return $credentials
 }
+# Get-PwSsisDtsx -FilePath "C:\tools\Sample Configuration Files\configs\example.dtsx" -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt'
+
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Intended input: all .rdp
 function Get-PwRdpInfo {
     param (
-        [Parameter(Mandatory = $true)]
-        [string]$FilePath
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
     )
 
     # Check if the file exists
@@ -24316,7 +25324,7 @@ function Get-PwRdpInfo {
             # Use DPAPI to decrypt the password
             $decryptedPassword = [System.Text.Encoding]::Unicode.GetString([System.Security.Cryptography.ProtectedData]::Unprotect($passwordBytes, $null, [System.Security.Cryptography.DataProtectionScope]::CurrentUser))
         } catch {
-            Write-Warning "Unable to decrypt password: $_"
+            # Write-Warning "Unable to decrypt password: $_"
             $decryptedPassword = "Unable to decrypt; must run on target system"
         }
     } else {
@@ -24326,9 +25334,63 @@ function Get-PwRdpInfo {
 
     # Create a PowerShell object to return the results
     $result = [PSCustomObject]@{
-        Username           = $username
-        EncryptedPassword  = $encryptedPassword
-        DecryptedPassword  = $decryptedPassword
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "NA"
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = "NA"
+                TargetPort   = "NA"
+		        Database     = "NA"
+		        Domain       = "NA"
+                Username     =  $username
+                Password     = $decryptedPassword
+                PasswordEnc  = $encryptedPassword
+		        KeyFilePath  = "NA"
+    }
+
+    return $result
+}
+# Get-PwRdpInfo  -FilePath "C:\tools\Sample Configuration Files\configs\example.rdp" -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt'
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input: all private key files
+function Get-PrivateKeyFilePath {
+    param (
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
+    )
+
+    # Check if the file exists
+    if (-not (Test-Path -Path $FilePath)) {
+        Write-Error "File not found: $FilePath"
+        return
+    }
+
+    # Create a PowerShell object to return the results
+    $result = [PSCustomObject]@{
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "NA"
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = "NA"
+                TargetPort   = "NA"
+		        Database     = "NA"
+		        Domain       = "NA"
+                Username     = "NA"
+                Password     = "NA"
+                PasswordEnc  = "NA"
+		        KeyFilePath  = $FilePath 
     }
 
     return $result
