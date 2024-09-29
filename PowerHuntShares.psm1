@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.133
+# Version: v1.134
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -2448,11 +2448,30 @@ function Invoke-HuntSMBShares
             $ComputerTableRows = $ComputerTableRows + $ComputerTableRow  
         }
 
+        # Get opn445 computer with os version
+        $DomainComputerFull = $Computers445Open | 
+        foreach{
+            
+            # Get computer
+            $Target445Comp = $_.ComputerName
+
+            # Get of version
+            $Target445OS   = $DomainComputers | where ComputerName -eq $Target445Comp | Select OperatingSystem -ExpandProperty OperatingSystem
+
+            # Create new object
+            $myObject = New-Object PSObject
+            $myObject | Add-Member -MemberType NoteProperty -Name "ComputerName"    -Value $Target445Comp 
+            $myObject | Add-Member -MemberType NoteProperty -Name "OperatingSystem" -Value $Target445OS
+
+            # Return object
+            $myObject
+        }
+
         # Get count of all computer objects
-        $DomainComputerFullCount = $DomainComputers | measure | select count -ExpandProperty count
+        $DomainComputerFullCount = $DomainComputerFull | measure | select count -ExpandProperty count
 
         # Get unique list of operating systems
-        $DomainComputerOSList    = $DomainComputers | Select OperatingSystem -Unique
+        $DomainComputerOSList    = $DomainComputerFull | Select OperatingSystem -Unique
         
         # Get count of unique operating systems
         $DomainComputerOSCount = $DomainComputerOSList | measure | select count -ExpandProperty count
@@ -2477,8 +2496,10 @@ function Invoke-HuntSMBShares
             $object 
         }
 
+        # Save results to a csv 
+        $DomainComputerOSSum |  Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Domain-Computers-Open445-OSVer.csv"
+
         # Create java script chart objects - names
-        $DomainComputerOSSum |  Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Domain-Computers-Versions.csv"
         $DomainComputerOSListJsNames  = ""
         $DomainComputerOSListJsValues = ""
         $DomainComputerOSSum |
