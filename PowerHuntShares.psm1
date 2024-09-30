@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.139
+# Version: v1.140
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -2561,9 +2561,15 @@ function Invoke-HuntSMBShares
         foreach{
             $TargetOSName  = $_.os 
             $TargetOSValue = $_.percent
-            $DomainComputerOSListJsNames  = $DomainComputerOSListJsNames  + "'" + $TargetOSName + "'"
-            $DomainComputerOSListJsValues = $DomainComputerOSListJsValues + "'" + $TargetOSValue + "'"
+            $DomainComputerOSListJsNames  = $DomainComputerOSListJsNames  + ",'" + $TargetOSName + "'"
+            $DomainComputerOSListJsValues = $DomainComputerOSListJsValues + "," + $TargetOSValue
         }
+
+        # Remove trailing ,
+        $DomainComputerOSListJsNames  = $DomainComputerOSListJsNames.Substring(1)
+        $DomainComputerOSListJsValues = $DomainComputerOSListJsValues.Substring(1)
+
+        # Build final js objects
         $DomainComputerOSListJsNames  = "[" + $DomainComputerOSListJsNames + "]"
         $DomainComputerOSListJsValues = "[" + $DomainComputerOSListJsValues + "]"       
 
@@ -6217,7 +6223,19 @@ $ComputerCount computers were found in the $TargetDomain Active Directory domain
     </div>
   </div>
 
-</div>					
+</div>	
+
+<div style="width: 96.5%; display: flex; justify-content: space-between;">
+    <!-- left -->
+  <div style="width: 100%; display: flex; justify-content: flex;">
+    <div class="LargeCard" style="width:100%;">									
+	    <div class="chart-container">
+		    <div id="ChartComputersOs"></div>
+			<div class="chart-controls"></div>
+        </div>								  							
+    </div>
+  </div>
+</div>				
 				
 <div class="searchbar" style="text-align:left; display: flex;" >
         <input type="text" id="computerfilterInput" placeholder=" Search..." style="margin-top: 8px; height: 25px; margin-left: 10px;font-size: 14px;padding-left:3px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
@@ -10458,6 +10476,74 @@ const ChartComputersDiscoOptions = {
 
 const ChartComputersDisco = new ApexCharts(document.querySelector("#ChartComputersDisco"), ChartComputersDiscoOptions);
 ChartComputersDisco.render();
+
+// --------------------------
+// Computers Page - Computers Count by OS
+// --------------------------
+
+// Initialize ApexCharts
+const ChartComputersOSOptions = {
+  series: [{
+    data:  $DomainComputerOSListJsValues
+  }],
+  chart: {
+    type: 'bar',
+    height: 200
+  },
+  plotOptions: {
+    bar: {		 
+      borderRadius: 0,
+      borderRadiusApplication: 'end',
+      horizontal: true,
+      colors: {
+        backgroundBarColors: ['#e0e0e0'],
+        backgroundBarOpacity: 1,
+        ranges: [{
+          from: 0,
+          to: 1000,
+          color: '#f08c41'
+        }]
+      }
+    }
+  },
+  dataLabels: {
+    enabled: false
+  },
+  grid: {
+    show: false
+  },
+  xaxis: {
+    categories: $DomainComputerOSListJsNames,
+    labels: {
+      style: {
+        fontSize: '12px'
+      }
+    }
+  },
+  yaxis: {
+    labels: {
+      style: {
+        fontSize: '12px',
+        width: 400  // This will allocate a fixed space for the y-axis labels (adjust width as needed)
+      },
+      maxWidth: 400  // This ensures the y-axis labels take up to 50% of the chart space
+    }
+  },
+  title: {
+    text: 'Computer Count by OS',
+    align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
+    margin: 10, // Adjusts the space between the title and the chart
+    style: {
+      fontSize: '16px',
+      fontWeight: 'bold',
+      color: 'gray'
+    }
+  }
+};
+
+const ChartComputersOS = new ApexCharts(document.querySelector("#ChartComputersOS"), ChartComputersOSOptions);
+ChartComputersOS.render();
+
 
 // --------------------------
 // Computers Page - Computers Risk Levels
