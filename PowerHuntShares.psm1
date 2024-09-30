@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.140
+# Version: v1.141
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -6225,7 +6225,7 @@ $ComputerCount computers were found in the $TargetDomain Active Directory domain
 
 </div>	
 
-<div style="width: 96.5%; display: flex; justify-content: space-between;">
+<div style="width: 96.5%; display: flex; justify-content: space-between;margin-top: -10px;">
     <!-- left -->
   <div style="width: 100%; display: flex; justify-content: flex;">
     <div class="LargeCard" style="width:100%;">									
@@ -10478,13 +10478,27 @@ const ChartComputersDisco = new ApexCharts(document.querySelector("#ChartCompute
 ChartComputersDisco.render();
 
 // --------------------------
-// Computers Page - Computers Count by OS
+// Computers Page - Computers Count by OS (Data shown as percentages)
 // --------------------------
 
-// Initialize ApexCharts
+// Calculate the total sum of the series to convert values to percentages
+const total = $DomainComputerOSListJsValues.reduce((a, b) => a + b, 0);
+
+// Map the OS names and values into a combined array and sort by values in descending order
+const sortedData = $DomainComputerOSListJsNames.map((name, index) => ({
+  name: name,
+  value: ($DomainComputerOSListJsValues[index] / total) * 100  // Convert to percentages
+})).sort((a, b) => b.value - a.value);  // Sort by percentage in descending order
+
+// Extract the sorted names and values back into separate arrays
+const sortedNames = sortedData.map(item => item.name);
+const sortedValues = sortedData.map(item => item.value);
+
+// Initialize ApexCharts with sorted data
 const ChartComputersOSOptions = {
   series: [{
-    data:  $DomainComputerOSListJsValues
+    name: 'Percentage',
+    data: sortedValues  // Use sorted values for percentages
   }],
   chart: {
     type: 'bar',
@@ -10507,16 +10521,31 @@ const ChartComputersOSOptions = {
     }
   },
   dataLabels: {
-    enabled: false
+    enabled: false  // Disable data labels
+  },
+  tooltip: {
+    y: {
+      formatter: function (val) {
+        return val.toFixed(2) + "%";  // Show tooltips as percentages
+      }
+    }
   },
   grid: {
     show: false
   },
   xaxis: {
-    categories: $DomainComputerOSListJsNames,
+    categories: sortedNames,  // Use sorted names for categories
     labels: {
       style: {
         fontSize: '12px'
+      }
+    },
+    title: {
+      text: 'Percentage',  // Custom label for x-axis
+      style: {
+        fontSize: '12px',
+        fontWeight: 'normal',
+        color: '#000'
       }
     }
   },
@@ -10524,15 +10553,23 @@ const ChartComputersOSOptions = {
     labels: {
       style: {
         fontSize: '12px',
-        width: 400  // This will allocate a fixed space for the y-axis labels (adjust width as needed)
+        width: 400  // Allocate fixed space for y-axis labels
       },
-      maxWidth: 400  // This ensures the y-axis labels take up to 50% of the chart space
+      maxWidth: 400
+    },
+    title: {
+      text: 'OS',  // Custom label for y-axis
+      style: {
+        fontSize: '12px',
+        fontWeight: 'normal',
+        color: '#000'
+      }
     }
   },
   title: {
-    text: 'Computer Count by OS',
-    align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
-    margin: 10, // Adjusts the space between the title and the chart
+    text: 'Computer Count OS Percentage Summary',
+    align: 'center', // Aligns the title
+    margin: 10, // Space between the title and the chart
     style: {
       fontSize: '16px',
       fontWeight: 'bold',
