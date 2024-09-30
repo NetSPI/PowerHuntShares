@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.136
+# Version: v1.138
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1773,17 +1773,17 @@ function Invoke-HuntSMBShares
         } | select | ForEach-Object { "'$_'" }) -join ", "
         $IFCategoryListCount = "[$IFCategoryList]"
 
-        # Outbout objects to file
+        # Export objects to file
         $InterestingFilesAllObjects | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Interesting-Files.csv"     
 
         # Get secrets & sensitive counts for dashboard         
-        $InterestingFilesAllObjectsSecretCount = $InterestingFilesAllObjects | where category -eq 'secret' | measure | select count -ExpandProperty count
-        $InterestingFilesAllObjectsSensitiveCount = $InterestingFilesAllObjects | where category -eq 'sensitive' | measure | select count -ExpandProperty count
+        $InterestingFilesAllObjectsSecretCount    = $InterestingFilesAllObjects | where category -eq 'secret'    | select UncPath -Unique | measure | select count -ExpandProperty count
+        $InterestingFilesAllObjectsSensitiveCount = $InterestingFilesAllObjects | where category -eq 'sensitive' | select UncPath -Unique | measure | select count -ExpandProperty count
 
         # Get order list of interesting file names by count
         $InterestingFilesAllFilesCount    = $InterestingFilesAllObjects | measure | select count -ExpandProperty count 
         $InterestingFilesAllFilesCountU   = $InterestingFilesAllObjects | select filename -Unique | measure | select count -ExpandProperty count 
-        $InterestingFilesAllFilesGrouped  = $InterestingFilesAllObjects | group filename | select count,name | sort count -Descending
+        $InterestingFilesAllFilesGrouped  = $InterestingFilesAllObjects | group  filename | select count,name | sort count -Descending
 
         # Generate a row for each one
         # Headers are Instance Count, FileName, Type, File Paths,Affected Computers, Affected Shares
@@ -5273,7 +5273,7 @@ $NewHtmlReport = @"
 	}	
 	
 	.percentagetext {
-		text-align: center;
+		text-align: left;
 		font-size: 2.25em;
 		font-weight: 700;
 		font-family:"Open Sans", sans-serif;
@@ -5936,7 +5936,7 @@ input[type="checkbox"]:checked::before {
         <label id="btnidentities" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('IdentityInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnidentities');">Identities</label>
 		<label id="noactionmenubar2" href="#" class="stuff" style="background-color: transparent;border-bottom: 0.25px dashed gray; opacity: 0.25; width:85%; margin-bottom: 6px; margin-top:-1px;border-radius: 0px;outline: none;"></label>			
         <label id="btnif" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF');updateLabelColors('tabs', 'btnif');">Interesting Files</label>			        			
-        <label id="btnSecretsPage" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('SecretsPage');radiobtn.checked = true;updateLabelColors('tabs', 'btnSecretsPage');">Recovered Secrets</label>	
+        <label id="btnSecretsPage" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('SecretsPage');radiobtn.checked = true;updateLabelColors('tabs', 'btnSecretsPage');">Extracted Secrets</label>	
         <label id="btnShareGraph" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareGraph');radiobtn.checked = true;updateLabelColors('tabs', 'btnShareGraph');">ShareGraph</label>	
 		<label id="noactionmenuheader3"class="tabLabel" style="background-color: transparent;width:100%;color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:2px;font-weight:bolder;"><strong>Recommendations</strong></label>
 		<label id="btnexploit" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Attacks');radiobtn.checked = true;updateLabelColors('tabs', 'btnexploit');">Exploiting Access</label>		
@@ -5961,35 +5961,37 @@ input[type="checkbox"]:checked::before {
                     This section provides a list of files that may contain passwords or sensitive data, or may be abused for remote code execution.
                     </div>
 
-			        <!-- /////////////// Interesting Files - Total -->					
+<div style="width: 96.5%; display: flex; justify-content: space-between;">
 
-                    <div class="card" style="width: 20%">	
-	                    <div class="cardtitle" style="color:gray;font-size: 16px; font-weight: bold;">
-		                   Interesting Files Found
-	                    </div>		
-                                    <br><br>
-				                    <span class="percentagetext" style = "color:#f08c41;">                    
-					                    $InterestingFilesAllFilesCount&nbsp;                     
-				                    </span>	
-			                    <Br>
-                                <div style="padding-right: 10px;">
-                                ($InterestingFilesAllFilesCountU unique file names)	
-                                </div>
-                    </div>
+  <!-- Left aligned card -->
+  <div style="width: 33%; display: flex; justify-content: flex-start;">
+    <div class="card" style="width: 100%;">
+      <div class="cardtitle" style="color:gray; font-size: 16px; font-weight: bold;">
+       Interesting Files Found
+      </div>
+      <div style="text-align: left;">
+        <span class="percentagetext" style = "color:#f08c41;">                   
+        $InterestingFilesAllFilesCount&nbsp;                     
+        </span>	
+        <Br>
+        <div style="padding-right: 10px;">
+        ($InterestingFilesAllFilesCountU unique file names)	
+        </div>
+      </div>
+    </div>
+  </div>
 
+  <!-- Right aligned card -->
+  <div style="width: 77%; display: flex; justify-content: flex-end;">
+    <div class="LargeCard" style="width:100%;">									
+	    <div class="chart-container">
+		    <div id="chart"></div>
+			<div class="chart-controls"></div>
+        </div>								  							
+    </div>
+  </div>
 
-					<!-- /////////////// Interesting Files - Chart -->
-					<div class="LargeCard" style="width:69.25%">	
-	
-									<div class="chart-container">
-									<div id="chart"></div>
-										<div class="chart-controls"></div>
-									</div>								  							
-					</div>	
-									
-
-					<!-- /////////////// Table  -->
-                    <div style="height: 125px;text-align: left;"></div>
+</div>
 
                     <div class="searchbar" style="text-align:left; display: flex;" >
 							<input type="text" id="filterInputIF" placeholder=" Search..." style="margin-top: 8px; height: 25px; font-size: 14px; padding-left:3px;margin-left: 10px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
@@ -6034,7 +6036,7 @@ input[type="checkbox"]:checked::before {
 -->
                      <div style="margin-left: 10px; width: 90%;">
 	                    <h4 style="color:#4A4A4A;">Risk & Data Exposure</h4>
-	                    In total, $RiskLevelCountCritical critical, $RiskLevelCountHigh high, $RiskLevelCountMedium medium, and  $RiskLevelCountLow low risk <a style="font-weight: normal;" href="https://en.wikipedia.org/wiki/Security_descriptor">ACE (Access Control Entry)</a> configurations were discovered across $ExcessiveSharesCount shares, hosted by $ComputerWithExcessive computers in the $TargetDomain Active Directory domain. The affected shares were found hosting $InterestingFilesAllObjectsSecretCount files that may contain passwords and $InterestingFilesAllObjectsSensitiveCount files that may contain sensitive data. Overall, $InterestingFilesAllFilesCount interesting files were found that could potentially lead to unauthorized data access or remote code execution. 
+	                    In total, $RiskLevelCountCritical critical, $RiskLevelCountHigh high, $RiskLevelCountMedium medium, and  $RiskLevelCountLow low risk <a style="font-weight: normal;" href="https://en.wikipedia.org/wiki/Security_descriptor">ACE (Access Control Entry)</a> configurations were discovered across $ExcessiveSharesCount shares, hosted by $ComputerWithExcessive computers in the $TargetDomain Active Directory domain. The affected shares were found hosting $InterestingFilesAllObjectsSecretCount files that may contain passwords and $InterestingFilesAllObjectsSensitiveCount files that may contain sensitive data. $SecretsRecoveredCount credentials were recovered from $SecretsRecoveredFileCount of the discovered $InterestingFilesAllObjectsSecretCount secrets files. Overall, $InterestingFilesAllFilesCount interesting files were found accessible to all domain users that could potentially lead to unauthorized data access or remote code execution. 
                         <Br>
                      </div>
 
@@ -6170,43 +6172,50 @@ $CardLastModifiedTimeLine
 <div style="margin-left:10px;margin-top:3px; margin-bottom: 3px;width:95%">
 $ComputerCount computers were found in the $TargetDomain Active Directory domain, $ComputerPingableCount responded to ping requests, $Computers445OpenCount had port 445 open, and $ComputerWithExcessive were found hosting shares configured with excessive privileges. Below is a list of the computers hosting shares configured with excessive privileges. 
 </div>		
-
 		    
+<div style="width: 96.5%; display: flex; justify-content: space-between;">
 
-                    <div class="card" style="width: 20%">	
-	                    <div class="cardtitle" style="color:gray;font-size: 16px; font-weight: bold;">
-		                    Live Computers Found
-	                    </div>		
-                                    <br><br>
-				                    <span class="percentagetext" style = "color:#f08c41;">                    
-					                    $PeerComparisonComputerCount&nbsp;                     
-				                    </span>	
-			                    <Br>
-                                <div style="padding-right: 10px;">
-                                ($ComputerWithExcessive host shares with excessive privileges)
-                                </div>
-                    </div>
+  <!-- Left aligned card -->
+  <div style="width: 33.33%; display: flex; justify-content: flex-start;">
+    <div class="card" style="width: 100%;">
+      <div class="cardtitle" style="color:gray; font-size: 16px; font-weight: bold;">
+        Live Computers Found
+      </div>
+      <div style="text-align: left;">
+        <span class="percentagetext" style="color:#f08c41; text-align: left;">                    
+        $PeerComparisonComputerCount&nbsp;                 
+        </span>
+        <Br>
+        <div style="padding-right: 10px;">
+        ($ComputerWithExcessive host shares with excessive privileges)
+        </div>
+     </div>
+    </div>
+  </div>
 
-            
-					<div class="LargeCard" style="width:32.75%;">	
-																	
-									<div class="chart-container">
-									<div id="ChartComputersRisk"></div>
-										<div class="chart-controls"></div>
-									</div>								  							
-							
-					</div>	
-            
-					<div class="LargeCard" style="width:32.75%;">	
-																	
-									<div class="chart-container">
-									<div id="ChartComputersDisco"></div>
-										<div class="chart-controls"></div>
-									</div>								  							
-						
-					</div>						
+  <!-- Center aligned card -->
+  <div style="width: 33.33%; display: flex; justify-content: center;">
+    <div class="LargeCard" style="width:100%;">	
+        <div class="chart-container">
+		    <div id="ChartComputersRisk"></div>
+		    <div class="chart-controls"></div>
+		</div>		
+    </div>
+  </div>
+
+  <!-- Right aligned card -->
+  <div style="width: 33.33%; display: flex; justify-content: flex-end;">
+    <div class="LargeCard" style="width:100%;">									
+	    <div class="chart-container">
+		    <div id="ChartComputersDisco"></div>
+			<div class="chart-controls"></div>
+        </div>								  							
+    </div>
+  </div>
+
+</div>					
 				
-<div class="searchbar" style="margin-top:270px; text-align:left; display: flex;" >
+<div class="searchbar" style="text-align:left; display: flex;" >
         <input type="text" id="computerfilterInput" placeholder=" Search..." style="margin-top: 8px; height: 25px; margin-left: 10px;font-size: 14px;padding-left:3px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
         <div style="font-size:12;text-align: left;cursor: pointer;color:gray; margin-top: 13px; margin-left: 5px;" onmouseover="this.style.color='white';" onmouseout="this.style.textDecoration='';this.style.fontWeight='normal';this.style.color='gray';"onclick="document.getElementById('computerfilterInput').value = '';applyFiltersAndSort('ComputersTable', 'computerfilterInput', 'computerfilterCounter', 'computerpagination');">Clear</div>
         <!-- <div style="margin-top: 10px; margin-left: 5px; margin-right: 5px;"><strong>Quick Filters</strong></div>
@@ -6274,41 +6283,53 @@ $ComputerCount computers were found in the $TargetDomain Active Directory domain
 $IdentityCombinedListCount identities were discovered across shares in the $TargetDomain Active Directory domain. $IdentityOwnerListCount were owners and $IdentityReferenceListCount were assigned privileges. 
 </div>		     
 
+<div style="width: 96.5%; display: flex; justify-content: space-between;">
 
-                    <div class="card" style="width: 28%">	
-	                    <div class="cardtitle" style="color:gray;font-size: 16px; font-weight: bold;">
-		                   Identities Found
-	                    </div>		
-                                    <br><br>
-				                    <span class="percentagetext" style = "color:#f08c41;">                    
-					                    $IdentityCombinedListCount&nbsp;                     
-				                    </span>	
-			                    <Br>
-                    </div>
+  <!-- Left aligned card -->
+  <div style="width: 33.33%; display: flex; justify-content: flex-start;">
+    <div class="card" style="width: 100%;">
+      <div class="cardtitle" style="color:gray; font-size: 16px; font-weight: bold;">
+        Identities Found
+      </div>
+      <div style="text-align: left;">
+          <span class="percentagetext" style="color:#f08c41;">                    
+            $IdentityCombinedListCount&nbsp;                   
+          </span>
+      </div>
+    </div>
+  </div>
 
-                    <div class="card" style="width: 28%">	
-	                    <div class="cardtitle" style="color:gray;font-size: 16px; font-weight: bold;">
-		                   Identities Assigned Ownership
-	                    </div>		
-                                    <br><br>
-				                    <span class="percentagetext" style = "color:#f08c41;">                    
-					                    $IdentityOwnerListCount&nbsp;                     
-				                    </span>	
-			                    <Br>
-                    </div>
-                    
-                    <div class="card" style="width: 28%">	
-	                    <div class="cardtitle" style="color:gray;font-size: 16px; font-weight: bold;">
-		                   Identities Assigned Privileges
-	                    </div>		
-                                    <br><br>
-				                    <span class="percentagetext" style = "color:#f08c41;">                    
-					                    $IdentityReferenceListCount&nbsp;                     
-				                    </span>	
-			                    <Br>
-                    </div>                     
-<br> 					
-<div style="margin-top: 125px; margin-left: 10px; width="85%">
+  <!-- Center aligned card -->
+  <div style="width: 33.33%; display: flex; justify-content: center;">
+    <div class="card" style="width: 80%;">
+      <div class="cardtitle" style="color:gray; font-size: 16px; font-weight: bold;">
+        Identities Assigned Ownership
+      </div>
+      <div style="text-align: left;">
+          <span class="percentagetext" style="color:#f08c41; text-align: left;">                    
+             $IdentityOwnerListCount&nbsp;                     
+          </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right aligned card -->
+  <div style="width: 33.33%; display: flex; justify-content: flex-end;">
+    <div class="card" style="width: 100%;">
+      <div class="cardtitle" style="color:gray; font-size: 16px; font-weight: bold;">
+        Identities Assigned Privileges
+      </div>
+      <div style="text-align: left;">
+          <span class="percentagetext" style="color:#f08c41; text-align: left;">                    
+            $IdentityReferenceListCount&nbsp;                    
+          </span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div style="margin-left:10px; width:95%;">
 Note: Within the context of this report, all read and write access the "Everyone", "Authenticated Users", "BUILTIN\Users", "Domain Users", or "Domain Computers" groups are considered excessive privileges, because all provide domain users access to the affected shares due to privilege inheritance. 				
 </div>
 <div class="searchbar" style="margin-top:12px; text-align:left; display: flex;" >
@@ -6363,40 +6384,45 @@ Note: Within the context of this report, all read and write access the "Everyone
 Below is a list of the ACE (access control entries) configured with excessive privileges found in the $TargetDomain Active Directory domain. 
 </div>		
 
-                    <div class="card" style="width: 20%">	
-	                    <div class="cardtitle" style="color:gray;font-size: 16px; font-weight: bold;">
-		                   Inescure ACEs Found
-	                    </div>		
-                                    <br><br>
-				                    <span class="percentagetext" style = "color:#f08c41;">                    
-					                    $ExcessiveSharePrivsCount &nbsp;                     
-				                    </span>	
-                    </div>
+<div style="width: 96.5%; display: flex; justify-content: space-between;">
 
+  <!-- Left aligned card -->
+  <div style="width: 33.33%; display: flex; justify-content: flex-start;">
+    <div class="card" style="width: 100%;">
+      <div class="cardtitle" style="color:gray; font-size: 16px; font-weight: bold;">
+        Insecure ACEs Found
+      </div>
+      <div style="text-align: left;">
+        <span class="percentagetext" style="color:#f08c41; text-align: left;">                    
+        $ExcessiveSharePrivsCount &nbsp;                  
+        </span>
+     </div>
+    </div>
+  </div>
 
-					<div class="LargeCard" style="width:23%;">	
-										
-									<div class="chart-container">
-									<div id="ChartAceRisk"></div>
-										<div class="chart-controls"></div>
-									</div>								  							
-					</div>
-            
-					<div class="LargeCard" style="width:18%;">									
-									<div class="chart-container">
-									<div id="ChartAceType"></div>
-										<div class="chart-controls"></div>
-									</div>								  							
-					</div>	
+  <!-- Center aligned card -->
+  <div style="width: 33.33%; display: flex; justify-content: center;">
+    <div class="LargeCard" style="width:100%;">	
+        <div class="chart-container">
+		    <div id="ChartAceRisk"></div>
+		    <div class="chart-controls"></div>
+		</div>		
+    </div>
+  </div>
 
-					<div class="LargeCard" style="width:20.5%;">												
-									<div class="chart-container">
-									<div id="ChartAcesIF"></div>
-										<div class="chart-controls"></div>
-									</div>								  							
-					</div>					
-				
-<div class="searchbar" style="margin-top:270px; text-align:left; display: flex;" >
+  <!-- Right aligned card -->
+  <div style="width: 33.33%; display: flex; justify-content: flex-end;">
+    <div class="LargeCard" style="width:100%;">									
+	    <div class="chart-container">
+		    <div id="ChartAceType"></div>
+			<div class="chart-controls"></div>
+        </div>								  							
+    </div>
+  </div>
+
+</div>
+
+<div class="searchbar" style="text-align:left; display: flex;" >
         <input type="text" id="acefilterInput" placeholder=" Search..." style="margin-top: 8px; height: 25px; margin-left: 10px;font-size: 14px;padding-left:3px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
         <div style="font-size:12;text-align: left;cursor: pointer;color:gray; margin-top: 13px; margin-left: 5px;" onmouseover="this.style.color='white';" onmouseout="this.style.textDecoration='';this.style.fontWeight='normal';this.style.color='gray';"onclick="document.getElementById('acefilterInput').value = '';applyFiltersAndSort('aceTable', 'acefilterInput', 'acefilterCounter', 'acepagination');">Clear</div>
         <!-- <div style="margin-top: 10px; margin-left: 5px; margin-right: 5px;"><strong>Quick Filters</strong></div>
@@ -6903,36 +6929,39 @@ Below is a summary of the exposure associated with each of those groups.
 $AllSMBSharesCount shares were discovered across $ComputerPingableCount live computers in the $TargetDomain Active Directory domain. $ExcessiveSharesCount of those shares were found configured with excessive privileges across $ComputerWithExcessive computers. Below is a summary of the affected shares grouped by name.
 </div>	
 
-                    <div class="card" style="width: 20%">	
-	                    <div class="cardtitle" style="color:gray;font-size: 16px; font-weight: bold;">
-		                   Shares Found
-	                    </div>		
-                                    <br><br>
-				                    <span class="percentagetext" style = "color:#f08c41;">                    
-					                    $ExcessiveSharesCount  &nbsp;                     
-				                    </span>	
-			                    <Br>
-                                <div style="padding-right: 10px;">
-                                ($ShareNameChartCount unique names)	
-                                </div>
-                    </div>
-					
-		            <div class="LargeCard" style="width:32.5%;">																
-									<div class="chart-container">
-									<div id="ChartShareNameRiska"></div>
-										<div class="chart-controls"></div>
-									</div>								  							
-					</div>
-					
-								
-					<div class="LargeCard" style="width:32.5%;">										
-									<div class="chart-container">
-									<div id="ChartSharePageIF"></div>
-										<div class="chart-controls"></div>
-									</div>								  							
-					</div>
+<div style="width: 96.5%; display: flex; justify-content: space-between;">
+
+  <!-- Left aligned card -->
+  <div style="width: 33%; display: flex; justify-content: flex-start;">
+    <div class="card" style="width: 100%;">
+      <div class="cardtitle" style="color:gray; font-size: 16px; font-weight: bold;">
+       Shares Found
+      </div>
+      <div style="text-align: left;">
+        <span class="percentagetext" style = "color:#f08c41;">                    
+        $ExcessiveSharesCount  &nbsp;                     
+        </span>	
+        <Br>
+        <div style="padding-right: 10px;">
+        ($ShareNameChartCount unique names)	
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right aligned card -->
+  <div style="width: 77%; display: flex; justify-content: flex-end;">
+    <div class="LargeCard" style="width:100%;">									
+	    <div class="chart-container">
+		    <div id="ChartShareNameRiska"></div>
+			<div class="chart-controls"></div>
+        </div>								  							
+    </div>
+  </div>
+
+</div>	
 				
-<div class="searchbar" style="margin-top:270px; text-align:left; display: flex;" >
+<div class="searchbar" style="text-align:left; display: flex;" >
         <input type="text" id="filterInput" placeholder=" Search..." style="margin-top: 8px; height: 25px; margin-left: 10px;font-size: 14px;padding-left:3px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
         <div style="margin-top: 10px; margin-left: 5px; margin-right: 5px;"><strong>Quick Filters</strong></div>
         <label><input type="checkbox" class="filter-checkbox" name="h"> Exploitable</label>
@@ -7059,34 +7088,35 @@ This section lists the most common share owners.
 Folder groups are SMB shares that contain the exact same file listing. Each folder group has been hashed so they can be quickly correlated. In some cases, shares with the exact same file listing may be related to a single application or process.  This information can help identify the root cause associated with the excessive privileges and expedite remediation.
 </div>
 
-                    <div class="card" style="width: 20%">	
-	                    <div class="cardtitle" style="color:gray;font-size: 16px; font-weight: bold;">
-		                   Folder Groups Found
-	                    </div>		
-                                    <br><br>
-				                    <span class="percentagetext" style = "color:#f08c41;">                    
-					                    $FolderGroupChartCount &nbsp;                     
-				                    </span>	
-			                    <Br>
-                    </div>
+<div style="width: 96.5%; display: flex; justify-content: space-between;">
+
+  <!-- Left aligned card -->
+  <div style="width: 33%; display: flex; justify-content: flex-start;">
+    <div class="card" style="width: 100%;">
+      <div class="cardtitle" style="color:gray; font-size: 16px; font-weight: bold;">
+       Folder Groups Found
+      </div>
+      <div style="text-align: left;">
+          <span class="percentagetext" style="color:#f08c41; text-align: left;">                    
+          $FolderGroupChartCount &nbsp;                  
+          </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right aligned card -->
+  <div style="width: 77%; display: flex; justify-content: flex-end;">
+    <div class="LargeCard" style="width:100%;">									
+	    <div class="chart-container">
+		    <div id="ChartFGRiska"></div>
+			<div class="chart-controls"></div>
+        </div>								  							
+    </div>
+  </div>
+
+</div>				
 					
-		            <div class="LargeCard" style="width:32.5%;">																		
-									<div class="chart-container">
-									<div id="ChartFGRiska"></div>
-										<div class="chart-controls"></div>
-									</div>								  							
-					</div>
-					
-				
-				
-					<div class="LargeCard" style="width:32.5%;">											
-									<div class="chart-container">
-									<div id="ChartFGPageIF"></div>
-										<div class="chart-controls"></div>
-									</div>								  							
-					</div>
-					
-<div class="searchbar" style="margin-top:270px; text-align:left; display: flex;" >
+<div class="searchbar" style="text-align:left; display: flex;" >
         <input type="text" id="filterInputTwo" placeholder=" Search..." style="margin-top: 8px; height: 25px; font-size: 14px; padding-left:3px;margin-left: 10px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
         <div style="font-size:12;text-align: left;cursor: pointer;color:gray; margin-top: 13px; margin-left: 5px;" onmouseover="this.style.color='white';" onmouseout="this.style.textDecoration='';this.style.fontWeight='normal';this.style.color='gray';" onclick="document.getElementById('filterInputTwo').value = '';applyFiltersAndSort('foldergrouptable', 'filterInputTwo', 'filterCounterTwo', 'paginationfg');">Clear</div>
         <!--
@@ -7129,21 +7159,21 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
 <input class="tabInput"  name="tabs" type="radio" id="SecretsPage"/> 
 <label class="tabLabel" onClick="updateTab('SecretsPage',false)" for="SecretsPage"></label>
 <div id="tabPanel" class="tabPanel">
-<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Recovered Secrets</h2>
+<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Extracted Secrets</h2>
 <div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>
 <div style="margin-left:10px;margin-top:3px;width:95%;">
-This page includes a list of the credentials that were recovered during data collection.
+This page includes a list of the credentials that were recovered during data collection. $SecretsRecoveredCount credentials were recovered from $SecretsRecoveredFileCount of the discovered $InterestingFilesAllObjectsSecretCount secrets files.
 </div>
 
                     <div class="card" style="width: 20%">	
 	                    <div class="cardtitle" style="color:gray;font-size: 16px; font-weight: bold;">
-		                   Credentials Recovered
+		                   Extracted Secrets Found
 	                    </div>		
-                                    <br><br>
+                        <div style="text-align: left;">
 				                    <span class="percentagetext" style = "color:#f08c41;">                    
 					                    $SecretsRecoveredCount &nbsp;                     
 				                    </span>	
-			                    <Br>
+			            </div>
                     </div>
 					
 					
@@ -10692,66 +10722,59 @@ ChartShareNameRiska.render();
 // --------------------------
 
 // Data and categories
-const data = $IFCategoryListCount;
-const categories = $ChartCategoryCatDash;
-
-// Combine data and categories into an array of objects
-//const combined = data.map((value, index) => {
-//  return { value, category: categories[index] };
-//});
-
-// Sort the combined array based on the data values (largest to smallest)
-//combined.sort((a, b) => b.value - a.value);
-
-// Separate the sorted data and categories back into individual arrays
-//const sortedData = combined.map(item => item.value);
-//const sortedCategories = combined.map(item => item.category);
+const data         = $IFCategoryListCount;           // Series with original number of files discovered for each category
+const verifiedData = $IFCategoryListSecretRecover;   // Series with number of files we recovered secrets from
+const categories   = $ChartCategoryCatDash;          // Series with category names
 
 // Initialize ApexCharts
 const ChartDashboardIFOptions = {
-          series: [{
-          data: data
-        }],
-          chart: {
-          type: 'bar',
-          height: 300
-        },
-        plotOptions: {
-          bar: {		 
-            borderRadius: 0,
-            borderRadiusApplication: 'end',
-            horizontal: true,
-			colors: {
-				backgroundBarColors: ['#e0e0e0'],
-				backgroundBarOpacity: 1,
-                ranges: [{
-                    from: 0,
-                    to: 1000,
-                    color: '#f08c41'
-                }]
-            }
-          }
-        },
-        dataLabels: {
-          enabled: false
-        },
-		  grid: {
-			show: false
-		  },
-        xaxis: {
-          categories: categories,
-        },
+  series: [
+    {
+      name: 'Files Discovered',
+      data: data
+    },
+    {
+      name: 'Files with Extracted Secrets',
+      data: verifiedData
+    }
+  ],
+  chart: {
+    type: 'bar',
+    height: 300,
+    stacked: true  // Enable stacked bars
+  },
+  plotOptions: {
+    bar: {		 
+      borderRadius: 0,
+      borderRadiusApplication: 'end',
+      horizontal: true
+    }
+  },
+  dataLabels: {
+    enabled: false
+  },
+  grid: {
+    show: false
+  },
+  xaxis: {
+    categories: categories,
+  },
+  colors: ['#f08c41','#07142A'],  // Orange for discovered, Blue for verified
   title: {
     text: 'Interesting File Exposure',
     align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
     margin: 10, // Adjusts the space between the title and the chart
     style: {
-        fontSize: '18px',
-        fontWeight: 'normal',
-        color: '#808080'
+      fontSize: '18px',
+      fontWeight: 'normal',
+      color: '#808080'
     }
+  },
+  legend: {
+    position: 'bottom',
+    horizontalAlign: 'center'
   }
-        };
+};
 
 const ChartDashboardIF = new ApexCharts(document.querySelector("#ChartDashboardIF"), ChartDashboardIFOptions);
 ChartDashboardIF.render();
