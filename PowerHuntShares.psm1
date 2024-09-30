@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.134
+# Version: v1.136
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -476,7 +476,7 @@ function Invoke-HuntSMBShares
         $Computers445Open = $DomainComputers | Invoke-Parallel -ScriptBlock $MyScriptBlock -ImportSessionFunctions -ImportVariables -Throttle $GlobalThreadCount -RunspaceTimeout $RunSpaceTimeOut -ErrorAction SilentlyContinue
 
         # Status user
-        $Computers445OpenCount = $Computers445Open.count
+        $Computers445OpenCount = $Computers445Open | measure | select count -ExpandProperty count
         $Time =  Get-Date -UFormat "%m/%d/%Y %R"
         Write-Output " [*][$Time] - $Computers445OpenCount computers have TCP port 445 open."
         
@@ -1885,16 +1885,67 @@ function Invoke-HuntSMBShares
                     }
             }            
 
-        } 
-
-        # Write passwords to file
-        $MySecretsTbl | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Recovered-Passwords.csv"         
+        }        
 
         # Generate counts for dashabord summary and for "Recovered Secrets" Page
         $SecretsRecoveredCount = $MySecretsTbl | Select-Object ComputerName, ShareName, UncFilePath, FileName, Section, ObjectName, TargetURL, TargetServer, TargetPort, Database, Domain, Username, Password, PasswordEnc, KeyFilePath -Unique | measure | select count -ExpandProperty count 
 
-        # Generate table content for "Recovered Secrets" Page 
+        # Generate count of file that secrests were recovered from (instead of total recovered secrets)
+        $SecretsRecoveredFileCount = $MySecretsTbl | Select-Object UncFilePath -Unique | measure | select count -ExpandProperty count 
 
+        # Get secretcount - recovered count
+        $SecretsNotRecoveredCount = $InterestingFilesAllObjectsSecretCount - $SecretsRecoveredCount
+
+        # Get index of secrets column (position may change on custom list import) for dashboard if chart - $ChartCategoryCatDash
+        $ChartCategoryCatDashParse = $ChartCategoryCatDash.Trim("[]").Split(",") | ForEach-Object { $_.Trim().Trim("'") }
+        $secretIndex               = $ChartCategoryCatDashParse.IndexOf('Secret')        
+
+        # Calculate difference between discoverd and recovered secrets and update secrets value - $IFCategoryListCount
+        $IFCategoryListCountParse                = $IFCategoryListCount.Trim("[]").Split(",") | ForEach-Object { $_.Trim().Trim("'") }
+        $OriginalSecretsValue                    = $IFCategoryListCountParse[$secretIndex] 
+        $IFCategoryListCountParse[$secretIndex]  = $OriginalSecretsValue - $SecretsRecoveredFileCount  # Remove recovered count from total secrets count 
+        $IFCategoryListCount = "['" + ($IFCategoryListCountParse -join "', '") + "']"
+
+        # Get the count of the elements in the existing data array
+        $NumVal = $IFCategoryListCountParse.Count
+
+        # Initialize a new array to hold zeros with the same count as the original array
+        $newDataArray = @()
+        for ($i = 0; $i -lt $NumVal; $i++) {
+            $newDataArray += 0
+        }
+
+        # Get new secrets value
+        $NewSecretsValue = $IFCategoryListCountParse[$secretIndex]                  
+
+        # Update the sercrets column
+        $newDataArray[$secretIndex] = $SecretsRecoveredFileCount # Only recovered secrets file count
+
+        # Convert the new array to the desired string format
+        $IFCategoryListSecretRecover = "['" + ($newDataArray -join "', '") + "']"
+
+        # Show debug info for dashboard secrets bar calc
+        <#
+        Write-Verbose "index of secrets: $secretIndex"
+        Write-Verbose  "Original discovered secrets files: $OriginalSecretsValue"        
+        Write-Verbose  "Recovered secrets files: $SecretsRecoveredFileCount"
+        Write-Verbose  "Updated discovered secrets files: $NewSecretsValue"
+        Write-Verbose  "Summary of change:  $OriginalSecretsValue - $SecretsRecoveredFileCount = $NewSecretsValue"
+
+        Write-Verbose  "Main Table List"
+        Write-Verbose  "$IFCategoryListCount"
+
+        Write-Verbose "Recovered List"
+        Write-Verbose  "$IFCategoryListSecretRecover"
+
+        Write-Verbose "Categories"
+        Write-Verbose  "$ChartCategoryCatDash"
+        #>
+
+        # Write passwords to file
+        $MySecretsTbl | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Recovered-Passwords.csv" -ErrorAction SilentlyContinue
+
+        # Generate table content for "Recovered Secrets" Page 
         $SecretsRecoveredString	= $MySecretsTbl | Select-Object ComputerName, ShareName, UncFilePath, FileName, Section, ObjectName, TargetURL, TargetServer, TargetPort, Database, Domain, Username, Password, PasswordEnc, KeyFilePath -Unique | where ComputerName -NotLike "" |
         Foreach {
 
