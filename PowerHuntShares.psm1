@@ -2520,7 +2520,10 @@ function Invoke-HuntSMBShares
 
             # Return object
             $myObject
-        }
+        } 
+
+        # Save to file
+        $DomainComputerFull |  Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Domain-Computers-Open445-OSVer.csv"
 
         # Get count of all computer objects
         $DomainComputerFullCount = $DomainComputerFull | measure | select count -ExpandProperty count
@@ -2531,28 +2534,28 @@ function Invoke-HuntSMBShares
         # Get count of unique operating systems
         $DomainComputerOSCount = $DomainComputerOSList | measure | select count -ExpandProperty count
 
-        # Get percentage of each operating system
+        # Get count of each operating system - the counts are off
         $DomainComputerOSSum = $DomainComputerOSList | 
         Foreach {
             
             $TargetComputerOS = $_.OperatingSystem
             
             # Get count
-            $TargetComputerOSCount = $DomainComputers | where OperatingSystem -eq "$TargetComputerOS" | measure | select count -ExpandProperty count
+            $TargetComputerOSCount2 = $DomainComputerFull | where OperatingSystem -eq "$TargetComputerOS" | measure | select count -ExpandProperty count
 
             # Calculate percentage           
-            $TargetComputerOSP = [math]::Round($TargetComputerOSCount/$DomainComputerFullCount,2) * 100   
+            $TargetComputerOSP = [math]::Round($TargetComputerOSCount2/$DomainComputerFullCount,2) * 100   
 
             # Return powershell object os,count,percent
             $object = New-Object psobject
             $object | add-member noteproperty os       $TargetComputerOS
-            $object | add-member noteproperty count    $TargetComputerOSCount
+            $object | add-member noteproperty count    $TargetComputerOSCount2
             $object | add-member noteproperty percent  $TargetComputerOSP
             $object 
         }
 
-        # Save results to a csv 
-        $DomainComputerOSSum |  Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Domain-Computers-Open445-OSVer.csv"
+        # Save results to a csv - accurate
+        $DomainComputerOSSum |  Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Domain-Computers-Open445-OSVerSum.csv"
 
         # Create java script chart objects - names
         $DomainComputerOSListJsNames  = ""
@@ -10495,6 +10498,7 @@ const sortedNames = sortedData.map(item => item.name);
 const sortedValues = sortedData.map(item => item.value);
 
 // Initialize ApexCharts with sorted data
+const maxCount = Math.max(...sortedValues);  // Get the maximum count from sorted values
 const ChartComputersOSOptions = {
   series: [{
     name: 'Count',
@@ -10534,10 +10538,16 @@ const ChartComputersOSOptions = {
     show: false
   },
   xaxis: {
+    min: 0,  // Ensure x-axis starts at 0
+    max: maxCount,  // Dynamically set the max value based on the data
+    tickAmount: maxCount + 1,  // Ensure there are tick marks up to the max count
     categories: sortedNames,  // Use sorted names for categories
     labels: {
       style: {
         fontSize: '12px'
+      },
+      formatter: function (value) {
+        return value.toFixed(1);  // Show the count as is, no fractional increments needed
       }
     },
     title: {
@@ -10567,7 +10577,7 @@ const ChartComputersOSOptions = {
     }
   },
   title: {
-    text: 'Computer Count by OS',
+    text: 'Live Computer Count by OS',
     align: 'center', // Aligns the title
     margin: 10, // Space between the title and the chart
     style: {
