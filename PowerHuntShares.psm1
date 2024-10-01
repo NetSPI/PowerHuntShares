@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.141
+# Version: v1.142
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -2560,7 +2560,7 @@ function Invoke-HuntSMBShares
         $DomainComputerOSSum |
         foreach{
             $TargetOSName  = $_.os 
-            $TargetOSValue = $_.percent
+            $TargetOSValue = $_.count
             $DomainComputerOSListJsNames  = $DomainComputerOSListJsNames  + ",'" + $TargetOSName + "'"
             $DomainComputerOSListJsValues = $DomainComputerOSListJsValues + "," + $TargetOSValue
         }
@@ -10478,17 +10478,17 @@ const ChartComputersDisco = new ApexCharts(document.querySelector("#ChartCompute
 ChartComputersDisco.render();
 
 // --------------------------
-// Computers Page - Computers Count by OS (Data shown as percentages)
+// Computers Page - Computers Count by OS 
 // --------------------------
 
-// Calculate the total sum of the series to convert values to percentages
-const total = $DomainComputerOSListJsValues.reduce((a, b) => a + b, 0);
+// Calculate the total sum of the series 
+const total = $DomainComputerOSListJsValues
 
 // Map the OS names and values into a combined array and sort by values in descending order
 const sortedData = $DomainComputerOSListJsNames.map((name, index) => ({
   name: name,
-  value: ($DomainComputerOSListJsValues[index] / total) * 100  // Convert to percentages
-})).sort((a, b) => b.value - a.value);  // Sort by percentage in descending order
+  value: $DomainComputerOSListJsValues[index]
+})).sort((a, b) => b.value - a.value);  
 
 // Extract the sorted names and values back into separate arrays
 const sortedNames = sortedData.map(item => item.name);
@@ -10497,7 +10497,7 @@ const sortedValues = sortedData.map(item => item.value);
 // Initialize ApexCharts with sorted data
 const ChartComputersOSOptions = {
   series: [{
-    name: 'Percentage',
+    name: 'Count',
     data: sortedValues  // Use sorted values for percentages
   }],
   chart: {
@@ -10526,7 +10526,7 @@ const ChartComputersOSOptions = {
   tooltip: {
     y: {
       formatter: function (val) {
-        return val.toFixed(2) + "%";  // Show tooltips as percentages
+        return val.toFixed(2) // + "%";  // Show tooltips as percentages
       }
     }
   },
@@ -10541,7 +10541,7 @@ const ChartComputersOSOptions = {
       }
     },
     title: {
-      text: 'Percentage',  // Custom label for x-axis
+      text: 'Count',  // Custom label for x-axis
       style: {
         fontSize: '12px',
         fontWeight: 'normal',
@@ -10567,7 +10567,7 @@ const ChartComputersOSOptions = {
     }
   },
   title: {
-    text: 'Computer Count OS Percentage Summary',
+    text: 'Computer Count by OS',
     align: 'center', // Aligns the title
     margin: 10, // Space between the title and the chart
     style: {
