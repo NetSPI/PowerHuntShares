@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.142
+# Version: v1.143
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1943,7 +1943,7 @@ function Invoke-HuntSMBShares
         #>
 
         # Write passwords to file
-        $MySecretsTbl | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Recovered-Passwords.csv" -ErrorAction SilentlyContinue
+        $MySecretsTbl | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Extracted-Secrets.csv" -ErrorAction SilentlyContinue
 
         # Generate table content for "Recovered Secrets" Page 
         $SecretsRecoveredString	= $MySecretsTbl | Select-Object ComputerName, ShareName, UncFilePath, FileName, Section, ObjectName, TargetURL, TargetServer, TargetPort, Database, Domain, Username, Password, PasswordEnc, KeyFilePath -Unique | where ComputerName -NotLike "" |
@@ -6192,16 +6192,12 @@ $ComputerCount computers were found in the $TargetDomain Active Directory domain
   <div style="width: 33.33%; display: flex; justify-content: flex-start;">
     <div class="card" style="width: 100%;">
       <div class="cardtitle" style="color:gray; font-size: 16px; font-weight: bold;">
-        Live Computers Found
+        Affected Computers
       </div>
       <div style="text-align: left;">
         <span class="percentagetext" style="color:#f08c41; text-align: left;">                    
-        $PeerComparisonComputerCount&nbsp;                 
+        $ComputerWithExcessive&nbsp;                 
         </span>
-        <Br>
-        <div style="padding-right: 10px;">
-        ($ComputerWithExcessive host shares with excessive privileges)
-        </div>
      </div>
     </div>
   </div>
@@ -6320,7 +6316,7 @@ $IdentityCombinedListCount identities were discovered across shares in the $Targ
   <div style="width: 33.33%; display: flex; justify-content: flex-start;">
     <div class="card" style="width: 100%;">
       <div class="cardtitle" style="color:gray; font-size: 16px; font-weight: bold;">
-        Identities Found
+        Affected Identities
       </div>
       <div style="text-align: left;">
           <span class="percentagetext" style="color:#f08c41;">                    
@@ -6421,7 +6417,7 @@ Below is a list of the ACE (access control entries) configured with excessive pr
   <div style="width: 33.33%; display: flex; justify-content: flex-start;">
     <div class="card" style="width: 100%;">
       <div class="cardtitle" style="color:gray; font-size: 16px; font-weight: bold;">
-        Insecure ACEs Found
+        Affected ACEs
       </div>
       <div style="text-align: left;">
         <span class="percentagetext" style="color:#f08c41; text-align: left;">                    
@@ -6966,7 +6962,7 @@ $AllSMBSharesCount shares were discovered across $ComputerPingableCount live com
   <div style="width: 33%; display: flex; justify-content: flex-start;">
     <div class="card" style="width: 100%;">
       <div class="cardtitle" style="color:gray; font-size: 16px; font-weight: bold;">
-       Shares Found
+       Affected Shares Names
       </div>
       <div style="text-align: left;">
         <span class="percentagetext" style = "color:#f08c41;">                    
@@ -7125,7 +7121,7 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
   <div style="width: 33%; display: flex; justify-content: flex-start;">
     <div class="card" style="width: 100%;">
       <div class="cardtitle" style="color:gray; font-size: 16px; font-weight: bold;">
-       Folder Groups Found
+       Affected Folder Groups
       </div>
       <div style="text-align: left;">
           <span class="percentagetext" style="color:#f08c41; text-align: left;">                    
@@ -10704,10 +10700,13 @@ ChartFGPageIF.render();
 // Folder Group Page: Chart - Risk Levels
 // --------------------------
 
+// Set series data
+const dataSeriesfg = [$RiskLevelFolderGroupCountCritical, $RiskLevelFolderGroupCountHigh, $RiskLevelFolderGroupCountMedium , $RiskLevelFolderGroupCountLow];
+
 // Initialize ApexCharts
 const ChartFGRiskOptionsa = {
   series: [{
-    data: [$RiskLevelFolderGroupCountCritical, $RiskLevelFolderGroupCountHigh, $RiskLevelFolderGroupCountMedium , $RiskLevelFolderGroupCountLow]
+    data: dataSeriesfg
   }],
   chart: {
     type: 'bar',
@@ -10736,6 +10735,9 @@ const ChartFGRiskOptionsa = {
     show: false
   },
   xaxis: {
+    min: 0, // Set minimum value to 0
+    max: Math.max(...dataSeriesfg), // Set maximum value to the largest count from the data series
+    tickAmount: dataSeriesfg.length, // Ensure unique labels by setting the number of ticks equal to the number of data points  
     categories: ['Critical','High','Medium','Low']
   },
 		  title: {
@@ -10811,10 +10813,13 @@ ChartSharePageIF.render();
 // Share Names Page: Chart - Risk Levels
 // --------------------------
 
-// Initialize ApexCharts
+// Example data series variable
+const dataSeries = [$RiskLevelShareNameCountCritical, $RiskLevelShareNameCountHigh, $RiskLevelShareNameCountMedium,  $RiskLevelShareNameCountLow]; // You can dynamically update this array as needed
+
+// Initialize ApexCharts with variable data series
 const ChartShareNameRiskOptionsa = {
   series: [{
-    data: [$RiskLevelShareNameCountCritical, $RiskLevelShareNameCountHigh, $RiskLevelShareNameCountMedium,  $RiskLevelShareNameCountLow]
+    data: dataSeries // Use the data series variable here
   }],
   chart: {
     type: 'bar',
@@ -10843,19 +10848,23 @@ const ChartShareNameRiskOptionsa = {
     show: false
   },
   xaxis: {
+    min: 0, // Set minimum value to 0
+    max: Math.max(...dataSeries), // Set maximum value to the largest count from the data series
+    tickAmount: dataSeries.length, // Ensure unique labels by setting the number of ticks equal to the number of data points
     categories: ['Critical','High','Medium','Low']
   },
-		  title: {
-			text: 'Share Name Count by Risk Level',
-			align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
-			margin: 10, // Adjusts the space between the title and the chart
-			style: {
-			  fontSize: '16px',
-			  fontWeight: 'bold',
-			  color: 'gray'
-			}
-		  }
+  title: {
+    text: 'Share Name Count by Risk Level',
+    align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
+    margin: 10, // Adjusts the space between the title and the chart
+    style: {
+      fontSize: '16px',
+      fontWeight: 'bold',
+      color: 'gray'
+    }
+  }
 };
+
 
 const ChartShareNameRiska = new ApexCharts(document.querySelector("#ChartShareNameRiska"), ChartShareNameRiskOptionsa);
 ChartShareNameRiska.render();
@@ -10877,7 +10886,7 @@ const ChartDashboardIFOptions = {
       data: data
     },
     {
-      name: 'Files with Extracted Secrets',
+      name: 'Files Discovered & Extracted Secrets',
       data: verifiedData
     }
   ],
