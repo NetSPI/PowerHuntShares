@@ -5876,7 +5876,7 @@ input[type="checkbox"]:checked {
 }
 
 input[type="checkbox"]:checked::before {
-    content: '✔';
+    content: '\2714'; /* Unicode for the checkmark */
     color: #f08c41;
     display: block;
     text-align: center;
