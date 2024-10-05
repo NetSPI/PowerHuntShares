@@ -11548,7 +11548,7 @@ function createEllipsis(pagination) {
 
 function createNavigationArrows(pagination, pageCount, tableId, paginationId) {
     const nextButton = document.createElement('button');
-    nextButton.textContent = '→';
+    nextButton.textContent = '\u2192';
     nextButton.classList.add('pagination-button');
     nextButton.addEventListener('click', () => {
         if (currentPage < pageCount) {
