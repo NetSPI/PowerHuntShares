@@ -1,0 +1,70 @@
+!
+! Cisco IOS Software, C3560 Software (C3560-IPBASEK9-M), Version 15.0(2)SE11
+! Compiled Mon 28-Mar-21 08:55 by prod_rel_team
+!
+version 15.0
+service timestamps debug datetime msec
+service timestamps log datetime msec
+no service password-recovery
+service password-encryption
+!
+hostname Router1
+!
+enable secret 5 $1$DkGh$XSdDk6LdoqM0eO67V0lJ71 
+enable password mycleartextpassword 
+!
+no aaa new-model
+!
+!
+username admin privilege 15 password 0 cleartext123
+username cisco privilege 15 password 7 12140A05171F15142F7C343F
+username secureadmin secret 5 $1$lpb1$kGc1R/tGbT6aYZEXw5lqa0
+!
+ip ssh version 2
+ip domain-name example.com
+!
+interface GigabitEthernet0/0
+ description Uplink to ISP
+ ip address 192.168.1.1 255.255.255.0
+ duplex auto
+ speed auto
+!
+interface GigabitEthernet0/1
+ description Internal LAN
+ ip address 192.168.2.1 255.255.255.0
+ duplex auto
+ speed auto
+!
+ip route 0.0.0.0 0.0.0.0 192.168.1.254
+!
+snmp-server community public RO
+snmp-server community private RW
+!
+line con 0
+ exec-timeout 0 0
+ password consolepassword123
+ logging synchronous
+ login
+!
+line vty 0 4
+ password 7 02050D4808091B385C4B5E1A09121319
+ logging synchronous
+ login
+ transport input ssh
+!
+interface Vlan1
+ ip address 192.168.3.1 255.255.255.0
+ no shutdown
+!
+dot11 ssid MySSID
+   authentication open
+   authentication key-management wpa
+   wpa-psk ascii 0 cleartextkeywifipassword
+!
+banner motd ^C
+***********************************************
+  Unauthorized access is prohibited!
+***********************************************
+^C
+!
+end
