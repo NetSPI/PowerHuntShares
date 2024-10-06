@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.144
+# Version: v1.145
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -26291,6 +26291,11 @@ function  Get-PwCiscoConfig {
         0x4a, 0x4b, 0x44, 0x48, 0x53, 0x55, 0x42, 0x73, 0x67, 0x76, 0x63, 0x61, 0x36, 0x39, 0x38, 0x33, 0x34, 0x6e, 0x63,
         0x78, 0x76, 0x39, 0x38, 0x37, 0x33, 0x32, 0x35, 0x34, 0x6b, 0x3b, 0x66, 0x67, 0x38, 0x37
     )
+
+    # Helper function to convert hex string to int
+    function HexToInt($hexStr) {
+        return [convert]::ToInt32($hexStr, 16)
+    }
 
     # Cisco Type 7 Password Decoder
     function Decode-Type7 {
