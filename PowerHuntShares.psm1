@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.148
+# Version: v1.149
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1623,7 +1623,7 @@ function Invoke-HuntSMBShares
         $FileNamePatternsAll.Rows.Add("*.netrc","","None.","Secret","Get-PwNetrc")                           | Out-Null
         $FileNamePatternsAll.Rows.Add("*jmx-console-users.properties","","None.","Secret","")                | Out-Null
         $FileNamePatternsAll.Rows.Add("*dbvis.xml","","None.","Secret","")                                   | Out-Null
-        $FileNamePatternsAll.Rows.Add("*remmina.pref","","None.","Secret","")                                | Out-Null
+        $FileNamePatternsAll.Rows.Add("*remmina.pref","","None.","Secret","Get-PwRemminaPref")               | Out-Null
         $FileNamePatternsAll.Rows.Add("*.remmina","","None.","Secret","Get-PwRemmina")                       | Out-Null
         $FileNamePatternsAll.Rows.Add("*credentials.xml","Used for Jenkins.","None.","Secret","")            | Out-Null
         $FileNamePatternsAll.Rows.Add("*lastpass*","","None.","Secret","")                                   | Out-Null
@@ -26791,4 +26791,63 @@ function Get-PwRemmina {
 
     # Return the array of records
     return $outputArray
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input: remmina.perf file
+function Get-PwRemminaPref {
+    param (
+        [string]$ComputerName = $null,
+        [string]$ShareName    = $null,
+        [string]$UncFilePath  = $null,
+        [string]$FileName     = $null,
+        [string]$FilePath     # Required
+    )
+
+    # Initialize the output object with default values
+    $output = [PSCustomObject]@{
+        ComputerName = $ComputerName
+        ShareName    = $ShareName
+        UncFilePath  = $UncFilePath
+        FileName     = $FileName
+        Section      = "remmina_pref"
+        ObjectName   = "Remmina Configuration"
+        TargetURL    = "NA"
+        TargetServer = "NA"
+        TargetPort   = "NA"
+        Database     = "NA"
+        Domain       = "NA"
+        Username     = "NA"
+        Password     = "NA"
+        PasswordEnc  = "NA"
+        KeyFilePath  = "NA"
+    }
+
+    # Check if the file exists
+    if (-not (Test-Path -Path $FilePath)) {
+        Write-Host "File not found at path: $FilePath"
+        return $output
+    }
+
+    # Read the file content and parse for the 'secret' field in the remmina_pref section
+    $fileContent = Get-Content -Path $FilePath
+    $inRemminaPrefSection = $false
+
+    foreach ($line in $fileContent) {
+        # Check if we are in the [remmina_pref] section
+        if ($line -match "^\[remmina_pref\]") {
+            $inRemminaPrefSection = $true
+        }
+        # Exit the section if a new section starts
+        elseif ($line -match "^\[.*\]") {
+            $inRemminaPrefSection = $false
+        }
+        # Parse 'secret' value in the remmina_pref section
+        elseif ($inRemminaPrefSection -and $line -match "^secret=(.+)") {
+            $output.PasswordEnc = $matches[1].Trim()
+        }
+    }
+
+    # Output the final object
+    return $output
 }
