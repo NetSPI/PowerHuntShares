@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.150
+# Version: v1.151
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1615,7 +1615,7 @@ function Invoke-HuntSMBShares
         $FileNamePatternsAll.Rows.Add("*.keytab","May store authentication tokens.","None.","Secret","")     | Out-Null
         $FileNamePatternsAll.Rows.Add("*mysql_history*","","None.","Secret","")                              | Out-Null
         $FileNamePatternsAll.Rows.Add("*psql_history*","","None.","Secret","")                               | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.git-credentials*","","None.","Secret","")                           | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.git-credentials*","","None.","Secret","Get-PwGitCredentials")       | Out-Null
         $FileNamePatternsAll.Rows.Add("*azure.config.ini*","","None.","Secret","")                           | Out-Null
         $FileNamePatternsAll.Rows.Add("*azure.profile.json*","","None.","Secret","")                         | Out-Null
         $FileNamePatternsAll.Rows.Add("*dbeaver-data-sources.xml","","None.","Secret","")                    | Out-Null
@@ -26916,4 +26916,57 @@ function Get-PwDbvisxml{
         PasswordEnc  = $passwordEnc
         KeyFilePath  = "NA"
     }
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input: .git-credentials files
+function Get-PwGitCredentials {
+    param (
+        [string]$ComputerName = $null,   # Optional
+        [string]$ShareName    = $null,   # Optional
+        [string]$UncFilePath  = $null,   # Optional
+        [string]$FileName     = $null,   # Optional
+        [string]$FilePath                # Required
+    )
+
+    # Check if file exists
+    if (-Not (Test-Path -Path $FilePath)) {
+        Write-Error "File not found at path: $FilePath"
+        return
+    }
+
+    # Array to store parsed credentials
+    $credentialsList = @()
+
+    # Parse each line in .git-credentials
+    foreach ($line in Get-Content -Path $FilePath) {
+        if ($line -match 'https://([^:]+):([^@]+)@(.*)') {
+            $username = $matches[1]
+            $passwordEnc = $matches[2]
+            $targetServer = $matches[3] -replace '/.*', ''  # Extract server without path
+            $targetURL = $matches[3]
+
+            # Create output structure
+            $credentialsList += [PSCustomObject]@{
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "NA"
+                ObjectName   = "NA"
+                TargetURL    = $targetURL
+                TargetServer = $targetServer
+                TargetPort   = "NA"          # Not in .git-credentials format
+                Database     = "NA"
+                Domain       = "NA"
+                Username     = $username
+                Password     = $passwordEnc       
+                PasswordEnc  = "NA"  
+                KeyFilePath  = "NA"
+            }
+        }
+    }
+
+    # Return parsed credentials
+    return $credentialsList
 }
