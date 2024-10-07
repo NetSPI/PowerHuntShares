@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.147
+# Version: v1.148
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1624,6 +1624,7 @@ function Invoke-HuntSMBShares
         $FileNamePatternsAll.Rows.Add("*jmx-console-users.properties","","None.","Secret","")                | Out-Null
         $FileNamePatternsAll.Rows.Add("*dbvis.xml","","None.","Secret","")                                   | Out-Null
         $FileNamePatternsAll.Rows.Add("*remmina.pref","","None.","Secret","")                                | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.remmina","","None.","Secret","Get-PwRemmina")                       | Out-Null
         $FileNamePatternsAll.Rows.Add("*credentials.xml","Used for Jenkins.","None.","Secret","")            | Out-Null
         $FileNamePatternsAll.Rows.Add("*lastpass*","","None.","Secret","")                                   | Out-Null
         $FileNamePatternsAll.Rows.Add("*thycotic*","","None.","Secret","")                                   | Out-Null
@@ -26694,4 +26695,100 @@ function Get-PwNetrc {
 
     # Output the result
     return $entries
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input: .remmina file
+function Get-PwRemmina {
+    param (
+        [string]$ComputerName = $null,
+        [string]$ShareName    = $null,
+        [string]$UncFilePath  = $null,
+        [string]$FileName     = $null,
+        [string]$FilePath     # Required
+    )
+
+    # Array to hold individual records
+    $outputArray = @()
+
+    # Check if the file exists
+    if (-not (Test-Path -Path $FilePath)) {
+        Write-Host "File not found at path: $FilePath"
+        return $outputArray
+    }
+
+    # Read the file content and parse for each protocol setting
+    $fileContent = Get-Content -Path $FilePath
+
+    # Initialize variables for each record type
+    $vncSettings = @{
+        ComputerName = $ComputerName
+        ShareName    = $ShareName
+        UncFilePath  = $UncFilePath
+        FileName     = $FileName
+        Section      = "NA"
+        ObjectName   = "VNC"
+        TargetURL    = "NA"
+        TargetServer = "NA"
+        TargetPort   = "NA"
+        Database     = "NA"
+        Domain       = "NA"
+        Username     = "NA"
+        Password     = "NA"
+        PasswordEnc  = "NA"
+        KeyFilePath  = "NA"
+    }
+    
+    $sshSettings = @{
+        ComputerName = $ComputerName
+        ShareName    = $ShareName
+        UncFilePath  = $UncFilePath
+        FileName     = $FileName
+        Section      = "NA"
+        ObjectName   = "SSH"
+        TargetURL    = "NA"
+        TargetServer = "NA"
+        TargetPort   = "NA"
+        Database     = "NA"
+        Domain       = "NA"
+        Username     = "NA"
+        Password     = "NA"
+        PasswordEnc  = "NA"
+        KeyFilePath  = "NA"
+    }
+
+    # Parse each line and fill in the appropriate settings
+    foreach ($line in $fileContent) {
+        if ($line -match "^protocol=(.+)") {
+            $protocol = $matches[1].Trim()
+            if ($protocol -eq "VNC") {
+                $vncSettings["ObjectName"] = "VNC"
+            } elseif ($protocol -eq "SSH") {
+                $sshSettings["ObjectName"] = "SSH"
+            }
+        }
+        elseif ($line -match "^server=(.+)") {
+            $vncSettings["TargetServer"] = $matches[1].Trim()
+        } elseif ($line -match "^listenport=(\d+)") {
+            $vncSettings["TargetPort"] = $matches[1].Trim()
+        } elseif ($line -match "^username=(.+)") {
+            $vncSettings["Username"] = $matches[1].Trim()
+        } elseif ($line -match "^password=(.+)") {
+            $vncSettings["Password"] = $matches[1].Trim()
+        }
+        elseif ($line -match "^ssh_server=(.+)") {
+            $sshSettings["TargetServer"] = $matches[1].Trim()
+        } elseif ($line -match "^ssh_username=(.+)") {
+            $sshSettings["Username"] = $matches[1].Trim()
+        } elseif ($line -match "^ssh_privatekey=(.+)") {
+            $sshSettings["KeyFilePath"] = $matches[1].Trim()
+        }
+    }
+
+    # Add each filled record to the output array
+    $outputArray += [PSCustomObject]$vncSettings
+    $outputArray += [PSCustomObject]$sshSettings
+
+    # Return the array of records
+    return $outputArray
 }
