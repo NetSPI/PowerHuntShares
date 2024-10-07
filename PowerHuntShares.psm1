@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.145
+# Version: v1.146
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1539,8 +1539,8 @@ function Invoke-HuntSMBShares
         $FileNamePatternsAll.Rows.Add("jboss-logmanager.properties*","","None.","Secret","")                 | Out-Null
         $FileNamePatternsAll.Rows.Add("jenkins.model.JenkinsLocationConfiguration.*","","None.","Secret","") | Out-Null
         $FileNamePatternsAll.Rows.Add("machine.config*","","None.","Secret","Get-PwMachineConfig")           | Out-Null
-	$FileNamePatternsAll.Rows.Add("startup*","","None.","Secret","Get-PwCiscoConfig")                    | Out-Null
- 	$FileNamePatternsAll.Rows.Add("running*","","None.","Secret","Get-PwCiscoConfig")                    | Out-Null
+        $FileNamePatternsAll.Rows.Add("startup*","","None.","Secret","Get-PwCiscoConfig")                    | Out-Null
+        $FileNamePatternsAll.Rows.Add("running*","","None.","Secret","Get-PwCiscoConfig")                    | Out-Null
         $FileNamePatternsAll.Rows.Add("my.*","","None.","Secret","Get-PwMySQLConfig")                        | Out-Null
         $FileNamePatternsAll.Rows.Add("mysql.user*","","None.","Secret","")                                  | Out-Null
         $FileNamePatternsAll.Rows.Add("nginx.conf*","","None.","Secret","")                                  | Out-Null
@@ -1597,16 +1597,43 @@ function Invoke-HuntSMBShares
         $FileNamePatternsAll.Rows.Add("*.pfx","","None.","Secret","Get-PrivateKeyFilePath")                  | Out-Null
         $FileNamePatternsAll.Rows.Add("*.crt","","None.","Secret","Get-PrivateKeyFilePath")                  | Out-Null
         $FileNamePatternsAll.Rows.Add("*.ppk","","None.","Secret","Get-PrivateKeyFilePath")                  | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.der","","None.","Secret","Get-PrivateKeyFilePath")                  | Out-Null
+        $FileNamePatternsAll.Rows.Add("id_rsa*","","None.","Secret","Get-PrivateKeyFilePath")                | Out-Null
+        $FileNamePatternsAll.Rows.Add("id_dsa*","","None.","Secret","Get-PrivateKeyFilePath")                | Out-Null
+        $FileNamePatternsAll.Rows.Add("id_e*","","None.","Secret","Get-PrivateKeyFilePath")                  | Out-Null
         $FileNamePatternsAll.Rows.Add("*sssd.conf*","","None.","Secret","Get-PwSssdConfig")                  | Out-Null
         $FileNamePatternsAll.Rows.Add("*smb.conf*","","None.","Secret","Get-PwSmbConf")                      | Out-Null
         $FileNamePatternsAll.Rows.Add("*krb5.conf*","","None.","Secret","Get-Pwkrb5Conf")                    | Out-Null
+        $FileNamePatternsAll.Rows.Add("*krb5cc*","","None.","Secret","")                                     | Out-Null
         $FileNamePatternsAll.Rows.Add("*htpasswd*","","None.","Secret","Get-PwHtpasswd")                     | Out-Null
+        $FileNamePatternsAll.Rows.Add("profiles.txt","","None.","Secret","")                                 | Out-Null
         $FileNamePatternsAll.Rows.Add("*pgpass*","","None.","Secret","Get-PwPgPass")                         | Out-Null
+        $FileNamePatternsAll.Rows.Add("vas.conf","May include auth configs.","None.","Secret","")            | Out-Null
+        $FileNamePatternsAll.Rows.Add("grub.cfg","","None.","Secret","Get-PwGrubConfig")                     | Out-Null
+        $FileNamePatternsAll.Rows.Add("grub.conf","","None.","Secret","Get-PwGrubConfig")                    | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.fetchmailrc","","None.","Secret","")                                | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.keytab","May store authentication tokens.","None.","Secret","")     | Out-Null
+        $FileNamePatternsAll.Rows.Add("*mysql_history*","","None.","Secret","")                              | Out-Null
+        $FileNamePatternsAll.Rows.Add("*psql_history*","","None.","Secret","")                               | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.git-credentials*","","None.","Secret","")                           | Out-Null
+        $FileNamePatternsAll.Rows.Add("*azure.config.ini*","","None.","Secret","")                           | Out-Null
+        $FileNamePatternsAll.Rows.Add("*azure.profile.json*","","None.","Secret","")                         | Out-Null
+        $FileNamePatternsAll.Rows.Add("*dbeaver-data-sources.xml","","None.","Secret","")                    | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.s3cfg","","None.","Secret","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.netrc","","None.","Secret","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*jmx-console-users.properties","","None.","Secret","")                | Out-Null
+        $FileNamePatternsAll.Rows.Add("*dbvis.xml","","None.","Secret","")                                   | Out-Null
+        $FileNamePatternsAll.Rows.Add("*remmina.pref","","None.","Secret","")                                | Out-Null
+        $FileNamePatternsAll.Rows.Add("*credentials.xml","Used for Jenkins.","None.","Secret","")            | Out-Null
+        $FileNamePatternsAll.Rows.Add("*lastpass*","","None.","Secret","")                                   | Out-Null
+        $FileNamePatternsAll.Rows.Add("*thycotic*","","None.","Secret","")                                   | Out-Null
+        $FileNamePatternsAll.Rows.Add("*cyberark*","","None.","Secret","")                                   | Out-Null
 
         # Add rows to data table - System/VM Images
         $FileNamePatternsAll.Rows.Add("*.img*","","None.","SystemImage","")                                                                            | Out-Null
         $FileNamePatternsAll.Rows.Add("*.iso*","This is system image.It may contain passwords in Variables.dat, unattend.xml, and policy.xml files.","None.","SystemImage","")                                   | Out-Null
         $FileNamePatternsAll.Rows.Add("*.wmi*","This is system image.It may contain passwords in Variables.dat, unattend.xml, and policy.xml files.","None.","SystemImage","")                                   | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.wim*","This is a virtual machine image file.","None.","SystemImage","")                                       | Out-Null
         $FileNamePatternsAll.Rows.Add("*.vmx*","This is a virtual machine image file.","None.","SystemImage","")                                       | Out-Null
         $FileNamePatternsAll.Rows.Add("*.vmdk*","This is a virtual machine image file.","None.","SystemImage","")                                      | Out-Null
         $FileNamePatternsAll.Rows.Add("*.nvram*","This is a virtual machine image file.","None.","SystemImage","")                                     | Out-Null
@@ -1623,6 +1650,8 @@ function Invoke-HuntSMBShares
         $FileNamePatternsAll.Rows.Add("*.vbox-prev*","This is a virtual machine image file.","None.","SystemImage","")                                 | Out-Null
         $FileNamePatternsAll.Rows.Add("*.vdi*","This is a virtual machine image file.","None.","SystemImage","")                                       | Out-Null
         $FileNamePatternsAll.Rows.Add("*.hdd*","This is a virtual machine image file.","None.","SystemImage","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.dmp*","This is a memory dump file.","None.","SystemImage","")                                                 | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.docker*","This is a docker image file.","None.","SystemImage","")                                             | Out-Null
 
         # Add rows to data table - Database files  
         $FileNamePatternsAll.Rows.Add("*database*","","None.","Database","")                                 | Out-Null
@@ -1630,8 +1659,12 @@ function Invoke-HuntSMBShares
         $FileNamePatternsAll.Rows.Add("*.sqlite*","","None.","Database","")                                  | Out-Null
         $FileNamePatternsAll.Rows.Add("*.idf*","","None.","Database","")                                     | Out-Null
         $FileNamePatternsAll.Rows.Add("*.mdf*","","None.","Database","")                                     | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.msf*","","None.","Database","")                                     | Out-Null
         $FileNamePatternsAll.Rows.Add("*.ora*","","None.","Database","")                                     | Out-Null
         $FileNamePatternsAll.Rows.Add("*oracle*","","None.","Database","")                                   | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.tbd","","None.","Database","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vdb","","None.","Database","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.db","","None.","Database","")                                       | Out-Null
 
         # Add rows to data table - Backup files
         $FileNamePatternsAll.Rows.Add("*.bak*","","None.","Backup","")                                       | Out-Null
@@ -1641,15 +1674,30 @@ function Invoke-HuntSMBShares
         $FileNamePatternsAll.Rows.Add("*.zip*","","None.","Backup","")                                       | Out-Null
         $FileNamePatternsAll.Rows.Add("IT*","May contain IT department files","None.","Backup","")           | Out-Null
 
-        # Add rows to data table - Scripts
+        # Add rows to data table - Scripts & Code
         $FileNamePatternsAll.Rows.Add("*.ps1*","","None.","Script","")                                       | Out-Null
         $FileNamePatternsAll.Rows.Add("*.psm1*","","None.","Script","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.psd1*","","None.","Script","")                                      | Out-Null
         $FileNamePatternsAll.Rows.Add("*.bat*","","None.","Script","")                                       | Out-Null
         $FileNamePatternsAll.Rows.Add("*.sh*","","None.","Script","")                                        | Out-Null
         $FileNamePatternsAll.Rows.Add("*.vbs*","","None.","Script","")                                       | Out-Null
         $FileNamePatternsAll.Rows.Add("*.cmd*","","None.","Script","")                                       | Out-Null
         $FileNamePatternsAll.Rows.Add("*.wsh*","","None.","Script","")                                       | Out-Null
         $FileNamePatternsAll.Rows.Add("*.wsf*","","None.","Script","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.php*","","None.","Script","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.py","","None.","Script","")                                         | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.jsp","","None.","Script","")                                        | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.do*","","None.","Script","")                                        | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.asmx","","None.","Script","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.aspx","","None.","Script","")                                       | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.cfm","","None.","Script","")                                        | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.asp","","None.","Script","")                                        | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.cs","","None.","Script","")                                         | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vbs","","None.","Script","")                                        | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.cs","","None.","Script","")                                         | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.vb","","None.","Script","")                                         | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.rb","","None.","Script","")                                         | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.inc","","None.","Script","")                                        | Out-Null
 
         # Add rows to data table - Binaries
         $FileNamePatternsAll.Rows.Add("*.dll","","None.","Binaries","")                                      | Out-Null
@@ -26511,3 +26559,73 @@ function Encode-Type7 {
 }
 
 #>
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input: grub.conf, grub.config, grub.cfg
+function Get-PwGrubConfig {
+    param (
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
+    )
+
+    # Check if the FilePath exists
+    if (-not (Test-Path -Path $FilePath)) {
+        Write-Error "File not found: $FilePath"
+        return
+    }
+
+    # Initialize the output structure with default values
+    $output = [pscustomobject]@{
+        ComputerName = $ComputerName
+        ShareName    = $ShareName
+        UncFilePath  = $UncFilePath
+        FileName     = $FileName
+        Section      = "NA"
+        ObjectName   = 'NA'
+        TargetURL    = "NA"
+        TargetServer = "NA"
+        TargetPort   = "NA"
+        Database     = "NA"
+        Domain       = "NA"
+        Username     = "NA"
+        Password     = "NA"
+        PasswordEnc  = "NA"
+        KeyFilePath  = "NA"
+    }
+
+    # Read the file contents
+    $fileContent = Get-Content -Path $FilePath -Raw
+
+    # Extract the superuser username
+    if ($fileContent -match 'set superusers\s*=\s*"([^"]+)"') {
+        $output.Username = $matches[1].Trim()
+    }
+
+    # Use the extracted username in the password regex
+    if ($output.Username -ne "NA") {
+        $usernamePattern = [regex]::Escape($output.Username)
+        $passwordPattern = "password\s+$usernamePattern\s+(\S+)"
+        if ($fileContent -match $passwordPattern) {
+            $output.Password = $matches[1].Trim()
+        }
+    }
+
+    # Debug output to verify matching sections in file content
+    if ($output.Username -eq "NA") {
+        # Write-Host "Username not found. Ensure 'set superusers' syntax is correct."
+    } else {
+        # Write-Host "Username extracted successfully: $($output.Username)"
+    }
+
+    if ($output.Password -eq "NA") {
+        # Write-Host "Password not found. Ensure 'password <username>' syntax is correct."
+    } else {
+        # Write-Host "Password extracted successfully: $($output.Password)"
+    }
+
+    # Return the output structure
+    return $output
+}
