@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.146
+# Version: v1.147
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1620,7 +1620,7 @@ function Invoke-HuntSMBShares
         $FileNamePatternsAll.Rows.Add("*azure.profile.json*","","None.","Secret","")                         | Out-Null
         $FileNamePatternsAll.Rows.Add("*dbeaver-data-sources.xml","","None.","Secret","")                    | Out-Null
         $FileNamePatternsAll.Rows.Add("*.s3cfg","","None.","Secret","")                                      | Out-Null
-        $FileNamePatternsAll.Rows.Add("*.netrc","","None.","Secret","")                                      | Out-Null
+        $FileNamePatternsAll.Rows.Add("*.netrc","","None.","Secret","Get-PwNetrc")                           | Out-Null
         $FileNamePatternsAll.Rows.Add("*jmx-console-users.properties","","None.","Secret","")                | Out-Null
         $FileNamePatternsAll.Rows.Add("*dbvis.xml","","None.","Secret","")                                   | Out-Null
         $FileNamePatternsAll.Rows.Add("*remmina.pref","","None.","Secret","")                                | Out-Null
@@ -26628,4 +26628,70 @@ function Get-PwGrubConfig {
 
     # Return the output structure
     return $output
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input: .netrc file
+function Get-PwNetrc {
+    param (
+        [string]$ComputerName = $null,   # Optional
+        [string]$ShareName    = $null,   # Optional
+        [string]$UncFilePath  = $null,   # Optional
+        [string]$FileName     = $null,   # Optional
+        [string]$FilePath                # Required
+    )
+
+    # Initialize an array to store parsed entries
+    $entries = @()
+
+    # Read file contents
+    $fileContent = Get-Content -Path $FilePath -ErrorAction Stop
+
+    # Initialize variables for each entry
+    $currentEntry = @{
+        ComputerName = $ComputerName
+        ShareName    = $ShareName
+        UncFilePath  = $UncFilePath
+        FileName     = $FileName
+        Section      = "NA"
+        ObjectName   = "NA"
+        TargetURL    = "NA"
+        TargetServer = "NA"
+        TargetPort   = "NA"
+        Database     = "NA"
+        Domain       = "NA"
+        Username     = "NA"
+        Password     = "NA"
+        PasswordEnc  = "NA"
+        KeyFilePath  = "NA"
+    }
+
+    # Parse lines from the .netrc file
+    foreach ($line in $fileContent) {
+        # Match each .netrc directive with regex
+        if ($line -match "^machine\s+(\S+)") {
+            # If an entry already exists, add it to the array
+            if ($currentEntry.TargetServer -ne "NA") {
+                $entries += [pscustomobject]$currentEntry
+            }
+            # Start a new entry
+            $currentEntry.TargetServer = $matches[1]
+            $currentEntry.Username = "NA"
+            $currentEntry.Password = "NA"
+        }
+        elseif ($line -match "^login\s+(\S+)") {
+            $currentEntry.Username = $matches[1]
+        }
+        elseif ($line -match "^password\s+(\S+)") {
+            $currentEntry.Password = $matches[1]
+        }
+    }
+
+    # Add the last entry if present
+    if ($currentEntry.TargetServer -ne "NA") {
+        $entries += [pscustomobject]$currentEntry
+    }
+
+    # Output the result
+    return $entries
 }
