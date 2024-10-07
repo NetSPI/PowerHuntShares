@@ -1,0 +1,11 @@
+<dbvis>
+    <connections>
+        <connection>
+            <name>MyDatabaseConnection</name>
+            <url>jdbc:mysql://localhost:3306/mydatabase</url>
+            <user>db_user</user>
+            <password>+mQwYxIFaEjZ/MWJDkm1SCWhHw7xPXWd</password> <!-- Encrypted using DES with default key or a master password -->
+            <driver>com.mysql.jdbc.Driver</driver>
+        </connection>
+    </connections>
+</dbvis>
