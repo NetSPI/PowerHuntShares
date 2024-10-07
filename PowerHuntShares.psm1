@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.149
+# Version: v1.150
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1622,7 +1622,7 @@ function Invoke-HuntSMBShares
         $FileNamePatternsAll.Rows.Add("*.s3cfg","","None.","Secret","")                                      | Out-Null
         $FileNamePatternsAll.Rows.Add("*.netrc","","None.","Secret","Get-PwNetrc")                           | Out-Null
         $FileNamePatternsAll.Rows.Add("*jmx-console-users.properties","","None.","Secret","")                | Out-Null
-        $FileNamePatternsAll.Rows.Add("*dbvis.xml","","None.","Secret","")                                   | Out-Null
+        $FileNamePatternsAll.Rows.Add("*dbvis.xml","","None.","Secret","Get-PwDbvisxml")                     | Out-Null
         $FileNamePatternsAll.Rows.Add("*remmina.pref","","None.","Secret","Get-PwRemminaPref")               | Out-Null
         $FileNamePatternsAll.Rows.Add("*.remmina","","None.","Secret","Get-PwRemmina")                       | Out-Null
         $FileNamePatternsAll.Rows.Add("*credentials.xml","Used for Jenkins.","None.","Secret","")            | Out-Null
@@ -26850,4 +26850,70 @@ function Get-PwRemminaPref {
 
     # Output the final object
     return $output
+}
+
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Intended input: dbvis.xml files
+
+function Get-PwDbvisxml{
+    param (
+        [string]$ComputerName = $null,   # Optional
+        [string]$ShareName    = $null,   # Optional
+        [string]$UncFilePath  = $null,   # Optional
+        [string]$FileName     = $null,   # Optional
+        [string]$FilePath                # Required
+    )
+
+    # Parameters for password decryption
+    $password = "qinda"  # hard-coded key
+    $iterations = 10
+    $salt = [byte[]]@(142, 18, 57, 156, 7, 114, 111, 90)
+
+    # Create the key and cipher for PBEWithMD5AndDES
+    $spec = New-Object System.Security.Cryptography.Rfc2898DeriveBytes($password, $salt, $iterations)
+    $key = $spec.GetBytes(8) # DES key size is 8 bytes
+    $des = New-Object System.Security.Cryptography.DESCryptoServiceProvider
+    $des.Key = $key
+    $des.IV = $salt[0..7]
+    $des.Padding = 'PKCS7'
+
+    # Decrypt Function
+    function Decrypt-Pw ($encryptedText) {
+        $encryptedBytes = [Convert]::FromBase64String($encryptedText)
+        $decryptor = $des.CreateDecryptor()
+        $decryptedBytes = $decryptor.TransformFinalBlock($encryptedBytes, 0, $encryptedBytes.Length)
+        return [System.Text.Encoding]::UTF8.GetString($decryptedBytes)
+    }
+
+    # Load and parse dbvis.xml
+    [xml]$xml = Get-Content -Path $FilePath
+
+    # Extract connection details
+    $connectionNode = $xml.dbvis.connections.connection
+
+    # Extract required fields
+    $targetServer = $connectionNode.url -replace 'jdbc:mysql://([^:/]+).*','$1'
+    $targetPort = $connectionNode.url -replace '.*:(\d+)/.*','$1'
+    $username = $connectionNode.user
+    $passwordEnc = $connectionNode.password
+    $decryptedPassword = Decrypt-Pw -encryptedText $passwordEnc
+
+    # Return result object
+    return [PSCustomObject]@{
+        ComputerName = $ComputerName
+        ShareName    = $ShareName
+        UncFilePath  = $UncFilePath
+        FileName     = $FileName
+        Section      = "NA"
+        ObjectName   = "NA"
+        TargetURL    = "NA"
+        TargetServer = $targetServer
+        TargetPort   = $targetPort
+        Database     = "NA"
+        Domain       = "NA"
+        Username     = $username
+        Password     = $decryptedPassword
+        PasswordEnc  = $passwordEnc
+        KeyFilePath  = "NA"
+    }
 }
