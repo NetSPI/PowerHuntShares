@@ -45,8 +45,16 @@ function Get-PwFetchmailrc {
         }
 
         # Extract users, passwords, server, protocol, and port
-        $cred["Username"]   = [regex]::Matches($line, '\s+user(?:name)?\s+(\S+)') | ForEach-Object { $_.Groups[1].Value }
-        $cred["Password"]   = [regex]::Matches($line, '\s+pass(?:word)?\s+(\S+)') | ForEach-Object { $_.Groups[1].Value }
+        $userMatch = [regex]::Match($line, '\s+user(?:name)?\s+"([^"]+)"')
+        if ($userMatch.Success) {
+            $cred["Username"] = $userMatch.Groups[1].Value
+        }
+
+        $passMatch = [regex]::Match($line, '\s+pass(?:word)?\s+"([^"]+)"')
+        if ($passMatch.Success) {
+            $cred["Password"] = $passMatch.Groups[1].Value
+        }
+
         $cred["TargetServer"] = if ($line -match '^(?:poll|skip)\s+(\S+)') { $matches[1] } else { $cred["TargetServer"] }
         $cred["Section"]    = if ($line -match '\s+proto(?:col)?\s+(\S+)') { $matches[1] } else { $cred["Section"] }
         $cred["TargetPort"] = if ($line -match '\s+(?:port|service)\s+(\S+)') { $matches[1] } else { $cred["TargetPort"] }
@@ -72,25 +80,23 @@ function Get-PwFetchmailrc {
         }
 
         # Add parsed credentials if valid
-        if ($parsedCred["TargetServer"] -and $parsedCred["Section"] -and $parsedCred["Username"].Count -eq $parsedCred["Password"].Count) {
-            for ($i = 0; $i -lt $parsedCred["Username"].Count; $i++) {
-                $credentials += [pscustomobject]@{
-                    ComputerName = $ComputerName
-                    ShareName    = $ShareName
-                    UncFilePath  = $UncFilePath
-                    FileName     = $FileName
-                    Section      = $parsedCred["Section"]
-                    ObjectName   = "NA"
-                    TargetURL    = $TargetURL
-                    TargetServer = $parsedCred["TargetServer"]
-                    TargetPort   = $parsedCred["TargetPort"]
-                    Database     = "NA"
-                    Domain       = "NA"
-                    Username     = $parsedCred["Username"][$i]
-                    Password     = $parsedCred["Password"][$i]
-                    PasswordEnc  = "NA"
-                    KeyFilePath  = "NA"
-                }
+        if ($parsedCred["TargetServer"] -and $parsedCred["Section"] -and $parsedCred["Username"] -and $parsedCred["Password"]) {
+            $credentials += [pscustomobject]@{
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = $parsedCred["Section"]
+                ObjectName   = "NA"
+                TargetURL    = $TargetURL
+                TargetServer = $parsedCred["TargetServer"]
+                TargetPort   = $parsedCred["TargetPort"]
+                Database     = "NA"
+                Domain       = "NA"
+                Username     = $parsedCred["Username"]
+                Password     = $parsedCred["Password"]
+                PasswordEnc  = "NA"
+                KeyFilePath  = "NA"
             }
         }
     }
