@@ -51,8 +51,8 @@ function Get-PwDbvisxml{
         ShareName    = $ShareName
         UncFilePath  = $UncFilePath
         FileName     = $FileName
-        Section      = "remmina_pref"
-        ObjectName   = "Remmina Configuration"
+        Section      = "NA"
+        ObjectName   = "NA"
         TargetURL    = "NA"
         TargetServer = $targetServer
         TargetPort   = $targetPort
