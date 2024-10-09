@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.153
+# Version: v1.154
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -377,7 +377,7 @@ function Invoke-HuntSMBShares
             # Save results
             # Write-Output " [*] - Saving results to $OutputDirectory\$TargetDomain-Domain-Computers.csv"
             $DomainComputers | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Domain-Computers.csv"
-            $null = Convert-DataTableToHtmlTable -DataTable $DomainComputers -Outfile "$OutputDirectory\$TargetDomain-Domain-Computers.html" -Title "Domain Computers" -Description "This page shows the domain computers discovered for the $TargetDomain Active Directory domain."
+            #$null = Convert-DataTableToHtmlTable -DataTable $DomainComputers -Outfile "$OutputDirectory\$TargetDomain-Domain-Computers.html" -Title "Domain Computers" -Description "This page shows the domain computers discovered for the $TargetDomain Active Directory domain."
             $DomainComputersFile = "$TargetDomain-Domain-Computers.csv"
             $DomainComputersFileH = "$TargetDomain-Domain-Computers.html"
 
@@ -429,7 +429,7 @@ function Invoke-HuntSMBShares
             # Write-Output " [*] - Saving results to $OutputDirectory\$TargetDomain-Domain-Computers-Pingable.csv"
             if($ComputersPingable){
                 $ComputersPingable | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Domain-Computers-Pingable.csv"
-                $null = Convert-DataTableToHtmlTable -DataTable $ComputersPingable -Outfile "$OutputDirectory\$TargetDomain-Domain-Computers-Pingable.html" -Title "Domain Computers: Ping Response" -Description "This page shows the domain computers for the $TargetDomain Active Directory domain that responded to ping requests."
+                #$null = Convert-DataTableToHtmlTable -DataTable $ComputersPingable -Outfile "$OutputDirectory\$TargetDomain-Domain-Computers-Pingable.html" -Title "Domain Computers: Ping Response" -Description "This page shows the domain computers for the $TargetDomain Active Directory domain that responded to ping requests."
             }
             $ComputersPingableFile = "$TargetDomain-Domain-Computers-Pingable.csv"
             $ComputersPingableFileH =  "$TargetDomain-Domain-Computers-Pingable.html"
@@ -493,7 +493,7 @@ function Invoke-HuntSMBShares
         # Write-Output " [*] - Saving results to $OutputDirectory\$TargetDomain-Domain-Computers-Open445.csv"                
         if($Computers445Open){
             $Computers445Open | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Domain-Computers-Open445.csv"
-            $null = Convert-DataTableToHtmlTable -DataTable $Computers445Open -Outfile "$OutputDirectory\$TargetDomain-Domain-Computers-Open445.html" -Title "Domain Computers: Port 445 Open" -Description "This page shows the domain computers for the $TargetDomain Active Directory domain with port 445 open."
+            #$null = Convert-DataTableToHtmlTable -DataTable $Computers445Open -Outfile "$OutputDirectory\$TargetDomain-Domain-Computers-Open445.html" -Title "Domain Computers: Port 445 Open" -Description "This page shows the domain computers for the $TargetDomain Active Directory domain with port 445 open."
         }
         $Computers445OpenFile = "$TargetDomain-Domain-Computers-Open445.csv"
         $Computers445OpenFileH ="$TargetDomain-Domain-Computers-Open445.html"
@@ -534,7 +534,7 @@ function Invoke-HuntSMBShares
         # Save results
         # Write-Output " [*] - Saving results to $OutputDirectory\$TargetDomain-Shares-Inventory-All.csv"
         $AllSMBShares | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Inventory-All.csv"
-        $null = Convert-DataTableToHtmlTable -DataTable $AllSMBShares -Outfile "$OutputDirectory\$TargetDomain-Shares-Inventory-All.html" -Title "Domain Shares" -Description "This page shows the all enumerated shares for the $TargetDomain Active Directory domain."
+        # $null = Convert-DataTableToHtmlTable -DataTable $AllSMBShares -Outfile "$OutputDirectory\$TargetDomain-Shares-Inventory-All.html" -Title "Domain Shares" -Description "This page shows the all enumerated shares for the $TargetDomain Active Directory domain."
         $AllSMBSharesFile = "$TargetDomain-Shares-Inventory-All.csv"
         $AllSMBSharesFileH = "$TargetDomain-Shares-Inventory-All.html"
 
@@ -645,7 +645,7 @@ function Invoke-HuntSMBShares
         # Save results
         # Write-Output " [*] - Saving results to $OutputDirectory\$TargetDomain-Shares-Inventory-All-ACL.csv"
         $ShareACLs | where ShareName -notlike "" | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Inventory-All-ACL.csv"                
-        $null = Convert-DataTableToHtmlTable -DataTable $ShareACLs -Outfile "$OutputDirectory\$TargetDomain-Shares-Inventory-All-ACL.html" -Title "Domain Shares: All ACL Entries" -Description "This page shows all share ACL entries discovered on computers associated with the $TargetDomain Active Directory domain."
+        # $null = Convert-DataTableToHtmlTable -DataTable $ShareACLs -Outfile "$OutputDirectory\$TargetDomain-Shares-Inventory-All-ACL.html" -Title "Domain Shares: All ACL Entries" -Description "This page shows all share ACL entries discovered on computers associated with the $TargetDomain Active Directory domain."
         $ShareACLsFile = "$TargetDomain-Shares-Inventory-All-ACL.csv"
         $ShareACLsFileH = "$TargetDomain-Shares-Inventory-All-ACL.html"
 
@@ -687,7 +687,7 @@ function Invoke-HuntSMBShares
         if($ExcessiveSharesCount -ne 0){
             # Write-Output " [*] - Saving results to $OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges.csv"            
             $ExcessiveSharePrivs | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges.csv"
-            $null = Convert-DataTableToHtmlTable -DataTable $ExcessiveSharePrivs -Outfile "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges.html" -Title "Domain Shares: ACL Entries - Excessive Privileges" -Description "This page shows all share ACL entries discovered on computers associated with the $TargetDomain Active Directory domain that appear to be configured with excessive privileges."
+            # $null = Convert-DataTableToHtmlTable -DataTable $ExcessiveSharePrivs -Outfile "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges.html" -Title "Domain Shares: ACL Entries - Excessive Privileges" -Description "This page shows all share ACL entries discovered on computers associated with the $TargetDomain Active Directory domain that appear to be configured with excessive privileges."
             $ShareACLsExFile = "$TargetDomain-Shares-Inventory-Excessive-Privileges.csv"
             $ShareACLsExFileH = "$TargetDomain-Shares-Inventory-Excessive-Privileges.html"                          
         }else{
@@ -794,7 +794,7 @@ function Invoke-HuntSMBShares
         if($SharesWithReadCount -ne 0){
             #Write-Output " [*] - Saving results to $OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-Read.csv"
             $SharesWithRead | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-Read.csv"               
-            $null = Convert-DataTableToHtmlTable -DataTable $SharesWithRead -Outfile "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-Read.html" -Title "Domain Shares: ACL Allow Read Entries" -Description "This page shows all share ACL entries discovered on computers associated with the $TargetDomain Active Directory domain that are readable."
+            # $null = Convert-DataTableToHtmlTable -DataTable $SharesWithRead -Outfile "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-Read.html" -Title "Domain Shares: ACL Allow Read Entries" -Description "This page shows all share ACL entries discovered on computers associated with the $TargetDomain Active Directory domain that are readable."
             $ShareACLsReadFile = "$TargetDomain-Shares-Inventory-Excessive-Privileges-Read.csv"
             $ShareACLsReadFileH = "$TargetDomain-Shares-Inventory-Excessive-Privileges-Read.html"
         }
@@ -826,7 +826,7 @@ function Invoke-HuntSMBShares
         if($SharesWithWriteCount -ne 0){
             # Write-Output " [*] - Saving results to $OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-Write.csv"
             $SharesWithWrite | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-Write.csv"            
-            $null = Convert-DataTableToHtmlTable -DataTable $SharesWithWrite -Outfile "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-Write.html" -Title "Domain Shares: ACL Allow Write Entries" -Description "This page shows all share ACL entries discovered on computers associated with the $TargetDomain Active Directory domain that are writable."
+            # $null = Convert-DataTableToHtmlTable -DataTable $SharesWithWrite -Outfile "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-Write.html" -Title "Domain Shares: ACL Allow Write Entries" -Description "This page shows all share ACL entries discovered on computers associated with the $TargetDomain Active Directory domain that are writable."
             $ShareACLsWriteFile = "$TargetDomain-Shares-Inventory-Excessive-Privileges-Write.csv"
             $ShareACLsWriteFileH = "$TargetDomain-Shares-Inventory-Excessive-Privileges-Write.html"
         }
@@ -858,7 +858,7 @@ function Invoke-HuntSMBShares
         if($SharesNonDefaultCount-ne 0){
             # Write-Output " [*] - Saving results to $OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-NonDefault.csv"
             $SharesNonDefault | where ShareName -notlike "" | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-NonDefault.csv"   
-            $null = Convert-DataTableToHtmlTable -DataTable $SharesNonDefault -Outfile "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-NonDefault.html" -Title "Domain Shares: Non-Default" -Description "This page shows all share ACL entries discovered on computers associated with the $TargetDomain Active Directory domain that are non-default."
+            # $null = Convert-DataTableToHtmlTable -DataTable $SharesNonDefault -Outfile "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-NonDefault.html" -Title "Domain Shares: Non-Default" -Description "This page shows all share ACL entries discovered on computers associated with the $TargetDomain Active Directory domain that are non-default."
             $ShareACLsNonDefaultFile = "$TargetDomain-Shares-Inventory-Excessive-Privileges-NonDefault.csv"
             $ShareACLsNonDefaultFileH = "$TargetDomain-Shares-Inventory-Excessive-Privileges-NonDefault.html"                    
         }
@@ -890,7 +890,7 @@ function Invoke-HuntSMBShares
         if($SharesHighRiskCount -ne 0){
             # Write-Output " [*] - Saving results to $OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-HighRisk.csv"
             $SharesHighRisk | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-HighRisk.csv"   
-			$null = Convert-DataTableToHtmlTable -DataTable $SharesHighRisk -Outfile "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-HighRisk.html" -Title "Domain Shares: ACL High Risk Entries" -Description "This page shows all share ACL entries discovered on computers associated with the $TargetDomain Active Directory domain that are considered to be high risk."
+			# $null = Convert-DataTableToHtmlTable -DataTable $SharesHighRisk -Outfile "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-HighRisk.html" -Title "Domain Shares: ACL High Risk Entries" -Description "This page shows all share ACL entries discovered on computers associated with the $TargetDomain Active Directory domain that are considered to be high risk."
             $ShareACLsHRFile = "$TargetDomain-Shares-Inventory-Excessive-Privileges-HighRisk.csv"
             $ShareACLsHRFileH = "$TargetDomain-Shares-Inventory-Excessive-Privileges-HighRisk.html"                     
         }
@@ -4959,7 +4959,7 @@ $NewHtmlReport = @"
 
 	.stuff:active {
 			font-weight: normal;		 
-			background-color:#71808D;
+			background-color:#D2D9DE;
 			width:auto;		
 			--padding-left: 15px;	
 			color: white;
@@ -5927,7 +5927,7 @@ input[type="checkbox"]:checked {
 
 input[type="checkbox"]:checked::before {
     content: '\2714'; /* Unicode for the checkmark */
-    color: #c2994a;
+    color: #f29650;
     display: block;
     text-align: center;
     line-height: 20px;
@@ -6003,9 +6003,9 @@ input[type="checkbox"]:checked::before {
         <label id="btnif" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF');updateLabelColors('tabs', 'btnif');">Interesting Files</label>			        			
         <label id="btnSecretsPage" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('SecretsPage');radiobtn.checked = true;updateLabelColors('tabs', 'btnSecretsPage');">Extracted Secrets</label>	        
 		<label id="noactionmenuheader3"class="tabLabel" style="background-color: transparent;width:100%;color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:8px;font-weight:bolder;border-bottom: 0.25px dashed gray;"><strong>ACT</strong></label>
-		<label id="btnexploit" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Attacks');radiobtn.checked = true;updateLabelColors('tabs', 'btnexploit');">Exploiting Access</label>		
-		<label id="btndetect" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Detections');radiobtn.checked = true;updateLabelColors('tabs', 'btndetect');">Detecting Attacks</label>
-		<label id="btnprioritize" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Remediation');radiobtn.checked = true;updateLabelColors('tabs', 'btnprioritize');">Prioritization</label>	        		
+		<label id="btnexploit" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Attacks');radiobtn.checked = true;updateLabelColors('tabs', 'btnexploit');">Exploit</label>		
+		<label id="btndetect" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Detections');radiobtn.checked = true;updateLabelColors('tabs', 'btndetect');">Detect</label>
+		<label id="btnprioritize" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Remediation');radiobtn.checked = true;updateLabelColors('tabs', 'btnprioritize');">Remediate</label>	        		
 	</div>
 </div>
 <div id="main">
@@ -6034,7 +6034,7 @@ input[type="checkbox"]:checked::before {
        Interesting Files Found
       </div>
       <div style="text-align: left;">
-        <span class="percentagetext" style = "color:#c2994a;">                   
+        <span class="percentagetext" style = "color:#f29650;">                   
         $InterestingFilesAllFilesCount&nbsp;                     
         </span>	
         <Br>
@@ -6092,14 +6092,17 @@ input[type="checkbox"]:checked::before {
 		<label class="tabLabel" onClick="updateTab('dashboard',false)" for="dashboard"></label>
 		<div id="tabPanel" class="tabPanel">
 		<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Summary Report</h2>	
-		<div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>
+		<div style="margin-left: 10px; width: 90%;">
+	    This page provides a summary of the share scan results, observations, risks, and prioritized recommendations.
+		<br><br>				
+        </div>
 		<div style="min-height: 450px;">	
 												
 <!--  
 |||||||||| CARD: RISK AND INTERESTING FILE SUMMARY
 -->
                      <div style="margin-left: 10px; width: 90%;">
-	                    <h4 style="color:#4A4A4A;">Risk & Data Exposure</h4>
+                        <span style="color:#4A4A4A; font-size: 16px;"><strong>Risk & Data Exposure</strong><br></span>
 	                    In total, $RiskLevelCountCritical critical, $RiskLevelCountHigh high, $RiskLevelCountMedium medium, and  $RiskLevelCountLow low risk <a style="font-weight: normal;" href="https://en.wikipedia.org/wiki/Security_descriptor">ACE (Access Control Entry)</a> configurations were discovered across $ExcessiveSharesCount shares, hosted by $ComputerWithExcessive computers in the $TargetDomain Active Directory domain. The affected shares were found hosting $InterestingFilesAllObjectsSecretCount files that may contain passwords and $InterestingFilesAllObjectsSensitiveCount files that may contain sensitive data. $SecretsRecoveredCount credentials were recovered from $SecretsRecoveredFileCount of the discovered $InterestingFilesAllObjectsSecretCount secrets files. Overall, $InterestingFilesAllFilesCount interesting files were found accessible to all domain users that could potentially lead to unauthorized data access or remote code execution. 
                         <Br>
                      </div>
@@ -6126,8 +6129,8 @@ input[type="checkbox"]:checked::before {
 							
 					</div>
 
-					 <div style="margin-left: 10px; width: 90%; margin-bottom: 10px;">
-                    <span style="color:#4A4A4A;"><strong>Affected Assets</strong><br></span>
+					 <div style="margin-left: 10px; width: 90%; margin-bottom: 10px;">                    
+                     <span style="color:#4A4A4A;font-size: 16px;"><strong>Affected Assets</strong><br></span>		
 					 $ExcessiveSharePrivsCount ACL entries, on $ExcessiveSharesCount shares, hosted by $ComputerWithExcessive computers were found configured with excessive privileges on the $TargetDomain domain. Overall, $IdentityReferenceListCount identities/groups had excessive privileges assigned to them. 
                      The chart below illustrates the relationship between networks, computers, shares, and the ACEs configured with excessive privileges. Each network contains computers with assigned IP addresses. Each computer may host multiple shares and each share is configured with ACEs that allow remote access. As a result, ACEs represent the individual points of remediation that will need to be addressed to reduce exposure and risk.
 					 </div>
@@ -6143,7 +6146,7 @@ input[type="checkbox"]:checked::before {
 |||||||||| CARD: Peer Comparison
 -->
                      <div style="margin-left: 10px; width: 90%; margin-bottom: 10px;">
-	                    <span style="color:#4A4A4A;"> <strong>Peer Comparison</strong><br></span>
+                        <span style="color:#4A4A4A;font-size: 16px;"><strong>Peer Comparison</strong><br></span>
 	                    Below is a comaprison between the percent of affected assets in this environment and the average percent of affected assets observed in other environments. 
                         The percentage is calculated based on the total number of assets discovered for each asset type. 
                      </div>
@@ -6163,7 +6166,7 @@ input[type="checkbox"]:checked::before {
 |||||||||| CARD: Share Creation Timeline
 -->
 <div style="margin-left: 10px; width: 90%; margin-bottom: 10px;">
-    <span style="color:#4A4A4A;"> <strong>Share Creation Timeline</strong><br></span>
+    <span style="color:#4A4A4A;font-size: 16px;"><strong>Share Creation Timeline</strong><br></span>
     <div style = "width: 100%">
 	Below is a time series chart to help provide a sense of when shares were created and at what point critical and high risk shares were introduced into the environment.
     By reading the chart left to right, you can see that shares were created in this environment between $ShareFirstDate and $ShareLastDate. You can zoom into any section of the chart by clicking or using the chart controls in the upper right hand corner of the chart.    
@@ -6187,7 +6190,8 @@ input[type="checkbox"]:checked::before {
 |||||||||| CARD: Remediation Recommendations
 -->
                      <div style="margin-left: 10px; width: 90%; margin-bottom: 10px;">
-                        <h4 style="color:#4A4A4A;">Remediation & Prioritization Recommendations</h4>	                    
+                        <span style="color:#4A4A4A;font-size: 16px;"><strong>Remediation & Prioritization Recommendations</strong><br></span>	
+                                            
 	                    Consider remediating share ACEs by risk level, starting with critical and high risks. Consider reviewing the share creation timeline and data details from the other sections for additional context. Next, prioritize remediating groups of shares to speed up the process. Prioritize by folder group (shares containing exactly the same files) or by share names that have a high similarity score. 
 						<i>Prioritizing those groups may help reduce remediation actions by as much as <strong>$RemediationSavings percent</strong> for this environment</i>. Below is a summary of the potential task reduction for each approach.
                      </div>
@@ -6246,7 +6250,7 @@ $ComputerCount computers were found in the $TargetDomain Active Directory domain
         Affected Computers
       </div>
       <div style="text-align: left;">
-        <span class="percentagetext" style="color:#c2994a; text-align: left;">                    
+        <span class="percentagetext" style="color:#f29650; text-align: left;">                    
         $ComputerWithExcessive&nbsp;                 
         </span>
      </div>
@@ -6370,7 +6374,7 @@ $IdentityCombinedListCount identities were discovered across shares in the $Targ
         Affected Identities
       </div>
       <div style="text-align: left;">
-          <span class="percentagetext" style="color:#c2994a;">                    
+          <span class="percentagetext" style="color:#f29650;">                    
             $IdentityCombinedListCount&nbsp;                   
           </span>
       </div>
@@ -6384,7 +6388,7 @@ $IdentityCombinedListCount identities were discovered across shares in the $Targ
         Identities Assigned Ownership
       </div>
       <div style="text-align: left;">
-          <span class="percentagetext" style="color:#c2994a; text-align: left;">                    
+          <span class="percentagetext" style="color:#f29650; text-align: left;">                    
              $IdentityOwnerListCount&nbsp;                     
           </span>
       </div>
@@ -6398,7 +6402,7 @@ $IdentityCombinedListCount identities were discovered across shares in the $Targ
         Identities Assigned Privileges
       </div>
       <div style="text-align: left;">
-          <span class="percentagetext" style="color:#c2994a; text-align: left;">                    
+          <span class="percentagetext" style="color:#f29650; text-align: left;">                    
             $IdentityReferenceListCount&nbsp;                    
           </span>
       </div>
@@ -6471,7 +6475,7 @@ Below is a list of the ACE (access control entries) configured with excessive pr
         Affected ACEs
       </div>
       <div style="text-align: left;">
-        <span class="percentagetext" style="color:#c2994a; text-align: left;">                    
+        <span class="percentagetext" style="color:#f29650; text-align: left;">                    
         $ExcessiveSharePrivsCount &nbsp;                  
         </span>
      </div>
@@ -7016,7 +7020,7 @@ $AllSMBSharesCount shares were discovered across $ComputerPingableCount live com
        Affected Shares Names
       </div>
       <div style="text-align: left;">
-        <span class="percentagetext" style = "color:#c2994a;">                    
+        <span class="percentagetext" style = "color:#f29650;">                    
         $ExcessiveSharesCount  &nbsp;                     
         </span>	
         <Br>
@@ -7175,7 +7179,7 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
        Affected Folder Groups
       </div>
       <div style="text-align: left;">
-          <span class="percentagetext" style="color:#c2994a; text-align: left;">                    
+          <span class="percentagetext" style="color:#f29650; text-align: left;">                    
           $FolderGroupChartCount &nbsp;                  
           </span>
       </div>
@@ -7248,7 +7252,7 @@ This page includes a list of the credentials that were recovered during data col
 		                   Extracted Secrets Found
 	                    </div>		
                         <div style="text-align: left;">
-				                    <span class="percentagetext" style = "color:#c2994a;">                    
+				                    <span class="percentagetext" style = "color:#f29650;">                    
 					                    $SecretsRecoveredCount &nbsp;                     
 				                    </span>	
 			            </div>
@@ -7321,7 +7325,7 @@ This page includes a list of the credentials that were recovered during data col
 			<div class="drag-handle" id="toolbartext" style="padding-bottom: 4px; width: 120px; font-weight: bold; color: #345367; font-size: 16;">Graph ToolBar</div>
 			<button id="toggleButton2" class="modern-button" style="margin-bottom: 5px; padding: 0; width: 25px; height: 25px; display: flex; justify-content: center; align-items: center;" onclick="toggleToolbar()">
 				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-					<path d="M18 15L12 9L6 15" stroke="#c2994a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+					<path d="M18 15L12 9L6 15" stroke="#f29650" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 				</svg>
 			</button>
 		</div>
@@ -7550,7 +7554,7 @@ This page includes a list of the credentials that were recovered during data col
             // Update button text
 			button.innerHTML = ``
 				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-					<path d="M6 9L12 15L18 9" stroke="#c2994a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+					<path d="M6 9L12 15L18 9" stroke="#f29650" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 				</svg>``;
         } else {
             // Expand the toolbar back to its original height
@@ -7598,7 +7602,7 @@ This page includes a list of the credentials that were recovered during data col
 				
 			button.innerHTML = ``
 				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-					<path d="M18 15L12 9L6 15" stroke="#c2994a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+					<path d="M18 15L12 9L6 15" stroke="#f29650" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 				</svg>``;				
         }
     }
@@ -9826,13 +9830,13 @@ Guest access to the system should also be revoked and ensure that adequate acces
 </div>
 
 <!--  
-|||||||||| PAGE: Prioritize Remediation
+|||||||||| PAGE: Remediate
 -->
 
 <input class="tabInput"  name="tabs" type="radio" id="Remediation"/> 
 <label class="tabLabel" onClick="updateTab('Remediation',false)" for="Remediation"></label>
 <div id="tabPanel" class="tabPanel">
-<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Prioritizing Remediation</h2>
+<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Remediate</h2>
 <div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>	
 <div style="margin-left:10px;margin-top:3px">
 Below are some tips for getting started on prioritizing the remediation of shares configured with excessive privileges.
@@ -9898,7 +9902,6 @@ Below are some tips for getting started on prioritizing the remediation of share
 <label class="tabLabel" onClick="updateTab('home',false)" for="home"></label>
 <div id="tabPanel" class="tabPanel">	
 <h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Scan Information</h2>
-<div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>	
 <div style="min-height: 670px">	 
 	  <div style="margin-left:10px;margin-top:3px">	  
 	  The <a href="https://github.com/netspi/powerhuntshares">PowerHuntShares</a> audit script was run against the $TargetDomain Active Directory domain to collect SMB Share data, generate this HTML summary report, and generate the associated csv files that detail potentially excessive share configurations. Below is a the scan summary and an overview of how to use this report.
@@ -10050,6 +10053,28 @@ Invoke-HuntSMBShares -Threads 20 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\
 // Dashboard Page: Timeline Creation Chart
 // --------------------------
 
+// Define an SVG pattern for stripes
+var pattern = ``
+  <svg width="10" height="10" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <pattern id="striped-pattern" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <line x1="0" y="0" x2="0" y2="10" stroke="#772400" stroke-width=".5" stroke-opacity="0.5" />
+      </pattern>
+		<pattern id="grid-pattern" width="10" height="10" patternUnits="userSpaceOnUse">
+        <!-- Solid background for the pattern -->
+        <rect width="10" height="10" fill="#ffffff" />
+        <!-- Horizontal line -->
+        <line x1="0" y1="5" x2="10" y2="5" stroke="#772400" stroke-width=".5" stroke-opacity="0.5"/>
+        <!-- Vertical line -->
+        <line x1="5" y1="0" x2="5" y2="10" stroke="#772400" stroke-width=".5" stroke-opacity="0.5" />
+      </pattern>	  
+    </defs>
+  </svg>
+``;
+
+// Append the pattern to the body
+document.body.insertAdjacentHTML('beforeend', pattern);
+
 var allData = $DataSeriesShares // ACEs data
 
 function calculateMean(data) {
@@ -10080,19 +10105,19 @@ var TimelineCreationOptions = {
             name: 'Shares',
             type: 'column',
             data: $DataSeriesShares,
-            color: '#515a69'
+            color: '#f29650'
         },      
         {
             name: 'All High',
             type: 'area',
             data: $DataSeriesHigh, 
-            color: '#f08c41'
+            color: 'url(#striped-pattern)' // or #772400 or striped-pattern
         },
         {
             name: 'All Critical',
             type: 'area',
             data: $DataSeriesCritical,
-            color: '#EE092D'
+            color: '#410f7A'
         }
     ],
     annotations: {
@@ -10175,8 +10200,9 @@ var TimelineCreationOptions = {
         title: {
                     text: 'Count',
                     style: {
+                      fontSize: '12px',
                       fontWeight: 'normal',
-                      color: '#808080'  // Set "Percentage" text to gray
+                      color: '#71808d'  // Set "Percentage" text to gray
                     }
                   }
     },
@@ -10197,9 +10223,9 @@ var TimelineCreationOptions = {
     align: 'center',
     margin: 10,
     style: {
-        fontSize: '18px',
-        fontWeight: 'normal',
-        color: '#808080'
+        fontSize: '14px',
+        fontWeight: 'bold',
+        color: '#71808d'
     }
   }
 };
@@ -10228,7 +10254,7 @@ TimelineCreationChartVar.render();
     {
       id: 'Shares ($ExcessiveSharesCount)',
       title: 'Shares ($ExcessiveSharesCount)',
-      color: '#c2994A', 
+      color: '#f29650', 
     },
     {
       id: 'ACEs ($ExcessiveSharePrivsCount)',
@@ -10340,7 +10366,7 @@ const ChartAceTypeOptions = {
         ranges: [{
           from: 0,
           to: 1000,
-          color: '#c2994a'
+          color: '#f29650'
         }]
       }
     }
@@ -10393,7 +10419,7 @@ const ChartAceRiskOptions = {
         ranges: [{
           from: 0,
           to: 1000,
-          color: '#c2994a'
+          color: '#f29650'
         }]
       }
     }
@@ -10448,7 +10474,7 @@ const ChartAcesIFOptions = {
                 ranges: [{
                     from: 0,
                     to: 1000,
-                    color: '#c2994a'
+                    color: '#f29650'
                 }]
             }
           }
@@ -10501,7 +10527,7 @@ const ChartComputersDiscoOptions = {
         ranges: [{
           from: 0,
           to: 1000,
-          color: '#c2994a'
+          color: '#f29650'
         }]
       }
     }
@@ -10569,7 +10595,7 @@ const ChartComputersOSOptions = {
         ranges: [{
           from: 0,
           to: 1000,
-          color: '#c2994a'
+          color: '#f29650'
         }]
       }
     }
@@ -10666,7 +10692,7 @@ const ChartComputersRiskOptionsa = {
         ranges: [{
           from: 0,
           to: 1000,
-          color: '#c2994a'
+          color: '#f29650'
         }]
       }
     }
@@ -10721,7 +10747,7 @@ const ChartFGPageIFOptions = {
                 ranges: [{
                     from: 0,
                     to: 1000,
-                    color: '#c2994a'
+                    color: '#f29650'
                 }]
             }
           }
@@ -10777,7 +10803,7 @@ const ChartFGRiskOptionsa = {
         ranges: [{
           from: 0,
           to: 1000,
-          color: '#c2994a'
+          color: '#f29650'
         }]
       }
     }
@@ -10835,7 +10861,7 @@ const ChartSharePageIFOptions = {
                 ranges: [{
                     from: 0,
                     to: 1000,
-                    color: '#c2994a'
+                    color: '#f29650'
                 }]
             }
           }
@@ -10890,7 +10916,7 @@ const ChartShareNameRiskOptionsa = {
         ranges: [{
           from: 0,
           to: 1000,
-          color: '#c2994a'
+          color: '#f29650'
         }]
       }
     }
@@ -10960,7 +10986,7 @@ const ChartDashboardIFOptions = {
     enabled: true,
 	style: {
       fontSize: '12px',
-      colors: ['#345367', '#c2994a'] 
+      colors: ['#345367', '#f29650'] 
     },
   },
   grid: {
@@ -10969,7 +10995,7 @@ const ChartDashboardIFOptions = {
   xaxis: {
     categories: categories,
   },
-  colors: ['#c2994a','#345367'],  // Orange for discovered, Blue for verified
+  colors: ['#f29650','#345367'],  // Orange for discovered, Blue for verified
   title: {
     text: 'Interesting File Exposure',
     align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
@@ -11038,12 +11064,12 @@ const ChartDashboardRiskOptions = {
      // barSpacing: 0.0  // Adds space between the groups (risk levels)
     }
   },
-  colors: ['#7D825E', '#c2994a', '#345367'],  // Colors for the bars
+  colors: ['#7D825E', '#f29650', '#345367'],  // Colors for the bars
   dataLabels: {
     enabled: true,
     style: {
       fontSize: '12px',
-      colors: ['#345367', '#345367', '#c2994a'] // colors for the lables #FF9965
+      colors: ['#345367', '#345367', '#f29650'] // colors for the lables #FF9965
     },
     offsetX: 0
   },
@@ -11104,12 +11130,12 @@ ChartDashboardRisk.render();
             endingShape: 'rounded'
           },
         },
-        colors: ['#345367', '#c2994a'],  // Reversed colors for Average and Actual bars
+        colors: ['#345367', '#f29650'],  // Reversed colors for Average and Actual bars
         dataLabels: {
           enabled: true,  // Enable data labels
           style: {
             fontSize: '12px',
-            colors: ['#c2994a', '#345367'],  // Colors for labels
+            colors: ['#f29650', '#345367'],  // Colors for labels
           },
           formatter: function (val, opts) {
             return val;  // Display values with percentage sign
@@ -11209,12 +11235,12 @@ ChartDashboardRisk.render();
             endingShape: 'rounded'
           },
         },
-        colors: ['#345367', '#c2994a'],  // Reversed colors for Average and Actual bars
+        colors: ['#345367', '#f29650'],  // Reversed colors for Average and Actual bars
         dataLabels: {
           enabled: true,  // Enable data labels
           style: {
             fontSize: '12px',
-            colors: ['#c2994a', '#345367'],  // Colors for labels
+            colors: ['#f29650', '#345367'],  // Colors for labels
           },
           formatter: function (val, opts) {
             return val + '%';  // Display values with percentage sign
@@ -11373,7 +11399,7 @@ const chartOptions = {
             style: {
                // fontSize: '18px',
                // fontWeight: 'bold',
-               // colors: '#c2994a'
+               // colors: '#f29650'
             }
         }
     },
@@ -11393,7 +11419,7 @@ const chartOptions = {
                 ranges: [{
                     from: 0,
                     to: 1000,
-                    color: '#c2994a'
+                    color: '#f29650'
                 }]
             }
         }
@@ -23152,7 +23178,7 @@ function Copy-FileWithStructure {
         }
 
         # Step 3: Create "secrets" subdirectory if it doesn't exist
-        $secretsDir = Join-Path $OutputDirectory "secrets"
+        $secretsDir = Join-Path $OutputDirectory "Secrets"
         if (-Not (Test-Path $secretsDir)) {
             $null = New-Item -Path $secretsDir -ItemType Directory -Force
         }
