@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.155
+# Version: v1.156
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -9708,9 +9708,9 @@ document.querySelector('#nodemenu a:nth-child(2)').addEventListener('click', fun
 <input class="tabInput"  name="tabs" type="radio" id="Attacks"/> 
 <label class="tabLabel" onClick="updateTab('Attacks',false)" for="Attacks"></label>
 <div id="tabPanel" class="tabPanel">
-<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Exploiting Access</h2>
+<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Exploit</h2>
 <div style="margin-left:10px;margin-top:7px">
-This sectionprovides some tips for exploiting share access.	
+This section provides some tips for exploiting share access.	
 <br><br>
 </div>
 
@@ -9770,8 +9770,7 @@ This sectionprovides some tips for exploiting share access.
 <input class="tabInput"  name="tabs" type="radio" id="Detections"/> 
 <label class="tabLabel" onClick="updateTab('Detections',false)" for="Detections"></label>
 <div id="tabPanel" class="tabPanel">
-<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Recommendations</h2>
-<div style="border-bottom: 1px solid #DEDFE1 ;margin-left:-200px;background-color:#f0f3f5; height:5px; width:120%; margin-bottom:10px;"></div>
+<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Detect</h2>
 <div style="margin-left:10px;margin-top:3px">
 This section provides some tips for detecting potentially malicious share scanning events.
 <br><br>
