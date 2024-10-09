@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.152
+# Version: v1.153
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -4613,7 +4613,7 @@ $NewHtmlReport = @"
             -webkit-appearance: none;
             width: 16px;
             height: 16px;
-            background: #07142A;
+            background: #345367;
             border-radius: 50%;
             cursor: pointer;
             transition: background 0.3s ease;
@@ -4725,7 +4725,7 @@ $NewHtmlReport = @"
 			box-shadow: 0 2px 4px 0;
 			width: 180px;
 			height: 100%;
-			background-color:#07142A;
+			background-color:#345367;
 			position: fixed; /* Stay in place */
 			top: 0; 
 			left: 0;
@@ -4827,15 +4827,15 @@ $NewHtmlReport = @"
             padding: 5px 10px;
             margin: 2px;	
 			border-radius:0.20rem 0.20rem 0.20rem 0.20rem;	
-			color: #07142A;			
+			color: #345367;			
         }
         button.pagination-button:hover{
             background-color: #F56A00 ;
-            color: #07142A;		
+            color: #345367;		
 		}
 		
         button.pagination-button.active {
-            background-color: #07142A;
+            background-color: #345367;
             color: white;
         }
 
@@ -4935,38 +4935,36 @@ $NewHtmlReport = @"
 		text-decoration: none;
 		padding-top:5px;
 		padding-bottom:5px;
-		padding-left:15px;
+		padding-left:10px;
 		order:1;
 		border-radius: 0px;
-		margin-left:5px;
+		margin-right:14px;
+		margin-left:14px;
 	}
 
-		.stuff:hover{
+	.stuff:hover{
 			font-weight: normal;
 			background-color:#17405A;
 			text-decoration: none;
 			padding-top:5px;
 			padding-bottom:5px;
-			margin-right:5px;
-			margin-left:5px;
+			margin-right:14px;
+			margin-left:14px;
 			color: white;
 			border-radius: 5px;
-			--box-shadow: inset 0 0 0 0.25px white;
-			--outline: 1px solid #F56A00; /* Adjust thickness and color */
-			outline: 1px ridge #cfcfd4; /* Adjust thickness and color */
+			outline: .5px solid white;
 			transition: color 0.3s ease;
 			transition: background-color 0.3s ease;
-			--background: linear-gradient(to bottom, #17405A, #FFFFFF);
-		}
+	}
 
-		.stuff:active {
+	.stuff:active {
 			font-weight: normal;		 
-			background-color:#25648C;		
+			background-color:#71808D;
 			width:auto;		
-			padding-left: 15px;	
+			--padding-left: 15px;	
 			color: white;
 			transition: background-color 0.2s ease;
-		}			
+	}				
 
 	.tabLabel:hover{
 		background-color:#555555;		
@@ -5239,14 +5237,14 @@ $NewHtmlReport = @"
 		font-weight:bold;
 		--color:#9B3722;
 		--color:#CE112D;
-		color:#07142A;
+		color:#345367;
 	}
 	
 	.pagetitlesub {
 		font-size: 20;
 		font-weight:bold;
 		--color:#9B3722;
-		color:#07142A;
+		color:#345367;
 		--color:#222222;
 	}	
 	
@@ -5388,14 +5386,14 @@ $NewHtmlReport = @"
 	}	
 	
 	.landingheader2a	{
-        background-color: #07142A;
+        background-color: #345367;
 		--background-color: #999;		
 		padding-left:120px;;
 		padding-right: 5px;
 	}	
 
 	.landingheader2b	{
-        background-color: #07142A;
+        background-color: #345367;
 		--background-color: #999;		
 		padding-left: 5px;
 		padding-right: 5px;
@@ -5543,7 +5541,7 @@ $NewHtmlReport = @"
 		font-family:"Open Sans", sans-serif;
 		--border-bottom:1.5px solid transparent;
 		--border-bottom-color:#222222;
-		background-color: #07142A;
+		background-color: #345367;
 	}
 
 	.cardtitlescansub {
@@ -5617,7 +5615,7 @@ $NewHtmlReport = @"
     box-shadow: 0 2px 4px 0;
 	width: 180px;
 	height: 100%;
-	background-color:#07142A;
+	background-color:#345367;
 	position: fixed; /* Stay in place */
 	top: 0; 
 	left: 0;
@@ -5638,7 +5636,7 @@ $NewHtmlReport = @"
 }
 
 #main {
-	margin-left: 190px;
+	margin-left: 200px;
 	margin-right: 10px;
 	--padding-left: 20px;
 }
@@ -5669,11 +5667,11 @@ $NewHtmlReport = @"
 		padding:5px;	
 		--padding-left: 20px;
 		font-size: 13;
-		color: #07142A;
+		color: #345367;
 		font-weight:bold;
 		font-family:"Open Sans", sans-serif;
 		border-bottom:1.5px solid transparent;
-		border-bottom-color:#07142A;
+		border-bottom-color:#345367;
 	}
 	
 	.Minicardcontainer {
@@ -5761,7 +5759,7 @@ $NewHtmlReport = @"
 .TimelineBarInside {
 	width: 100%;
 	display: block;
-    background-color: #07142A;	
+    background-color: #345367;	
     opacity: .5;	
     margin-left:1px;
     position: absolute;
@@ -5812,7 +5810,7 @@ $NewHtmlReport = @"
 .TimelineMinicardtitle{	
 	padding:5px;	
 	font-size: 10;
-	color: #07142A;
+	color: #345367;
 	font-weight:bold;
 	font-family:"Open Sans", sans-serif;
 	border-bottom:1.5px solid transparent;
@@ -5923,13 +5921,13 @@ input[type="checkbox"] {
 
 input[type="checkbox"]:checked {
     background-color: #17405A; /* Change this to your desired color */
-    --border-color: #07142A;	
+    --border-color: #345367;	
     border: 1px solid #17405A;
 }
 
 input[type="checkbox"]:checked::before {
     content: '\2714'; /* Unicode for the checkmark */
-    color: #f08c41;
+    color: #c2994a;
     display: block;
     text-align: center;
     line-height: 20px;
@@ -5950,8 +5948,8 @@ input[type="checkbox"]:checked::before {
     width: 14px;
     height: 14px;
     background-color: #f2f4f7;
-	color: #07142A;
-    border: 1.5px solid #07142A; /* 1px border */
+	color: #345367;
+    border: 1.5px solid #345367; /* 1px border */
     border-radius: 60%; /* Makes the div a circle */
     --display: flex;
     display: inline-block;
@@ -5985,26 +5983,26 @@ input[type="checkbox"]:checked::before {
 	<a href="https://github.com/NetSPI/PowerHuntShares" style="text-decoration: none; color:#F56A00;cursor: pointer;">
 	<br><SPAN style="font-size: 15;">POWERHUNT</SPAN><SPAN style="color:white;font-size: 15;">SHARES</span></a>
     <br>
-    <div style="font-size: 11;font-weight:normal;margin-top:3px;margin-left: 1px;">$TargetDomain</div>
+    <div style="font-size: 11;font-weight:normal;margin-top:3px;margin-left: 1px;">DomainController1.demo.local</div>
+	<br>
 	</div>
 
-	<div id="tabs" class="tabs" data-tabs-ignore-url="false">	
-		<label id="noactionmenubar1" href="#" class="stuff" style="background-color: transparent;text-align: center; border-bottom: 0.25px dashed gray; width:85%; margin-bottom: 4px; margin-top: -9px; border-radius: 0px;outline:none;"></label>	
-		<label id="noactionmenuheader1"class="tabLabel" style="background-color: transparent; width:100%;color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:2px;font-weight:bolder;"><Strong>Results</Strong></label>
-		<label id="btnsummary" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('dashboard');radiobtn.checked = true;updateLabelColors('tabs', 'btnsummary');">Summary Report</label>
+	<div id="tabs" class="tabs" data-tabs-ignore-url="false">			
+		<label id="noactionmenuheader1"class="tabLabel" style="background-color: transparent; width:100%;color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:8px;font-weight:bolder;border-bottom: 0.25px dashed gray;"><Strong>SUMMARY</Strong></label>
+		<label id="btnsummary" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('dashboard');radiobtn.checked = true;updateLabelColors('tabs', 'btnsummary');">Scan Results</label>
 		<label id="btnscaninfo" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('home');radiobtn.checked = true;updateLabelColors('tabs', 'btnscaninfo');">Scan Information</label>		
-		<label id="noactionmenuheader2"class="tabLabel" style="background-color: transparent;width:100%;color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:2px;font-weight:bolder;"><Strong>Explore Data</Strong></label>
+		<label id="noactionmenuheader2"class="tabLabel" style="background-color: transparent;width:100%;color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:8px;font-weight:bolder;border-bottom: 0.25px dashed gray;"><Strong>EXPLORE</Strong></label>
         <label id="btnnetworks" href="#" class="stuff" style="width:100%;" onclick="radiobtn = document.getElementById('SubNets');radiobtn.checked = true;updateLabelColors('tabs', 'btnnetworks');">Networks</label>	
         <label id="btncomputers" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ComputerInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btncomputers');">Computers</label>	  	  			
 		<label id="btnshares" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;updateLabelColors('tabs', 'btnshares');">Share Names</label>					
 		<label id="btnfgs" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareFolders');radiobtn.checked = true;updateLabelColors('tabs', 'btnfgs');">Folder Groups</label>
         <label id="btnaces" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnaces');">Insecure ACEs</label>
         <label id="btnidentities" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('IdentityInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnidentities');">Identities</label>
-		<label id="noactionmenubar2" href="#" class="stuff" style="background-color: transparent;border-bottom: 0.25px dashed gray; opacity: 0.25; width:85%; margin-bottom: 6px; margin-top:-1px;border-radius: 0px;outline: none;"></label>			
-        <label id="btnif" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF');updateLabelColors('tabs', 'btnif');">Interesting Files</label>			        			
-        <label id="btnSecretsPage" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('SecretsPage');radiobtn.checked = true;updateLabelColors('tabs', 'btnSecretsPage');">Extracted Secrets</label>	
         <label id="btnShareGraph" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareGraph');radiobtn.checked = true;updateLabelColors('tabs', 'btnShareGraph');">ShareGraph</label>	
-		<label id="noactionmenuheader3"class="tabLabel" style="background-color: transparent;width:100%;color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:2px;font-weight:bolder;"><strong>Recommendations</strong></label>
+        <label id="noactionmenuheader2"class="tabLabel" style="background-color: transparent;width:100%;color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:8px;font-weight:bolder;border-bottom: 0.25px dashed gray;"><Strong>TARGET</Strong></label>			
+        <label id="btnif" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF');updateLabelColors('tabs', 'btnif');">Interesting Files</label>			        			
+        <label id="btnSecretsPage" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('SecretsPage');radiobtn.checked = true;updateLabelColors('tabs', 'btnSecretsPage');">Extracted Secrets</label>	        
+		<label id="noactionmenuheader3"class="tabLabel" style="background-color: transparent;width:100%;color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:8px;font-weight:bolder;border-bottom: 0.25px dashed gray;"><strong>ACT</strong></label>
 		<label id="btnexploit" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Attacks');radiobtn.checked = true;updateLabelColors('tabs', 'btnexploit');">Exploiting Access</label>		
 		<label id="btndetect" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Detections');radiobtn.checked = true;updateLabelColors('tabs', 'btndetect');">Detecting Attacks</label>
 		<label id="btnprioritize" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Remediation');radiobtn.checked = true;updateLabelColors('tabs', 'btnprioritize');">Prioritization</label>	        		
@@ -6032,11 +6030,11 @@ input[type="checkbox"]:checked::before {
   <!-- Left aligned card -->
   <div style="width: 33%; display: flex; justify-content: flex-start;">
     <div class="card" style="width: 100%;">
-      <div class="cardtitle" style="color:gray; font-size: 16px; font-weight: bold;">
+      <div class="cardtitle" style="color:#71808d; font-size: 14px; font-weight: bold;">
        Interesting Files Found
       </div>
       <div style="text-align: left;">
-        <span class="percentagetext" style = "color:#f08c41;">                   
+        <span class="percentagetext" style = "color:#c2994a;">                   
         $InterestingFilesAllFilesCount&nbsp;                     
         </span>	
         <Br>
@@ -6060,7 +6058,7 @@ input[type="checkbox"]:checked::before {
 </div>
 
                     <div class="searchbar" style="text-align:left; display: flex;" >
-							<input type="text" id="filterInputIF" placeholder=" Search..." style="margin-top: 8px; height: 25px; font-size: 14px; padding-left:3px;margin-left: 10px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
+							<input type="text" id="filterInputIF" placeholder=" Search..." style="margin-top: 8px; height: 25px; font-size: 14px; padding-left:3px;margin-left: 10px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#345367;">
 							<div style="font-size:12;text-align: left;cursor: pointer;color:gray; margin-top: 13px; margin-left: 5px;" onmouseover="this.style.color='white';" onmouseout="this.style.textDecoration='';this.style.fontWeight='normal';this.style.color='gray';"onclick="document.getElementById('filterInputIF').value = '';applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF');">Clear</div>
 					 </div>
 					<div style="display: flex; margin-left:10px; font-size:11; text-align:left;" >	
@@ -6244,11 +6242,11 @@ $ComputerCount computers were found in the $TargetDomain Active Directory domain
   <!-- Left aligned card -->
   <div style="width: 33.33%; display: flex; justify-content: flex-start;">
     <div class="card" style="width: 100%;">
-      <div class="cardtitle" style="color:gray; font-size: 16px; font-weight: bold;">
+      <div class="cardtitle" style="color:#71808d; font-size: 14px; font-weight: bold;">
         Affected Computers
       </div>
       <div style="text-align: left;">
-        <span class="percentagetext" style="color:#f08c41; text-align: left;">                    
+        <span class="percentagetext" style="color:#c2994a; text-align: left;">                    
         $ComputerWithExcessive&nbsp;                 
         </span>
      </div>
@@ -6290,7 +6288,7 @@ $ComputerCount computers were found in the $TargetDomain Active Directory domain
 </div>				
 				
 <div class="searchbar" style="text-align:left; display: flex;" >
-        <input type="text" id="computerfilterInput" placeholder=" Search..." style="margin-top: 8px; height: 25px; margin-left: 10px;font-size: 14px;padding-left:3px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
+        <input type="text" id="computerfilterInput" placeholder=" Search..." style="margin-top: 8px; height: 25px; margin-left: 10px;font-size: 14px;padding-left:3px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#345367;">
         <div style="font-size:12;text-align: left;cursor: pointer;color:gray; margin-top: 13px; margin-left: 5px;" onmouseover="this.style.color='white';" onmouseout="this.style.textDecoration='';this.style.fontWeight='normal';this.style.color='gray';"onclick="document.getElementById('computerfilterInput').value = '';applyFiltersAndSort('ComputersTable', 'computerfilterInput', 'computerfilterCounter', 'computerpagination');">Clear</div>
         <!-- <div style="margin-top: 10px; margin-left: 5px; margin-right: 5px;"><strong>Quick Filters</strong></div>
         <label><input type="checkbox" class="filter-checkbox" name="h"> Exploitable</label>
@@ -6368,11 +6366,11 @@ $IdentityCombinedListCount identities were discovered across shares in the $Targ
   <!-- Left aligned card -->
   <div style="width: 33.33%; display: flex; justify-content: flex-start;">
     <div class="card" style="width: 100%;">
-      <div class="cardtitle" style="color:gray; font-size: 16px; font-weight: bold;">
+      <div class="cardtitle" style="color:#71808d; font-size: 14px; font-weight: bold;">
         Affected Identities
       </div>
       <div style="text-align: left;">
-          <span class="percentagetext" style="color:#f08c41;">                    
+          <span class="percentagetext" style="color:#c2994a;">                    
             $IdentityCombinedListCount&nbsp;                   
           </span>
       </div>
@@ -6382,11 +6380,11 @@ $IdentityCombinedListCount identities were discovered across shares in the $Targ
   <!-- Center aligned card -->
   <div style="width: 33.33%; display: flex; justify-content: center;">
     <div class="card" style="width: 80%;">
-      <div class="cardtitle" style="color:gray; font-size: 16px; font-weight: bold;">
+      <div class="cardtitle" style="color:#71808d; font-size: 14px; font-weight: bold;">
         Identities Assigned Ownership
       </div>
       <div style="text-align: left;">
-          <span class="percentagetext" style="color:#f08c41; text-align: left;">                    
+          <span class="percentagetext" style="color:#c2994a; text-align: left;">                    
              $IdentityOwnerListCount&nbsp;                     
           </span>
       </div>
@@ -6396,11 +6394,11 @@ $IdentityCombinedListCount identities were discovered across shares in the $Targ
   <!-- Right aligned card -->
   <div style="width: 33.33%; display: flex; justify-content: flex-end;">
     <div class="card" style="width: 100%;">
-      <div class="cardtitle" style="color:gray; font-size: 16px; font-weight: bold;">
+      <div class="cardtitle" style="color:#71808d; font-size: 14px; font-weight: bold;">
         Identities Assigned Privileges
       </div>
       <div style="text-align: left;">
-          <span class="percentagetext" style="color:#f08c41; text-align: left;">                    
+          <span class="percentagetext" style="color:#c2994a; text-align: left;">                    
             $IdentityReferenceListCount&nbsp;                    
           </span>
       </div>
@@ -6413,7 +6411,7 @@ $IdentityCombinedListCount identities were discovered across shares in the $Targ
 Note: Within the context of this report, all read and write access the "Everyone", "Authenticated Users", "BUILTIN\Users", "Domain Users", or "Domain Computers" groups are considered excessive privileges, because all provide domain users access to the affected shares due to privilege inheritance. 				
 </div>
 <div class="searchbar" style="margin-top:12px; text-align:left; display: flex;" >
-        <input type="text" id="IdentityfilterInput" placeholder=" Search..." style="margin-top: 8px; height: 25px; margin-left: 10px;font-size: 14px;padding-left:3px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
+        <input type="text" id="IdentityfilterInput" placeholder=" Search..." style="margin-top: 8px; height: 25px; margin-left: 10px;font-size: 14px;padding-left:3px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#345367;">
         <div style="font-size:12;text-align: left;cursor: pointer;color:gray; margin-top: 13px; margin-left: 5px;" onmouseover="this.style.color='white';" onmouseout="this.style.textDecoration='';this.style.fontWeight='normal';this.style.color='gray';"onclick="document.getElementById('IdentityfilterInput').value = '';applyFiltersAndSort('IdentityTable', 'IdentityfilterInput', 'IdentityfilterCounter', 'Identitypagination');">Clear</div>
         <!-- <div style="margin-top: 10px; margin-left: 5px; margin-right: 5px;"><strong>Quick Filters</strong></div>
         <label><input type="checkbox" class="filter-checkbox" name="h"> Exploitable</label>
@@ -6469,11 +6467,11 @@ Below is a list of the ACE (access control entries) configured with excessive pr
   <!-- Left aligned card -->
   <div style="width: 33.33%; display: flex; justify-content: flex-start;">
     <div class="card" style="width: 100%;">
-      <div class="cardtitle" style="color:gray; font-size: 16px; font-weight: bold;">
+      <div class="cardtitle" style="color:#71808d; font-size: 14px; font-weight: bold;">
         Affected ACEs
       </div>
       <div style="text-align: left;">
-        <span class="percentagetext" style="color:#f08c41; text-align: left;">                    
+        <span class="percentagetext" style="color:#c2994a; text-align: left;">                    
         $ExcessiveSharePrivsCount &nbsp;                  
         </span>
      </div>
@@ -6503,7 +6501,7 @@ Below is a list of the ACE (access control entries) configured with excessive pr
 </div>
 
 <div class="searchbar" style="text-align:left; display: flex;" >
-        <input type="text" id="acefilterInput" placeholder=" Search..." style="margin-top: 8px; height: 25px; margin-left: 10px;font-size: 14px;padding-left:3px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
+        <input type="text" id="acefilterInput" placeholder=" Search..." style="margin-top: 8px; height: 25px; margin-left: 10px;font-size: 14px;padding-left:3px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#345367;">
         <div style="font-size:12;text-align: left;cursor: pointer;color:gray; margin-top: 13px; margin-left: 5px;" onmouseover="this.style.color='white';" onmouseout="this.style.textDecoration='';this.style.fontWeight='normal';this.style.color='gray';"onclick="document.getElementById('acefilterInput').value = '';applyFiltersAndSort('aceTable', 'acefilterInput', 'acefilterCounter', 'acepagination');">Clear</div>
         <!-- <div style="margin-top: 10px; margin-left: 5px; margin-right: 5px;"><strong>Quick Filters</strong></div>
         <label><input type="checkbox" class="filter-checkbox" name="h"> Exploitable</label>
@@ -7014,11 +7012,11 @@ $AllSMBSharesCount shares were discovered across $ComputerPingableCount live com
   <!-- Left aligned card -->
   <div style="width: 33%; display: flex; justify-content: flex-start;">
     <div class="card" style="width: 100%;">
-      <div class="cardtitle" style="color:gray; font-size: 16px; font-weight: bold;">
+      <div class="cardtitle" style="color:#71808d; font-size: 14px; font-weight: bold;">
        Affected Shares Names
       </div>
       <div style="text-align: left;">
-        <span class="percentagetext" style = "color:#f08c41;">                    
+        <span class="percentagetext" style = "color:#c2994a;">                    
         $ExcessiveSharesCount  &nbsp;                     
         </span>	
         <Br>
@@ -7042,7 +7040,7 @@ $AllSMBSharesCount shares were discovered across $ComputerPingableCount live com
 </div>	
 				
 <div class="searchbar" style="text-align:left; display: flex;" >
-        <input type="text" id="filterInput" placeholder=" Search..." style="margin-top: 8px; height: 25px; margin-left: 10px;font-size: 14px;padding-left:3px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
+        <input type="text" id="filterInput" placeholder=" Search..." style="margin-top: 8px; height: 25px; margin-left: 10px;font-size: 14px;padding-left:3px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#345367;">
         <div style="margin-top: 10px; margin-left: 5px; margin-right: 5px;"><strong>Quick Filters</strong></div>
         <label><input type="checkbox" class="filter-checkbox" name="h"> Exploitable</label>
         <label><input type="checkbox" class="filter-checkbox" name="w"> Write</label>
@@ -7173,11 +7171,11 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
   <!-- Left aligned card -->
   <div style="width: 33%; display: flex; justify-content: flex-start;">
     <div class="card" style="width: 100%;">
-      <div class="cardtitle" style="color:gray; font-size: 16px; font-weight: bold;">
+      <div class="cardtitle" style="color:#71808d; font-size: 14px; font-weight: bold;">
        Affected Folder Groups
       </div>
       <div style="text-align: left;">
-          <span class="percentagetext" style="color:#f08c41; text-align: left;">                    
+          <span class="percentagetext" style="color:#c2994a; text-align: left;">                    
           $FolderGroupChartCount &nbsp;                  
           </span>
       </div>
@@ -7197,7 +7195,7 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
 </div>				
 					
 <div class="searchbar" style="text-align:left; display: flex;" >
-        <input type="text" id="filterInputTwo" placeholder=" Search..." style="margin-top: 8px; height: 25px; font-size: 14px; padding-left:3px;margin-left: 10px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
+        <input type="text" id="filterInputTwo" placeholder=" Search..." style="margin-top: 8px; height: 25px; font-size: 14px; padding-left:3px;margin-left: 10px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#345367;">
         <div style="font-size:12;text-align: left;cursor: pointer;color:gray; margin-top: 13px; margin-left: 5px;" onmouseover="this.style.color='white';" onmouseout="this.style.textDecoration='';this.style.fontWeight='normal';this.style.color='gray';" onclick="document.getElementById('filterInputTwo').value = '';applyFiltersAndSort('foldergrouptable', 'filterInputTwo', 'filterCounterTwo', 'paginationfg');">Clear</div>
         <!--
 		<strong>&nbsp;&nbsp;Quick Filters</strong>
@@ -7250,7 +7248,7 @@ This page includes a list of the credentials that were recovered during data col
 		                   Extracted Secrets Found
 	                    </div>		
                         <div style="text-align: left;">
-				                    <span class="percentagetext" style = "color:#f08c41;">                    
+				                    <span class="percentagetext" style = "color:#c2994a;">                    
 					                    $SecretsRecoveredCount &nbsp;                     
 				                    </span>	
 			            </div>
@@ -7258,7 +7256,7 @@ This page includes a list of the credentials that were recovered during data col
 					
 					
 <div class="searchbar" style="margin-top:10px; text-align:left; display: flex;" >
-        <input type="text" id="secretsInputTwo" placeholder=" Search..." style="margin-top: 8px; height: 25px; font-size: 14px; padding-left:3px;margin-left: 10px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#07142A;">
+        <input type="text" id="secretsInputTwo" placeholder=" Search..." style="margin-top: 8px; height: 25px; font-size: 14px; padding-left:3px;margin-left: 10px;border-radius: 3px;border: 1px solid #BDBDBD;outline: none;color:#345367;">
         <div style="font-size:12;text-align: left;cursor: pointer;color:gray; margin-top: 13px; margin-left: 5px;" onmouseover="this.style.color='white';" onmouseout="this.style.textDecoration='';this.style.fontWeight='normal';this.style.color='gray';" onclick="document.getElementById('secretsInputTwo').value = '';applyFiltersAndSort('recoveredsecretstable', 'secretsInputTwo', 'secretsCounterTwo', 'paginationsecrets');">Clear</div>
 		<br><br>
 </div>		
@@ -7320,32 +7318,32 @@ This page includes a list of the credentials that were recovered during data col
 
 		<!-- Hide Toolbar Button -->
 		<div style="width: 100%; display: flex; align-items: center; justify-content: space-between;">
-			<div class="drag-handle" id="toolbartext" style="padding-bottom: 4px; width: 120px; font-weight: bold; color: #07142A; font-size: 16;">Graph ToolBar</div>
+			<div class="drag-handle" id="toolbartext" style="padding-bottom: 4px; width: 120px; font-weight: bold; color: #345367; font-size: 16;">Graph ToolBar</div>
 			<button id="toggleButton2" class="modern-button" style="margin-bottom: 5px; padding: 0; width: 25px; height: 25px; display: flex; justify-content: center; align-items: center;" onclick="toggleToolbar()">
 				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-					<path d="M18 15L12 9L6 15" stroke="#f08c41" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+					<path d="M18 15L12 9L6 15" stroke="#c2994a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 				</svg>
 			</button>
 		</div>
 		
         <!-- Tab Buttons -->
 		<div id="toolbarTabs" style="margin-bottom: 5px; width: 180px; white-space: nowrap;">
-			<button id="tab1Button" class="modern-button" style="border: .5px solid #e3e4e6; background-color: #d4d5d6; color: #07142A; font-size: 12px; width: 50px; height: 30px; padding: 0px; display: inline-block; margin-right: 2px; justify-content: center; align-items: center;" onclick="showTab(1)">Search</button>
-			<button id="tab2Button" class="modern-button" style="background-color: lightgray; color: #07142A; font-size: 12px; width: 50px; height: 30px; padding: 0px; display: inline-block; margin-right: 2px; justify-content: center; align-items: center;" onclick="showTab(2)">Filter</button>
-			<button id="tab3Button" class="modern-button" style="background-color: lightgray; color: #07142A; font-size: 12px; width: 60px; height: 30px; padding: 0px; display: inline-block; justify-content: center; align-items: center;" onclick="showTab(3)">Layout</button>
+			<button id="tab1Button" class="modern-button" style="border: .5px solid #e3e4e6; background-color: #d4d5d6; color: #345367; font-size: 12px; width: 50px; height: 30px; padding: 0px; display: inline-block; margin-right: 2px; justify-content: center; align-items: center;" onclick="showTab(1)">Search</button>
+			<button id="tab2Button" class="modern-button" style="background-color: lightgray; color: #345367; font-size: 12px; width: 50px; height: 30px; padding: 0px; display: inline-block; margin-right: 2px; justify-content: center; align-items: center;" onclick="showTab(2)">Filter</button>
+			<button id="tab3Button" class="modern-button" style="background-color: lightgray; color: #345367; font-size: 12px; width: 60px; height: 30px; padding: 0px; display: inline-block; justify-content: center; align-items: center;" onclick="showTab(3)">Layout</button>
 		</div>
 
 
         <!-- Tab 1 Content (Toolbar Content) -->
         <div id="tab1Content" class="tab-content">
 		
-			<div style="color: #07142A; font-size: 12px; font-weight: bold; margin-bottom: 5px;">Seach Nodes</div>
+			<div style="color: #345367; font-size: 12px; font-weight: bold; margin-bottom: 5px;">Seach Nodes</div>
             <input type="text" id="search-input" placeholder="Search nodes..." class="modern-input" style="width: 180px;">			
 			<input type="range" min="0" max="5" value="0" class="modern-slider" id="mySlider" style="width:160px; margin-top: 12px;">&nbsp;<span id="sliderValue">0</span>
 			
 			<div style="border-bottom: none; height: 5px; width: 100%; margin-bottom: 4px;"></div>
 			
-			<div style="color: #07142A; font-size: 12px; font-weight: bold; margin-bottom: 5px;">Find Paths</div>
+			<div style="color: #345367; font-size: 12px; font-weight: bold; margin-bottom: 5px;">Find Paths</div>
             <input type="text" id="src-node" placeholder="source node..." class="modern-input" style="width: 180px;">
             <input type="text" id="dst-node" placeholder="target node..." class="modern-input" style="width: 180px;">
             <button id="find-path" class="modern-button" style="width: 176px;margin-top: 8px;">Find Path</button>
@@ -7359,8 +7357,8 @@ This page includes a list of the credentials that were recovered during data col
 
 		<!-- Tab 2 Content -->
 		<div id="tab2Content" class="tab-content" style="display: none;">
-			<div style="color: #07142A; font-size: 12px; font-weight: bold; margin-bottom: 10px;">Node Types</div>
-			<div style="color: #07142A; font-size: 10px; display: flex; flex-wrap: wrap; background-color: #e6e6e6; border-radius: 4px; margin-bottom: 10px;">
+			<div style="color: #345367; font-size: 12px; font-weight: bold; margin-bottom: 10px;">Node Types</div>
+			<div style="color: #345367; font-size: 10px; display: flex; flex-wrap: wrap; background-color: #e6e6e6; border-radius: 4px; margin-bottom: 10px;">
 				<div style="flex: 1 0 50%;">
 					<label><input type="checkbox" id="FilterNodeIdentity" checked style="transform: scale(0.8);margin-left: 8px;">Identity</label>
 				</div>		
@@ -7377,8 +7375,8 @@ This page includes a list of the credentials that were recovered during data col
 					<label><input type="checkbox" id="FilterNodeFolderGroup" checked style="transform: scale(0.8); margin-left: 8px;">Folder Group</label>
 				</div>
 			 </div>
-			   <div style="color: #07142A; font-size: 12px; font-weight: bold; margin-bottom: 10px;">Edge Types</div>
-				<div style="color: #07142A; font-size: 10px; display: flex; flex-wrap: wrap; background-color: #e6e6e6; border-radius: 4px;">
+			   <div style="color: #345367; font-size: 12px; font-weight: bold; margin-bottom: 10px;">Edge Types</div>
+				<div style="color: #345367; font-size: 10px; display: flex; flex-wrap: wrap; background-color: #e6e6e6; border-radius: 4px;">
 					<div style="flex: 1 0 50%;">
 						<label><input type="checkbox" id="FilterEdgeOwner" checked style="transform: scale(0.8); margin-left: 8px;">owner_of</label>
 					</div>
@@ -7421,7 +7419,7 @@ This page includes a list of the credentials that were recovered during data col
                 <option value="taxi">Taxi</option>
                 <option value="straight-triangle">Straight-Triangle</option>
             </select>
-			<div style="color: #07142A; margin-top: 8px; margin-bottom: 6px;font-size: 10px; display: flex; flex-wrap: wrap; background-color: #e6e6e6; border-radius: 4px;">
+			<div style="color: #345367; margin-top: 8px; margin-bottom: 6px;font-size: 10px; display: flex; flex-wrap: wrap; background-color: #e6e6e6; border-radius: 4px;">
 				<label><input type="checkbox" id="toggle-edge-labels" checked style="transform: scale(0.8); margin-left: 8px;"> Show Edge Labels</label>
 				<label><input type="checkbox" id="toggle-node-labels" checked style="transform: scale(0.8); margin-left: 8px;"> Show Node Labels</label>
 				<label><input type="checkbox" id="toggle-visibility" style="transform: scale(0.8); margin-left: 8px;"> Hide Unselected</label>
@@ -7552,7 +7550,7 @@ This page includes a list of the credentials that were recovered during data col
             // Update button text
 			button.innerHTML = ``
 				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-					<path d="M6 9L12 15L18 9" stroke="#f08c41" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+					<path d="M6 9L12 15L18 9" stroke="#c2994a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 				</svg>``;
         } else {
             // Expand the toolbar back to its original height
@@ -7600,7 +7598,7 @@ This page includes a list of the credentials that were recovered during data col
 				
 			button.innerHTML = ``
 				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-					<path d="M18 15L12 9L6 15" stroke="#f08c41" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+					<path d="M18 15L12 9L6 15" stroke="#c2994a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 				</svg>``;				
         }
     }
@@ -10220,42 +10218,42 @@ TimelineCreationChartVar.render();
     {
       id: 'Networks ($SubnetsCount)',
       title: 'Networks ($SubnetsCount)',
-      color: '#0c8b99',
+      color: '#6f5420',
     },
     {
       id: 'Computers ($ComputerWithExcessive)',
       title: 'Computers ($ComputerWithExcessive)',
-      color: '#04B9CD',
+      color: '#7D825E',
     },
     {
       id: 'Shares ($ExcessiveSharesCount)',
       title: 'Shares ($ExcessiveSharesCount)',
-      color: '#45D1C8', 
+      color: '#c2994A', 
     },
     {
       id: 'ACEs ($ExcessiveSharePrivsCount)',
       title: 'ACEs ($ExcessiveSharePrivsCount)',
-      color: '#93E6C4', 
+      color: '#345367', 
     },
     {
       id: 'Critical ($RiskLevelCountCritical)',
       title: 'Critical ($RiskLevelCountCritical)',
-      color: '#FF6A6A', 
+      color: '#772400', 
     },
     {
       id: 'High ($RiskLevelCountHigh)',
       title: 'High ($RiskLevelCountHigh)',
-      color: '#FB897C', 
+      color: '#f56a00', 
     },
     {
       id: 'Medium ($RiskLevelCountMedium)',
       title: 'Medium ($RiskLevelCountMedium)',
-      color: '#FDAC70', 
+      color: '#6f5420', 
     },
     {
       id: 'Low ($RiskLevelCountLow)',
       title: 'Low ($RiskLevelCountLow)',
-      color: '#FEDA94', 
+      color: '#f3f1e6', 
     },
   ],
   edges: [
@@ -10263,19 +10261,19 @@ TimelineCreationChartVar.render();
       source: 'Networks ($SubnetsCount)',
       target: 'Computers ($ComputerWithExcessive)',
       value: $ComputerWithExcessive,
-      color: '#0c8b99', // Custom color for this edge 
+      color: '#000', // Custom color for this edge 
     },
     {
       source: 'Computers ($ComputerWithExcessive)',
       target: 'Shares ($ExcessiveSharesCount)',
       value: $ExcessiveSharesCount,
-      color: '#04B9CD', // Custom color for this edge
+      color: '#000', // Custom color for this edge
     },
     {
       source: 'Shares ($ExcessiveSharesCount)',
       target: 'ACEs ($ExcessiveSharePrivsCount)',
       value: $ExcessiveSharePrivsCount,
-      color: '#45D1C8', // Custom color for this edge
+      color: '#000', // Custom color for this edge
     },    
     $SanKeyCritical
     $SanKeyHigh
@@ -10289,7 +10287,7 @@ const graphOptions = {
   fontFamily: 'Quicksand, sans-serif', 
   fontSize: '14px',  
   fontWeight: 400,
-  fontColor: '#07142A',
+  fontColor: '#345367',
   height: 200,
   width: 1200,
   spacing: 10, // margin
@@ -10307,11 +10305,14 @@ s.render(SankeyData);
 	    function toggleMenu() {
             const menu = document.getElementById('sideMenu');
             const icon = document.querySelector('.menu-button .icon');
+            const main = document.getElementById('main');
             menu.classList.toggle('collapsed');
 			if (menu.classList.contains('collapsed')) {
 				icon.innerHTML = '<span style="font-size: 16px; color:#F56A00; transition: color 0.3s ease;" onmouseover="this.style.color=\'white\'" onmouseout="this.style.color=\'#F56A00\'">☰</span>';
+                main.style.marginLeft = '70px';
 			} else {
 				icon.innerHTML = '<span style="font-size: 16px; color:#F56A00; transition: color 0.3s ease;" onmouseover="this.style.color=\'white\'" onmouseout="this.style.color=\'#F56A00\'"><i class="fas fa-times"></i></span>';
+                main.style.marginLeft = '200px';
 			}	
         }
 
@@ -10339,7 +10340,7 @@ const ChartAceTypeOptions = {
         ranges: [{
           from: 0,
           to: 1000,
-          color: '#f08c41'
+          color: '#c2994a'
         }]
       }
     }
@@ -10360,7 +10361,7 @@ const ChartAceTypeOptions = {
 			style: {
 			  fontSize: '16px',
 			  fontWeight: 'bold',
-			  color: 'gray'
+			  color: '#71808d'
 			}
 		  }
 };
@@ -10392,7 +10393,7 @@ const ChartAceRiskOptions = {
         ranges: [{
           from: 0,
           to: 1000,
-          color: '#f08c41'
+          color: '#c2994a'
         }]
       }
     }
@@ -10411,9 +10412,9 @@ const ChartAceRiskOptions = {
 			align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
 			margin: 10, // Adjusts the space between the title and the chart
 			style: {
-			  fontSize: '16px',
+			  fontSize: '14px',
 			  fontWeight: 'bold',
-			  color: 'gray'
+			  color: '#71808d'
 			}
 		  }
 };
@@ -10447,7 +10448,7 @@ const ChartAcesIFOptions = {
                 ranges: [{
                     from: 0,
                     to: 1000,
-                    color: '#f08c41'
+                    color: '#c2994a'
                 }]
             }
           }
@@ -10468,7 +10469,7 @@ const ChartAcesIFOptions = {
 			style: {
 			  fontSize: '16px',
 			  fontWeight: 'bold',
-			  color: 'gray'
+			  color: '#71808d'
 			}
 		  }
         };
@@ -10500,7 +10501,7 @@ const ChartComputersDiscoOptions = {
         ranges: [{
           from: 0,
           to: 1000,
-          color: '#f08c41'
+          color: '#c2994a'
         }]
       }
     }
@@ -10519,9 +10520,9 @@ const ChartComputersDiscoOptions = {
 			align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
 			margin: 10, // Adjusts the space between the title and the chart
 			style: {
-			  fontSize: '16px',
+			  fontSize: '14px',
 			  fontWeight: 'bold',
-			  color: 'gray'
+			  color: '#71808d'
 			}
 		  }
 };
@@ -10568,7 +10569,7 @@ const ChartComputersOSOptions = {
         ranges: [{
           from: 0,
           to: 1000,
-          color: '#f08c41'
+          color: '#c2994a'
         }]
       }
     }
@@ -10630,9 +10631,9 @@ const ChartComputersOSOptions = {
     align: 'center', // Aligns the title
     margin: 10, // Space between the title and the chart
     style: {
-      fontSize: '16px',
+      fontSize: '14px',
       fontWeight: 'bold',
-      color: 'gray'
+      color: '#71808d'
     }
   }
 };
@@ -10665,7 +10666,7 @@ const ChartComputersRiskOptionsa = {
         ranges: [{
           from: 0,
           to: 1000,
-          color: '#f08c41'
+          color: '#c2994a'
         }]
       }
     }
@@ -10684,9 +10685,9 @@ const ChartComputersRiskOptionsa = {
 			align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
 			margin: 10, // Adjusts the space between the title and the chart
 			style: {
-			  fontSize: '16px',
+			  fontSize: '14px',
 			  fontWeight: 'bold',
-			  color: 'gray'
+			  color: '#71808d'
 			}
 		  }
 };
@@ -10720,7 +10721,7 @@ const ChartFGPageIFOptions = {
                 ranges: [{
                     from: 0,
                     to: 1000,
-                    color: '#f08c41'
+                    color: '#c2994a'
                 }]
             }
           }
@@ -10741,7 +10742,7 @@ const ChartFGPageIFOptions = {
 			style: {
 			  fontSize: '16px',
 			  fontWeight: 'bold',
-			  color: 'gray'
+			  color: '#71808d'
 			}
 		  }
         };
@@ -10776,7 +10777,7 @@ const ChartFGRiskOptionsa = {
         ranges: [{
           from: 0,
           to: 1000,
-          color: '#f08c41'
+          color: '#c2994a'
         }]
       }
     }
@@ -10798,9 +10799,9 @@ const ChartFGRiskOptionsa = {
 			align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
 			margin: 10, // Adjusts the space between the title and the chart
 			style: {
-			  fontSize: '16px',
+			  fontSize: '14px',
 			  fontWeight: 'bold',
-			  color: 'gray'
+			  color: '#71808d'
 			}
 		  }
 };
@@ -10834,7 +10835,7 @@ const ChartSharePageIFOptions = {
                 ranges: [{
                     from: 0,
                     to: 1000,
-                    color: '#f08c41'
+                    color: '#c2994a'
                 }]
             }
           }
@@ -10855,7 +10856,7 @@ const ChartSharePageIFOptions = {
 			style: {
 			  fontSize: '16px',
 			  fontWeight: 'bold',
-			  color: 'gray'
+			  color: '#71808d'
 			}
 		  }
         };
@@ -10889,7 +10890,7 @@ const ChartShareNameRiskOptionsa = {
         ranges: [{
           from: 0,
           to: 1000,
-          color: '#f08c41'
+          color: '#c2994a'
         }]
       }
     }
@@ -10911,9 +10912,9 @@ const ChartShareNameRiskOptionsa = {
     align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
     margin: 10, // Adjusts the space between the title and the chart
     style: {
-      fontSize: '16px',
+      fontSize: '14px',
       fontWeight: 'bold',
-      color: 'gray'
+      color: '#71808d'
     }
   }
 };
@@ -10956,7 +10957,11 @@ const ChartDashboardIFOptions = {
     }
   },
   dataLabels: {
-    enabled: false
+    enabled: true,
+	style: {
+      fontSize: '12px',
+      colors: ['#345367', '#c2994a'] 
+    },
   },
   grid: {
     show: false
@@ -10964,15 +10969,15 @@ const ChartDashboardIFOptions = {
   xaxis: {
     categories: categories,
   },
-  colors: ['#f08c41','#07142A'],  // Orange for discovered, Blue for verified
+  colors: ['#c2994a','#345367'],  // Orange for discovered, Blue for verified
   title: {
     text: 'Interesting File Exposure',
     align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
     margin: 10, // Adjusts the space between the title and the chart
     style: {
-      fontSize: '18px',
-      fontWeight: 'normal',
-      color: '#808080'
+      fontSize: '14px',
+      fontWeight: 'bold',
+      color: '#71808d'
     }
   },
   legend: {
@@ -11033,17 +11038,17 @@ const ChartDashboardRiskOptions = {
      // barSpacing: 0.0  // Adds space between the groups (risk levels)
     }
   },
-  colors: ['#DBDCD6', '#f08c41', '#07142A'],  // Colors for the bars
+  colors: ['#7D825E', '#c2994a', '#345367'],  // Colors for the bars
   dataLabels: {
     enabled: true,
     style: {
       fontSize: '12px',
-      colors: ['#07142A', '#07142A', '#f08c41'] // colors for the lables #FF9965
+      colors: ['#345367', '#345367', '#c2994a'] // colors for the lables #FF9965
     },
     offsetX: 0
   },
   grid: {
-    show: true,
+    show: false,
 	opacity: 0.5
   },
   xaxis: {
@@ -11056,9 +11061,9 @@ const ChartDashboardRiskOptions = {
     align: 'center',
     margin: 10,
     style: {
-        fontSize: '18px',
-        fontWeight: 'normal',
-        color: '#808080'
+        fontSize: '14px',
+        fontWeight: 'bold',
+        color: '#71808d'
     }
   }
 };
@@ -11099,12 +11104,12 @@ ChartDashboardRisk.render();
             endingShape: 'rounded'
           },
         },
-        colors: ['#07142A', '#f08c41'],  // Reversed colors for Average and Actual bars
+        colors: ['#345367', '#c2994a'],  // Reversed colors for Average and Actual bars
         dataLabels: {
           enabled: true,  // Enable data labels
           style: {
             fontSize: '12px',
-            colors: ['#f08c41', '#07142A'],  // Colors for labels
+            colors: ['#c2994a', '#345367'],  // Colors for labels
           },
           formatter: function (val, opts) {
             return val;  // Display values with percentage sign
@@ -11116,11 +11121,15 @@ ChartDashboardRisk.render();
           width: 2,
           colors: ['transparent']
         },
+        grid: {
+            show: false,
+	        opacity: 0.5
+        },
         xaxis: {
-          categories: ['Individul ACEs (No Grouping)','Folder Groups', 'Share Name Groups (High Similarity)'],  // X-axis categories
+          categories: ['Individul ACEs (No Grouping)','Folder Grouping', 'Share Name Grouping (High Similarity)'],  // X-axis categories
           labels: {
             style: {
-              colors: '#808080',  // Set x-axis labels to gray
+              colors: '#71808d',  // Set x-axis labels to gray
             }
           }
         },
@@ -11129,12 +11138,12 @@ ChartDashboardRisk.render();
             text: 'Remediation Tasks',
             style: {
               fontWeight: 'normal',
-              color: '#808080'  // Set "Percentage" text to gray
+              color: '#71808d'  // Set "Percentage" text to gray
             }
           },
           labels: {
             style: {
-              colors: '#808080',  // Set y-axis labels to gray
+              colors: '#71808d',  // Set y-axis labels to gray
             },
             formatter: function (val) {
               return val;  // Format y-axis labels with percentage sign
@@ -11154,12 +11163,12 @@ ChartDashboardRisk.render();
           }
         },
         title: {
-          text: 'Remediation Effort Saving',  // Updated chart title
+          text: 'Remediation Effort by Task Grouping Approach',  // Updated chart title
           align: 'center',
           style: {
-            fontSize: '18px',
-            fontWeight: 'normal',
-            color: '#808080'
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#71808d'
           }
         }
         };
@@ -11200,17 +11209,21 @@ ChartDashboardRisk.render();
             endingShape: 'rounded'
           },
         },
-        colors: ['#07142A', '#f08c41'],  // Reversed colors for Average and Actual bars
+        colors: ['#345367', '#c2994a'],  // Reversed colors for Average and Actual bars
         dataLabels: {
           enabled: true,  // Enable data labels
           style: {
             fontSize: '12px',
-            colors: ['#f08c41', '#07142A'],  // Colors for labels
+            colors: ['#c2994a', '#345367'],  // Colors for labels
           },
           formatter: function (val, opts) {
             return val + '%';  // Display values with percentage sign
           },
           offsetY: -6  // Adjust position of the label
+        },
+        grid: {
+            show: false,
+	        opacity: 0.5
         },
         stroke: {
           show: true,
@@ -11221,7 +11234,7 @@ ChartDashboardRisk.render();
           categories: ['Computers', 'Shares', 'ACEs'],  // X-axis categories
           labels: {
             style: {
-              colors: '#808080',  // Set x-axis labels to gray
+              colors: '#71808d',  // Set x-axis labels to gray
             }
           }
         },
@@ -11229,13 +11242,14 @@ ChartDashboardRisk.render();
           title: {
             text: 'Percentage (%)',
             style: {
+              fontSize: '12px',
               fontWeight: 'normal',
-              color: '#808080'  // Set "Percentage" text to gray
+              color: '#71808d'  // Set "Percentage" text to gray
             }
           },
           labels: {
             style: {
-              colors: '#808080',  // Set y-axis labels to gray
+              colors: '#71808d',  // Set y-axis labels to gray
             },
             formatter: function (val) {
               return val + '%';  // Format y-axis labels with percentage sign
@@ -11258,9 +11272,9 @@ ChartDashboardRisk.render();
           text: 'Percent of Assets with Excessive Privileges',  // Updated chart title
           align: 'center',
           style: {
-            fontSize: '18px',
-            fontWeight: 'normal',
-            color: '#808080'
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#71808d'
           }
         }
         };
@@ -11359,7 +11373,7 @@ const chartOptions = {
             style: {
                // fontSize: '18px',
                // fontWeight: 'bold',
-               // colors: '#f08c41'
+               // colors: '#c2994a'
             }
         }
     },
@@ -11379,7 +11393,7 @@ const chartOptions = {
                 ranges: [{
                     from: 0,
                     to: 1000,
-                    color: '#f08c41'
+                    color: '#c2994a'
                 }]
             }
         }
@@ -11389,7 +11403,7 @@ const chartOptions = {
         style: {
             fontSize: '18px',
             fontWeight: 'bold',
-            colors: ['#07142A']  // Set text color to black
+            colors: ['#345367']  // Set text color to black
         },
         formatter: function (val) {
             return '' + val;
@@ -11411,9 +11425,9 @@ const chartOptions = {
 			align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
 			margin: 10, // Adjusts the space between the title and the chart
 			style: {
-			  fontSize: '16px',
+			  fontSize: '14px',
 			  fontWeight: 'bold',
-			  color: 'gray'
+			  color: '#71808d'
 			}
 		  }
 };
@@ -11776,15 +11790,10 @@ function updateLabelColors(divId, objectId) {
         // Apply the desired styles
         objectElement.style.fontWeight = 'normal';
         objectElement.style.color = 'white';
-        objectElement.style.backgroundColor = '#17405A';
+        objectElement.style.backgroundColor = '#71808d'; //#71808d
         objectElement.style.transition = 'background-color 0.9s ease, color 0.3s ease';
         objectElement.style.textDecoration = 'none';
-        objectElement.style.paddingLeft = '15px';
         objectElement.style.borderRadius = '5px';
-        objectElement.style.paddingTop = '5px';
-        objectElement.style.paddingBottom = '5px';
-        objectElement.style.marginRight = '5px';
-        objectElement.style.marginLeft = '5px';
     } else {
         console.error("Element with id '" + objectId + "' not found.");
     }
@@ -12498,7 +12507,7 @@ $HighestTypeCount = $TypeCounts | Sort-Object {[int]$_} -Descending | select -Fi
 # Start Table
 $HTML1 = @"
 <div class="LargeCard">	
-	<div class="LargeCardTitle" style = "background-color: #07142A">
+	<div class="LargeCardTitle" style = "background-color: #345367">
 		Last Access Timeline<br>
 		<span class="LargeCardSubtitle2">for share ACLs configured with excessive privileges</span>
 	</div>
