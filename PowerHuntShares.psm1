@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.165
+# Version: v1.167 
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -4722,7 +4722,7 @@ $NewHtmlReport = @"
         }
 
         .side-menu {			
-			box-shadow: 0 2px 4px 0;
+			--box-shadow: 0 2px 4px 0;
 			width: 180px;
 			height: 100%;
 			background-color:#345367;
@@ -4737,7 +4737,7 @@ $NewHtmlReport = @"
 			z-index: 9998;		
 			--transition: width 0.3s; /* Smooth transition when expanding/collapsing */		
 			background: linear-gradient(to bottom, #07142A 80%, rgba(0, 0, 0, 1) 98%, black 100%);	
-			border-top: 0.25px dashed #345367;	
+			--border-top: 0.25px dashed #345367;	
 			padding-left: 5px;
 			padding-right: 5px;		
         }
@@ -5489,7 +5489,7 @@ $NewHtmlReport = @"
 		margin:10px;
 		margin-bottom:20px;
 		border:.5px solid lightgray;		
-       		 border-radius: 3px;
+       	border-radius: 6px;
 	}
 
 	.card:hover{	
@@ -5849,7 +5849,7 @@ $NewHtmlReport = @"
 	margin:10px;
 	margin-bottom:20px;
 	border:.5px solid lightgray;
-	border-radius: 3px;   
+	border-radius: 6px;   
 	box-shadow: 0 2px 4px 0 #DEDFE1;
 }
 
@@ -5943,8 +5943,8 @@ input[type="checkbox"]:checked::before {
     0px  2px 4px 0 #DEDFE1;  /* Shadow on the top-right */
 	margin-left:10px;
 	background-color: white;
-	border-top-right-radius: 3px; 
-	border-top-left-radius: 3px; 
+	border-top-right-radius: 6px; 
+	border-top-left-radius: 6px; 
 	width:95%; 
 	height: 40px;
 	box-sizing: border-box;
@@ -5981,7 +5981,7 @@ input[type="checkbox"]:checked::before {
 <body onload="radiobtn = document.getElementById('dashboard');radiobtn.checked = true;updateLabelColors('tabs', 'btnsummary');">
 
 <!-- top bar -->
-<div style="background-color: #07142A; width: 100%; height: 50px; position: fixed; background: linear-gradient(to right, #07142A 80%, rgba(0, 0, 0, 1) 98%, black 100%); z-index: 9999;">
+<div style="background-color: #07142A; width: 100%; height: 50px; position: fixed; background: linear-gradient(to right, #07142A 80%, rgba(0, 0, 0, 1) 98%, black 100%); z-index: 9999; border-bottom: 0.25px solid #71808D;">
     <div  style="font-weight:bolder;color:white;margin-bottom:5px; margin-top:0px; margin-left: 14px;" align="left">
 		<a href="https://github.com/NetSPI/PowerHuntShares" style="text-decoration: none; color:#F56A00;cursor: pointer;float:left;">
 			<br>
@@ -6009,7 +6009,7 @@ input[type="checkbox"]:checked::before {
 		<label id="noactionmenuheader1"class="tabLabel" style="background-color: transparent; width:100%;color:#F56A00;padding-top:6px;padding-bottom:3px;margin-top:5px;margin-bottom:0px;font-weight:bolder;"><Strong>RESULTS</Strong></label>
 		<label id="btnsummary" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('dashboard');radiobtn.checked = true;updateLabelColors('tabs', 'btnsummary');">Summary Report</label>
 		<label id="btnscaninfo" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('home');radiobtn.checked = true;updateLabelColors('tabs', 'btnscaninfo');">Scan Information</label>		
-		<label id="noactionmenuheader2"class="tabLabel" style="background-color: transparent;width:100%;color:#F56A00;padding-top:6px;padding-bottom:3px;margin-top:5px;margin-bottom:0px;font-weight:bolder;border-top: 0.25px dashed gray;"><Strong>EXPLORE</Strong></label>
+		<label id="noactionmenuheader2"class="tabLabel" style="background-color: transparent;width:100%;color:#F56A00;padding-top:6px;padding-bottom:3px;margin-top:5px;margin-bottom:0px;font-weight:bolder;border-top: 0.25px solid #354367"><Strong>EXPLORE</Strong></label>
         <label id="btnnetworks" href="#" class="stuff" style="width:100%;" onclick="radiobtn = document.getElementById('SubNets');radiobtn.checked = true;updateLabelColors('tabs', 'btnnetworks');">Networks</label>	
         <label id="btncomputers" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ComputerInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btncomputers');">Computers</label>	  	  			
 		<label id="btnshares" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;updateLabelColors('tabs', 'btnshares');">Share Names</label>					
@@ -6017,10 +6017,10 @@ input[type="checkbox"]:checked::before {
         <label id="btnaces" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnaces');">Insecure ACEs</label>
         <label id="btnidentities" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('IdentityInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnidentities');">Identities</label>
         <label id="btnShareGraph" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareGraph');radiobtn.checked = true;updateLabelColors('tabs', 'btnShareGraph');">ShareGraph</label>	
-        <label id="noactionmenuheader2"class="tabLabel" style="background-color: transparent;width:100%;color:#F56A00;padding-top:6px;padding-bottom:3px;margin-top:5px;margin-bottom:0px;font-weight:bolder;border-top: 0.25px dashed gray;"><Strong>TARGET</Strong></label>			
+        <label id="noactionmenuheader2"class="tabLabel" style="background-color: transparent;width:100%;color:#F56A00;padding-top:6px;padding-bottom:3px;margin-top:5px;margin-bottom:0px;font-weight:bolder;border-top: 0.25px solid #354367"><Strong>TARGET</Strong></label>			
         <label id="btnif" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF');updateLabelColors('tabs', 'btnif');">Interesting Files</label>			        			
         <label id="btnSecretsPage" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('SecretsPage');radiobtn.checked = true;updateLabelColors('tabs', 'btnSecretsPage');">Extracted Secrets</label>	        
-		<label id="noactionmenuheader3"class="tabLabel" style="background-color: transparent;width:100%;color:#F56A00;padding-top:6px;padding-bottom:3px;margin-top:5px;margin-bottom:0px;font-weight:bolder;border-top: 0.25px dashed gray;"><strong>ACT</strong></label>
+		<label id="noactionmenuheader3"class="tabLabel" style="background-color: transparent;width:100%;color:#F56A00;padding-top:6px;padding-bottom:3px;margin-top:5px;margin-bottom:0px;font-weight:bolder;border-top: 0.25px solid #354367;"><strong>ACT</strong></label>
 		<label id="btnexploit" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Attacks');radiobtn.checked = true;updateLabelColors('tabs', 'btnexploit');">Exploit</label>		
 		<label id="btndetect" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Detections');radiobtn.checked = true;updateLabelColors('tabs', 'btndetect');">Detect</label>
 		<label id="btnprioritize" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Remediation');radiobtn.checked = true;updateLabelColors('tabs', 'btnprioritize');">Remediate</label>	        		
