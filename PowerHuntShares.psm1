@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.160
+# Version: v1.161
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -4731,11 +4731,13 @@ $NewHtmlReport = @"
 			left: 0;
 			float:left;
 			line-height:1.15;
+			margin-top: 50px;
 			-webkit-text-size-adjust:100%;
 			-ms-text-size-adjust:100%;
 			z-index: 9998;		
 			--transition: width 0.3s; /* Smooth transition when expanding/collapsing */		
-			background: linear-gradient(to bottom, #07142A 80%, rgba(0, 0, 0, 1) 98%, black 100%);			
+			background: linear-gradient(to bottom, #07142A 80%, rgba(0, 0, 0, 1) 98%, black 100%);	
+			border-top: 0.25px dashed #345367;			
         }
 		
 		.side-menu.collapsed div,
@@ -4983,7 +4985,8 @@ $NewHtmlReport = @"
 	.tabInput:checked+
 	.tabLabel+
 	.tabPanel{
-		display:block
+		display:block;
+        margin-top: 50px;
 	}
 	
 	.tabPanel.nojs{
@@ -5977,6 +5980,20 @@ input[type="checkbox"]:checked::before {
 </head>
 <body onload="radiobtn = document.getElementById('dashboard');radiobtn.checked = true;updateLabelColors('tabs', 'btnsummary');">
 
+<!-- top bar -->
+<div style="background-color: #07142A; width: 100%; height: 50px; position: fixed; background: linear-gradient(to right, #07142A 80%, rgba(0, 0, 0, 1) 98%, black 100%); z-index: 9999;">
+    <div  style="font-weight:bolder;color:white;margin-bottom:5px; margin-top:0px; margin-left: 14px;" align="left">
+		<a href="https://github.com/NetSPI/PowerHuntShares" style="text-decoration: none; color:#F56A00;cursor: pointer;float:left;">
+			<br>
+			<SPAN style="font-size: 15;">POWERHUNT</SPAN><SPAN style="color:white;font-size: 15;">SHARES</span>
+		</a>
+		<div style="font-size: 11;color:white;font-weight:normal;float:left; margin-top:21px; margin-left: 40px;">$TargetDomain</div>
+		<a href="https://www.netspi.com" style="text-decoration: none; color:#F56A00;cursor: pointer;">
+			<img style="float:right; transform: scale(0.70); margin-top:8px;  margin-right: 10px; " src="data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAJYAAAAiCAYAAAC9WiCBAAAAxXpUWHRSYXcgcHJvZmlsZSB0eXBlIGV4aWYAAHjabVDbDcMwCPxnio5gHnbMOM5L6gYdvxBIlUQ9yQfm7DMGts97h5eDUEDq1Ju2VgyiojQs6SUwDsYiBx/Qlhre60CUAlmJLXJse17As44/gwjDsnox6ksK811QSf/+MMqH2DvyJtY00jRiCgHTYMS3StM+Xb8wb+WOHguc9oXUa3UO7bmXyaa3VnuHiTZGLsbMEg2wLwEeLgTbwciJ1Vi4ZSc2kH9zOgFfitZaVKsZsrIAAAGEaUNDUElDQyBwcm9maWxlAAB4nH2RPUjDQBiG36ZKpVY62EHEIUN1sksVcSxVLIKF0lZo1cHk0j9oYkhSXBwF14KDP4tVBxdnXR1cBUHwB8TZwUnRRUr8Lim0iPGO4x7e+96Xu+8AoVVnqtmXAFTNMrKppFgoroiBVwRphjGIuMRMPZ1byMNzfN3Dx/e7GM/yrvtzDCklkwE+kTjBdMMiXiee2bR0zvvEEVaVFOJz4kmDLkj8yHXZ5TfOFYcFnhkx8tk54gixWOlhuYdZ1VCJp4mjiqpRvlBwWeG8xVmtN1jnnvyFoZK2nOM6rTGksIg0MhAho4Ea6rAQo10jxUSWzpMe/lHHnyGXTK4aGDnmsQEVkuMH/4PfvTXLU3E3KZQE+l9s+2McCOwC7aZtfx/bdvsE8D8DV1rXv9ECZj9Jb3a16BEQ3gYurruavAdc7gAjT7pkSI7kpyWUy8D7GX1TERi+BYKrbt865zh9APLUq6Ub4OAQmKhQ9prHuwd6+/ZvTad/P616cr70WnfRAAANdmlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4KPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iWE1QIENvcmUgNC40LjAtRXhpdjIiPgogPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4KICA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIgogICAgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iCiAgICB4bWxuczpzdEV2dD0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL3NUeXBlL1Jlc291cmNlRXZlbnQjIgogICAgeG1sbnM6ZGM9Imh0dHA6Ly9wdXJsLm9yZy9kYy9lbGVtZW50cy8xLjEvIgogICAgeG1sbnM6R0lNUD0iaHR0cDovL3d3dy5naW1wLm9yZy94bXAvIgogICAgeG1sbnM6dGlmZj0iaHR0cDovL25zLmFkb2JlLmNvbS90aWZmLzEuMC8iCiAgICB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iCiAgIHhtcE1NOkRvY3VtZW50SUQ9ImdpbXA6ZG9jaWQ6Z2ltcDo1ZWFiMTJlZS0yZmZiLTQzZGYtYThhNS05MWQyODg4Yzk2NDMiCiAgIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6MjNhOWIzMDgtNTMzNS00OWI0LThlM2YtNDM4MDU5MjA4YjE5IgogICB4bXBNTTpPcmlnaW5hbERvY3VtZW50SUQ9InhtcC5kaWQ6MjUxZTU2ODQtZjYxNi00MzU1LTliNzItODAwZjJhNjRkMzE0IgogICBkYzpGb3JtYXQ9ImltYWdlL3BuZyIKICAgR0lNUDpBUEk9IjIuMCIKICAgR0lNUDpQbGF0Zm9ybT0iV2luZG93cyIKICAgR0lNUDpUaW1lU3RhbXA9IjE3Mjg1NzQxODYzMjg1MTEiCiAgIEdJTVA6VmVyc2lvbj0iMi4xMC4zNCIKICAgdGlmZjpPcmllbnRhdGlvbj0iMSIKICAgeG1wOkNyZWF0b3JUb29sPSJHSU1QIDIuMTAiCiAgIHhtcDpNZXRhZGF0YURhdGU9IjIwMjQ6MTA6MTBUMTA6Mjk6NDYtMDU6MDAiCiAgIHhtcDpNb2RpZnlEYXRlPSIyMDI0OjEwOjEwVDEwOjI5OjQ2LTA1OjAwIj4KICAgPHhtcE1NOkhpc3Rvcnk+CiAgICA8cmRmOlNlcT4KICAgICA8cmRmOmxpCiAgICAgIHN0RXZ0OmFjdGlvbj0ic2F2ZWQiCiAgICAgIHN0RXZ0OmNoYW5nZWQ9Ii8iCiAgICAgIHN0RXZ0Omluc3RhbmNlSUQ9InhtcC5paWQ6MDkzY2I4N2UtYzQ1NS00ZmFjLTkwNzItMzU3MmZhMDhmNDkxIgogICAgICBzdEV2dDpzb2Z0d2FyZUFnZW50PSJHaW1wIDIuMTAgKFdpbmRvd3MpIgogICAgICBzdEV2dDp3aGVuPSIyMDI0LTEwLTEwVDEwOjI5OjQ2Ii8+CiAgICA8L3JkZjpTZXE+CiAgIDwveG1wTU06SGlzdG9yeT4KICA8L3JkZjpEZXNjcmlwdGlvbj4KIDwvcmRmOlJERj4KPC94OnhtcG1ldGE+CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAKPD94cGFja2V0IGVuZD0idyI/PsfSAYIAAAAGYktHRAD/AP8A/6C9p5MAAAAJcEhZcwAALiMAAC4jAXilP3YAAAAHdElNRQfoCgoPHS47KO1kAAAMeElEQVR42u2ceZQU1RXGf7dnBkZ6RhAC4hgFxSWISxJiXCGaaNziOYmIGk3UAMbYqDEIHneNJwIKYlDsuCtEUCRucQ0xghrQKAoukU1RQcMisg0FM8N03/xRt+RRVPV09ywQM/ecOszUvKq3fe/e737vFeKlULatZYAByTQTaLWvjSVah6DVWoHVaq3AarX/byvNwXuyEfdL8gSj2js0pk4ptKGqGlV3RkSyDTyXsHa7Vi8iuj1NhKq2Ado641MP1IpIbQPPFTKesf2OGd+tiolIvY1pqTPXWftbNmhTFLA2AbcB74aAIcAFwCF5dGQJcDOwLnS/C3Al0LHAQU8AA4G+DuATwDRVfaABcB0ODHIGbQUwHFi1HYBJgB5Af+AAoCtQaZO2Flihqu8BU0RkXsTzlTYn++e52Neo6lvA0yKyOtSOfsDJMc4gsPdV9U6gCjgX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"/>
+		</a>
+	</div>	
+</div>
+
 <!--  
 |||||||||| SIDE MENU
 -->
@@ -5986,13 +6003,7 @@ input[type="checkbox"]:checked::before {
             <span class="icon" style="font-size: 16px; color:#F56A00; transition: color 0.3s ease;" onmouseover="this.style.color='white'" onmouseout="this.style.color='#F56A00'"><i class="fas fa-times"></i></span>
     </button>
 	
-    <div  style="font-weight:bolder;color:white;margin-bottom:5px; margin-top:17px; margin-left: 14px;" align="left">
-	<a href="https://github.com/NetSPI/PowerHuntShares" style="text-decoration: none; color:#F56A00;cursor: pointer;">
-	<br><SPAN style="font-size: 15;">POWERHUNT</SPAN><SPAN style="color:white;font-size: 15;">SHARES</span></a>
     <br>
-    <div style="font-size: 11;font-weight:normal;margin-top:3px;margin-left: 1px;">$TargetDomain</div>
-	<br>
-	</div>
 
 	<div id="tabs" class="tabs" data-tabs-ignore-url="false">			
 		<label id="noactionmenuheader1"class="tabLabel" style="background-color: transparent; width:100%;color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:8px;font-weight:bolder;border-bottom: 0.25px dashed gray;"><Strong>RESULTS</Strong></label>
@@ -6024,7 +6035,8 @@ input[type="checkbox"]:checked::before {
 		<input class="tabInput"  name="tabs" type="radio" id="InterestingFiles"/>
 		<label class="tabLabel" onClick="updateTab('InterestingFiles',false)" for="InterestingFiles"></label>
 		<div id="tabPanel" class="tabPanel">
-		<h2 style="margin-top: 13.5px;margin-left:10px;margin-bottom: 17px;">Interesting Files</h2>		
+        <Br>
+		<h2 style="margin-top: 20px;margin-left:10px;margin-bottom: 17px;">Interesting Files</h2>		
             <div style="margin-top:3px">					
 				<div style="width:100%;">
                     <div style="margin-left:10px; width:95%;">                   
@@ -6100,7 +6112,8 @@ input[type="checkbox"]:checked::before {
 		<input class="tabInput"  name="tabs" type="radio" id="dashboard"/>
 		<label class="tabLabel" onClick="updateTab('dashboard',false)" for="dashboard"></label>
 		<div id="tabPanel" class="tabPanel">
-		<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Summary Report</h2>	
+        <br>
+		<h2 style="margin-top: 12px;margin-left:10px;margin-bottom: 17px;">Summary Report</h2>	
 		<div style="margin-left: 10px; width: 90%;">
 	    This page provides a summary of the share scan results, observations, risks, and prioritized recommendations.
 		<br><br>				
@@ -6244,7 +6257,8 @@ $CardLastModifiedTimeLine
 <input class="tabInput"  name="tabs" type="radio" id="ComputerInsights"/> 
 <label class="tabLabel" onClick="updateTab('ComputerInsights',false)" for="ComputerInsights"></label>
 <div id="tabPanel" class="tabPanel">
-<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Computers</h2>
+<br>
+<h2 style="margin-top: 12px;margin-left:10px;margin-bottom: 17px;">Computers</h2>
 <div style="margin-left:10px;margin-top:3px; margin-bottom: 3px;width:95%">
 This section provides information for computers hosting shares configured with excessive privileges. $ComputerCount computers were found in the $TargetDomain Active Directory domain, $ComputerPingableCount responded to ping requests, $Computers445OpenCount had port 445 open, and $ComputerWithExcessive were found hosting shares configured with excessive privileges.  
 <br><br>
@@ -6362,7 +6376,8 @@ This section provides information for computers hosting shares configured with e
 <input class="tabInput"  name="tabs" type="radio" id="IdentityInsights"/> 
 <label class="tabLabel" onClick="updateTab('IdentityInsights',false)" for="IdentityInsights"></label>
 <div id="tabPanel" class="tabPanel">
-<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Identities</h2>
+<Br>
+<h2 style="margin-top: 12px;margin-left:10px;margin-bottom: 17px;">Identities</h2>
 <div style="margin-left:10px;margin-top:3px; margin-bottom: 3px;width:95%">
 The section provides the affected identities.$IdentityCombinedListCount identities were discovered across shares in the $TargetDomain Active Directory domain. $IdentityOwnerListCount were owners and $IdentityReferenceListCount were assigned privileges. 
 <br><br>
@@ -6456,7 +6471,8 @@ Note: Within the context of this report, all read and write access the "Everyone
 <input class="tabInput"  name="tabs" type="radio" id="AceInsights"/> 
 <label class="tabLabel" onClick="updateTab('AceInsights',false)" for="AceInsights"></label>
 <div id="tabPanel" class="tabPanel">
-<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Insecure ACEs</h2>
+<br>
+<h2 style="margin-top: 12px;margin-left:10px;margin-bottom: 17px;">Insecure ACEs</h2>
 <div style="margin-left:10px;margin-top:3px; margin-bottom: 3px;width:95%">
 This section provides the ACE (access control entries) configured with excessive privileges found in the $TargetDomain Active Directory domain. 
 <br><br>
@@ -6995,7 +7011,8 @@ Below is a summary of the exposure associated with each of those groups.
 <input class="tabInput"  name="tabs" type="radio" id="ShareName"/> 
 <label class="tabLabel" onClick="updateTab('ShareName',false)" for="ShareName"></label>
 <div id="tabPanel" class="tabPanel">
-<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Share Names</h2>
+<br>
+<h2 style="margin-top: 12px;margin-left:10px;margin-bottom: 17px;">Share Names</h2>
 <div style="margin-left:10px;margin-top:3px; margin-bottom: 3px;width:95%">
 This section provide a summary and list of the affected shares grouped by name. $AllSMBSharesCount shares were discovered across $ComputerPingableCount live computers in the $TargetDomain Active Directory domain. $ExcessiveSharesCount of those shares were found configured with excessive privileges across $ComputerWithExcessive computers. 
 <br><br>
@@ -7116,8 +7133,9 @@ This section provide a summary and list of the affected shares grouped by name. 
 <input class="tabInput" name="tabs" type="radio" id="SubNets"> 
 <label class="tabLabel" onclick="updateTab(&#39;SubNets#39;,false)" for="SubNets"></label>
 <div id="tabPanel" class="tabPanel">
-<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Networks</h2>
-<div style="margin-left:10px;margin-top:3px">
+<br>
+<h2 style="margin-top: 12px;margin-left:10px;margin-bottom: 17px;">Networks</h2>
+<div style="margin-left:10px;margin-top:3px; width: 90%">
 This section provides an overview of the affected networks. $SubnetsCount networks/subnets were found associated with computers that host shares that are configured with excessive privileges.
 <br><br>
 </div>
@@ -7160,7 +7178,8 @@ This section lists the most common share owners.
 <input class="tabInput"  name="tabs" type="radio" id="ShareFolders"/> 
 <label class="tabLabel" onClick="updateTab('ShareFolders',false)" for="ShareFolders"></label>
 <div id="tabPanel" class="tabPanel">
-<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Folder Groups</h2>
+<br>
+<h2 style="margin-top: 12px;margin-left:10px;margin-bottom: 17px;">Folder Groups</h2>
 <div style="margin-left:10px;margin-top:3px;width:95%;">
 Folder groups are SMB shares that contain the exact same file listing. Each folder group has been hashed so they can be quickly correlated. In some cases, shares with the exact same file listing may be related to a single application or process.  This information can help identify the root cause associated with the excessive privileges and expedite remediation.
 <br><br>
@@ -7229,7 +7248,8 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
 <input class="tabInput"  name="tabs" type="radio" id="SecretsPage"/> 
 <label class="tabLabel" onClick="updateTab('SecretsPage',false)" for="SecretsPage"></label>
 <div id="tabPanel" class="tabPanel">
-<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Extracted Secrets</h2>
+<br>
+<h2 style="margin-top: 12px;margin-left:10px;margin-bottom: 17px;">Extracted Secrets</h2>
 <div style="margin-left:10px;margin-top:3px;width:95%;">
 This section includes a list of the credentials that were recovered during data collection. $SecretsRecoveredCount credentials were recovered from $SecretsRecoveredFileCount of the discovered $InterestingFilesAllObjectsSecretCount secrets files.
 <br><br>
@@ -7286,7 +7306,8 @@ This section includes a list of the credentials that were recovered during data 
 <input class="tabInput" name="tabs" type="radio" id="ShareGraph"/> 
 <label class="tabLabel" onClick="updateTab('ShareGraph',false)" for="ShareGraph"></label>
 <div id="tabPanel" class="tabPanel">
-    <h2 style="margin-top: 6px; margin-left: 10px; margin-bottom: 17px;">ShareGraph</h2>    
+    <br>
+    <h2 style="margin-top: 12px; margin-left: 10px; margin-bottom: 17px;">ShareGraph</h2>    
     <div style="margin-left: 10px; margin-top: 7px;">
 		
 		<!-- Header Text, Selected Node -->
@@ -9698,7 +9719,8 @@ document.querySelector('#nodemenu a:nth-child(2)').addEventListener('click', fun
 <input class="tabInput"  name="tabs" type="radio" id="Attacks"/> 
 <label class="tabLabel" onClick="updateTab('Attacks',false)" for="Attacks"></label>
 <div id="tabPanel" class="tabPanel">
-<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Exploit</h2>
+<br>
+<h2 style="margin-top: 12px;margin-left:10px;margin-bottom: 17px;">Exploit</h2>
 <div style="margin-left:10px;margin-top:7px">
 This section provides some tips for exploiting share access.	
 <br><br>
@@ -9760,7 +9782,8 @@ This section provides some tips for exploiting share access.
 <input class="tabInput"  name="tabs" type="radio" id="Detections"/> 
 <label class="tabLabel" onClick="updateTab('Detections',false)" for="Detections"></label>
 <div id="tabPanel" class="tabPanel">
-<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Detect</h2>
+<br>
+<h2 style="margin-top: 12px;margin-left:10px;margin-bottom: 17px;">Detect</h2>
 <div style="margin-left:10px;margin-top:3px">
 This section provides some tips for detecting potentially malicious share scanning events.
 <br><br>
@@ -9825,7 +9848,8 @@ Guest access to the system should also be revoked and ensure that adequate acces
 <input class="tabInput"  name="tabs" type="radio" id="Remediation"/> 
 <label class="tabLabel" onClick="updateTab('Remediation',false)" for="Remediation"></label>
 <div id="tabPanel" class="tabPanel">
-<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Remediate</h2>
+<br>
+<h2 style="margin-top: 12px;margin-left:10px;margin-bottom: 17px;">Remediate</h2>
 <div style="margin-left:10px;margin-top:3px">
 This section provides some tips for prioritizing the remediation of shares configured with excessive privileges.
 <br><br>
@@ -9884,13 +9908,14 @@ This section provides some tips for prioritizing the remediation of shares confi
 </div>
 
 <!--  
-|||||||||| PAGE: Home
+|||||||||| PAGE: Scan Information
 -->
 
 <input class="tabInput"  name="tabs" type="radio" id="home"/> 
 <label class="tabLabel" onClick="updateTab('home',false)" for="home"></label>
-<div id="tabPanel" class="tabPanel">	
-<h2 style="margin-top: 6px;margin-left:10px;margin-bottom: 17px;">Scan Information</h2>
+<div id="tabPanel" class="tabPanel">
+<br>	
+<h2 style="margin-top: 12px;margin-left:10px;margin-bottom: 17px;">Scan Information</h2>
 <div style="min-height: 670px">	 
 	  <div style="margin-left:10px;margin-top:3px">	  
 	  The <a href="https://github.com/netspi/powerhuntshares">PowerHuntShares</a> audit script was run against the $TargetDomain Active Directory domain to collect SMB Share data, generate this HTML summary report, and generate the associated csv files that detail potentially excessive share configurations. Below is a the scan summary and an overview of how to use this report.
@@ -11820,11 +11845,6 @@ function updateLabelColors(divId, objectId) {
 <!--  
 |||||||||| FOOTER
 -->
-
-<div style="float:right;border-top: 1px solid #DEDFE1 ; background-color:#f0f3f5;width:100%">
-<img style="float:right;margin-right:15px;margin-top:15px;margin-bottom:15px;margin-right:50px;" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAAAzCAYAAADSDUdEAAAA63pUWHRSYXcgcHJvZmlsZSB0eXBlIGV4aWYAAHjajVHbDcMwCPz3FB2Bl1/jOE0idYOO33OCm7pSpSJB4CDHw2F7PvZw6yJFgsVcUk2JIFatSoNT6JTlsEx22EPuI8czHlQ9IYC673EVxzfg8Nnj6kQ86gfRcLjBi1eiNceXGV+cUMo3kU+gfHam1X9wIhWfyObVUi15Wm290yzlUtMsKSbOBmtCOacKvwhZxj3XPqjmoz2F0WkAIx6lgplkU1aCVbVzSu1q2vCNsIgDChkFDcqwEYT98ISnxAggrifx3uh9zM/bXDf6If+sFV6gxXW2kUL0lAAAAYVpQ0NQSUNDIHByb2ZpbGUAAHicfZE9SMNAHMVfU4siFUE7iIhkqE52URHBpVSxCBZKW6FVB5NLv6BJQ5Li4ii4Fhz8WKw6uDjr6uAqCIIfIM4OToouUuL/kkKLGA+O+/Hu3uPuHSA0Kkw1u6KAqllGKh4Ts7lVsfsVAYQwgFHMSczUE+nFDDzH1z18fL2L8Czvc3+OPiVvMsAnEkeZbljEG8Qzm5bOeZ84xEqSQnxOPGHQBYkfuS67/Ma56LDAM0NGJjVPHCIWix0sdzArGSrxNHFYUTXKF7IuK5y3OKuVGmvdk78wmNdW0lynOYI4lpBAEiJk1FBGBRYitGqkmEjRfszDP+z4k+SSyVUGI8cCqlAhOX7wP/jdrVmYmnSTgjEg8GLbH2NA9y7QrNv297FtN08A/zNwpbX91QYw+0l6va2Fj4D+beDiuq3Je8DlDjD0pEuG5Eh+mkKhALyf0TflgMFboHfN7a21j9MHIENdLd8AB4fAeJGy1z3e3dPZ279nWv39AAdjcuJhaaNVAAANdmlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4KPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iWE1QIENvcmUgNC40LjAtRXhpdjIiPgogPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4KICA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIgogICAgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iCiAgICB4bWxuczpzdEV2dD0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL3NUeXBlL1Jlc291cmNlRXZlbnQjIgogICAgeG1sbnM6ZGM9Imh0dHA6Ly9wdXJsLm9yZy9kYy9lbGVtZW50cy8xLjEvIgogICAgeG1sbnM6R0lNUD0iaHR0cDovL3d3dy5naW1wLm9yZy94bXAvIgogICAgeG1sbnM6dGlmZj0iaHR0cDovL25zLmFkb2JlLmNvbS90aWZmLzEuMC8iCiAgICB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iCiAgIHhtcE1NOkRvY3VtZW50SUQ9ImdpbXA6ZG9jaWQ6Z2ltcDo4M2I4NjM2Yy0yNzJlLTQwMjUtOWJiNS02OGIzMTI4ZjhjMjQiCiAgIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6MTgxYTkxZDctZmUwZC00MTRmLWFhYjctYzg4MjlhM2I2MDY3IgogICB4bXBNTTpPcmlnaW5hbERvY3VtZW50SUQ9InhtcC5kaWQ6NmQ2ODg0ZjctYzc5YS00MmMxLWEzMWYtMzgzZTEzMDc5YmNmIgogICBkYzpGb3JtYXQ9ImltYWdlL3BuZyIKICAgR0lNUDpBUEk9IjIuMCIKICAgR0lNUDpQbGF0Zm9ybT0iV2luZG93cyIKICAgR0lNUDpUaW1lU3RhbXA9IjE3MTYyMjk5MTkzNDA1ODMiCiAgIEdJTVA6VmVyc2lvbj0iMi4xMC4zNCIKICAgdGlmZjpPcmllbnRhdGlvbj0iMSIKICAgeG1wOkNyZWF0b3JUb29sPSJHSU1QIDIuMTAiCiAgIHhtcDpNZXRhZGF0YURhdGU9IjIwMjQ6MDU6MjBUMTM6MzE6NTctMDU6MDAiCiAgIHhtcDpNb2RpZnlEYXRlPSIyMDI0OjA1OjIwVDEzOjMxOjU3LTA1OjAwIj4KICAgPHhtcE1NOkhpc3Rvcnk+CiAgICA8cmRmOlNlcT4KICAgICA8cmRmOmxpCiAgICAgIHN0RXZ0OmFjdGlvbj0ic2F2ZWQiCiAgICAgIHN0RXZ0OmNoYW5nZWQ9Ii8iCiAgICAgIHN0RXZ0Omluc3RhbmNlSUQ9InhtcC5paWQ6Yzk5OTQxMWEtZmZjZS00ZDViLWFkMzQtMzI2NWJlZWQ5MjBhIgogICAgICBzdEV2dDpzb2Z0d2FyZUFnZW50PSJHaW1wIDIuMTAgKFdpbmRvd3MpIgogICAgICBzdEV2dDp3aGVuPSIyMDI0LTA1LTIwVDEzOjMxOjU5Ii8+CiAgICA8L3JkZjpTZXE+CiAgIDwveG1wTU06SGlzdG9yeT4KICA8L3JkZjpEZXNjcmlwdGlvbj4KIDwvcmRmOlJERj4KPC94OnhtcG1ldGE+CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAKPD94cGFja2V0IGVuZD0idyI/PgumjoYAAAAGYktHRAD/AP8A/6C9p5MAAAAJcEhZcwAACxMAAAsTAQCanBgAAAAHdElNRQfoBRQSHztCq+xTAAAAGXRFWHRDb21tZW50AENyZWF0ZWQgd2l0aCBHSU1QV4EOFwAAECBJREFUeNrtnXl0HNWVxn+fZFUbuw0M1WCWYQjhEFJiAgMDeNgMJDDsxgQYwjJDcDDQYsswHJbDOICJCQcywWzuIQxbgAAxZjfgYMBsCWFxkgFUQGAImBgwKgimbaOypDt/VMlut6pb3bIkS1DfOXUkdVW9rvfe3b777itBihQpUqRIkSJFihQpUgwetKSFcBg9rwEnjp7BLenUpRgMjACahtkzN6TTliIVthQpUgVJkSJVkBQpUgVJkeLLStKroZMoc1QJjYD68L0D1W4POK43AtGYeNJYHgZ+Vx1tNaKEMTM6wsDvHO7C4LjeusDGghxoLcO6gMXAQuDDMPCXr9Y49Qajq5bv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"/>
-<br>
-</div>
 </body>
 </html>
 "@
