@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.163
+# Version: v1.164
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -6035,8 +6035,7 @@ input[type="checkbox"]:checked::before {
 		<input class="tabInput"  name="tabs" type="radio" id="InterestingFiles"/>
 		<label class="tabLabel" onClick="updateTab('InterestingFiles',false)" for="InterestingFiles"></label>
 		<div id="tabPanel" class="tabPanel">
-        <Br>
-		<h2 style="margin-top: 20px;margin-left:10px;margin-bottom: 17px;">Interesting Files</h2>		
+		<h2 style="margin-top: 72px;margin-left:10px;margin-bottom: 17px;">Interesting Files</h2>		
             <div style="margin-top:3px">					
 				<div style="width:100%;">
                     <div style="margin-left:10px; width:95%;">                   
@@ -6112,8 +6111,7 @@ input[type="checkbox"]:checked::before {
 		<input class="tabInput"  name="tabs" type="radio" id="dashboard"/>
 		<label class="tabLabel" onClick="updateTab('dashboard',false)" for="dashboard"></label>
 		<div id="tabPanel" class="tabPanel">
-        <br>
-		<h2 style="margin-top: 12px;margin-left:10px;margin-bottom: 17px;">Summary Report</h2>	
+		<h2 style="margin-top: 65px;margin-left:10px;margin-bottom: 17px;">Summary Report</h2>	
 		<div style="margin-left: 10px; width: 90%;">
 	    This page provides a summary of the share scan results, observations, risks, and prioritized recommendations.
 		<br><br>				
@@ -6257,8 +6255,7 @@ $CardLastModifiedTimeLine
 <input class="tabInput"  name="tabs" type="radio" id="ComputerInsights"/> 
 <label class="tabLabel" onClick="updateTab('ComputerInsights',false)" for="ComputerInsights"></label>
 <div id="tabPanel" class="tabPanel">
-<br>
-<h2 style="margin-top: 12px;margin-left:10px;margin-bottom: 17px;">Computers</h2>
+<h2 style="margin-top: 65px;margin-left:10px;margin-bottom: 17px;">Computers</h2>
 <div style="margin-left:10px;margin-top:3px; margin-bottom: 3px;width:95%">
 This section provides information for computers hosting shares configured with excessive privileges. $ComputerCount computers were found in the $TargetDomain Active Directory domain, $ComputerPingableCount responded to ping requests, $Computers445OpenCount had port 445 open, and $ComputerWithExcessive were found hosting shares configured with excessive privileges.  
 <br><br>
@@ -6376,8 +6373,7 @@ This section provides information for computers hosting shares configured with e
 <input class="tabInput"  name="tabs" type="radio" id="IdentityInsights"/> 
 <label class="tabLabel" onClick="updateTab('IdentityInsights',false)" for="IdentityInsights"></label>
 <div id="tabPanel" class="tabPanel">
-<Br>
-<h2 style="margin-top: 12px;margin-left:10px;margin-bottom: 17px;">Identities</h2>
+<h2 style="margin-top: 65px;margin-left:10px;margin-bottom: 17px;">Identities</h2>
 <div style="margin-left:10px;margin-top:3px; margin-bottom: 3px;width:95%">
 The section provides the affected identities.$IdentityCombinedListCount identities were discovered across shares in the $TargetDomain Active Directory domain. $IdentityOwnerListCount were owners and $IdentityReferenceListCount were assigned privileges. 
 <br><br>
@@ -6465,14 +6461,13 @@ Note: Within the context of this report, all read and write access the "Everyone
 </div>
 
 <!--  
-|||||||||| PAGE: ACE INSIGHTS
+|||||||||| PAGE: INSECURE ACEs
 -->
 
 <input class="tabInput"  name="tabs" type="radio" id="AceInsights"/> 
 <label class="tabLabel" onClick="updateTab('AceInsights',false)" for="AceInsights"></label>
 <div id="tabPanel" class="tabPanel">
-<br>
-<h2 style="margin-top: 12px;margin-left:10px;margin-bottom: 17px;">Insecure ACEs</h2>
+<h2 style="margin-top: 65px;margin-left:10px;margin-bottom: 17px;">Insecure ACEs</h2>
 <div style="margin-left:10px;margin-top:3px; margin-bottom: 3px;width:95%">
 This section provides the ACE (access control entries) configured with excessive privileges found in the $TargetDomain Active Directory domain. 
 <br><br>
@@ -7011,8 +7006,7 @@ Below is a summary of the exposure associated with each of those groups.
 <input class="tabInput"  name="tabs" type="radio" id="ShareName"/> 
 <label class="tabLabel" onClick="updateTab('ShareName',false)" for="ShareName"></label>
 <div id="tabPanel" class="tabPanel">
-<br>
-<h2 style="margin-top: 12px;margin-left:10px;margin-bottom: 17px;">Share Names</h2>
+<h2 style="margin-top: 65px;margin-left:10px;margin-bottom: 17px;">Share Names</h2>
 <div style="margin-left:10px;margin-top:3px; margin-bottom: 3px;width:95%">
 This section provide a summary and list of the affected shares grouped by name. $AllSMBSharesCount shares were discovered across $ComputerPingableCount live computers in the $TargetDomain Active Directory domain. $ExcessiveSharesCount of those shares were found configured with excessive privileges across $ComputerWithExcessive computers. 
 <br><br>
@@ -7133,8 +7127,7 @@ This section provide a summary and list of the affected shares grouped by name. 
 <input class="tabInput" name="tabs" type="radio" id="SubNets"> 
 <label class="tabLabel" onclick="updateTab(&#39;SubNets#39;,false)" for="SubNets"></label>
 <div id="tabPanel" class="tabPanel">
-<br>
-<h2 style="margin-top: 12px;margin-left:10px;margin-bottom: 17px;">Networks</h2>
+<h2 style="margin-top: 65px;margin-left:10px;margin-bottom: 17px;">Networks</h2>
 <div style="margin-left:10px;margin-top:3px; width: 90%">
 This section provides an overview of the affected networks. $SubnetsCount networks/subnets were found associated with computers that host shares that are configured with excessive privileges.
 <br><br>
@@ -7178,8 +7171,7 @@ This section lists the most common share owners.
 <input class="tabInput"  name="tabs" type="radio" id="ShareFolders"/> 
 <label class="tabLabel" onClick="updateTab('ShareFolders',false)" for="ShareFolders"></label>
 <div id="tabPanel" class="tabPanel">
-<br>
-<h2 style="margin-top: 12px;margin-left:10px;margin-bottom: 17px;">Folder Groups</h2>
+<h2 style="margin-top: 65px;margin-left:10px;margin-bottom: 17px;">Folder Groups</h2>
 <div style="margin-left:10px;margin-top:3px;width:95%;">
 Folder groups are SMB shares that contain the exact same file listing. Each folder group has been hashed so they can be quickly correlated. In some cases, shares with the exact same file listing may be related to a single application or process.  This information can help identify the root cause associated with the excessive privileges and expedite remediation.
 <br><br>
@@ -7248,8 +7240,7 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
 <input class="tabInput"  name="tabs" type="radio" id="SecretsPage"/> 
 <label class="tabLabel" onClick="updateTab('SecretsPage',false)" for="SecretsPage"></label>
 <div id="tabPanel" class="tabPanel">
-<br>
-<h2 style="margin-top: 12px;margin-left:10px;margin-bottom: 17px;">Extracted Secrets</h2>
+<h2 style="margin-top: 65px;margin-left:10px;margin-bottom: 17px;">Extracted Secrets</h2>
 <div style="margin-left:10px;margin-top:3px;width:95%;">
 This section includes a list of the credentials that were recovered during data collection. $SecretsRecoveredCount credentials were recovered from $SecretsRecoveredFileCount of the discovered $InterestingFilesAllObjectsSecretCount secrets files.
 <br><br>
@@ -7306,8 +7297,7 @@ This section includes a list of the credentials that were recovered during data 
 <input class="tabInput" name="tabs" type="radio" id="ShareGraph"/> 
 <label class="tabLabel" onClick="updateTab('ShareGraph',false)" for="ShareGraph"></label>
 <div id="tabPanel" class="tabPanel">
-    <br>
-    <h2 style="margin-top: 12px; margin-left: 10px; margin-bottom: 17px;">ShareGraph</h2>    
+    <h2 style="margin-top: 65px; margin-left: 10px; margin-bottom: 17px;">ShareGraph</h2>    
     <div style="margin-left: 10px; margin-top: 7px;">
 		
 		<!-- Header Text, Selected Node -->
@@ -9719,8 +9709,7 @@ document.querySelector('#nodemenu a:nth-child(2)').addEventListener('click', fun
 <input class="tabInput"  name="tabs" type="radio" id="Attacks"/> 
 <label class="tabLabel" onClick="updateTab('Attacks',false)" for="Attacks"></label>
 <div id="tabPanel" class="tabPanel">
-<br>
-<h2 style="margin-top: 12px;margin-left:10px;margin-bottom: 17px;">Exploit</h2>
+<h2 style="margin-top: 65px;margin-left:10px;margin-bottom: 17px;">Exploit</h2>
 <div style="margin-left:10px;margin-top:7px">
 This section provides some tips for exploiting share access.	
 <br><br>
@@ -9782,8 +9771,7 @@ This section provides some tips for exploiting share access.
 <input class="tabInput"  name="tabs" type="radio" id="Detections"/> 
 <label class="tabLabel" onClick="updateTab('Detections',false)" for="Detections"></label>
 <div id="tabPanel" class="tabPanel">
-<br>
-<h2 style="margin-top: 12px;margin-left:10px;margin-bottom: 17px;">Detect</h2>
+<h2 style="margin-top: 65px;margin-left:10px;margin-bottom: 17px;">Detect</h2>
 <div style="margin-left:10px;margin-top:3px">
 This section provides some tips for detecting potentially malicious share scanning events.
 <br><br>
@@ -9848,8 +9836,7 @@ Guest access to the system should also be revoked and ensure that adequate acces
 <input class="tabInput"  name="tabs" type="radio" id="Remediation"/> 
 <label class="tabLabel" onClick="updateTab('Remediation',false)" for="Remediation"></label>
 <div id="tabPanel" class="tabPanel">
-<br>
-<h2 style="margin-top: 12px;margin-left:10px;margin-bottom: 17px;">Remediate</h2>
+<h2 style="margin-top: 65px;margin-left:10px;margin-bottom: 17px;">Remediate</h2>
 <div style="margin-left:10px;margin-top:3px">
 This section provides some tips for prioritizing the remediation of shares configured with excessive privileges.
 <br><br>
@@ -9914,8 +9901,7 @@ This section provides some tips for prioritizing the remediation of shares confi
 <input class="tabInput"  name="tabs" type="radio" id="home"/> 
 <label class="tabLabel" onClick="updateTab('home',false)" for="home"></label>
 <div id="tabPanel" class="tabPanel">
-<br>	
-<h2 style="margin-top: 12px;margin-left:10px;margin-bottom: 17px;">Scan Information</h2>
+<h2 style="margin-top: 65px;margin-left:10px;margin-bottom: 17px;">Scan Information</h2>
 <div style="min-height: 670px">	 
 	  <div style="margin-left:10px;margin-top:3px">	  
 	  The <a href="https://github.com/netspi/powerhuntshares">PowerHuntShares</a> audit script was run against the $TargetDomain Active Directory domain to collect SMB Share data, generate this HTML summary report, and generate the associated csv files that detail potentially excessive share configurations. Below is a the scan summary and an overview of how to use this report.
