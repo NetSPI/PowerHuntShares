@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.161
+# Version: v1.163
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -4737,7 +4737,9 @@ $NewHtmlReport = @"
 			z-index: 9998;		
 			--transition: width 0.3s; /* Smooth transition when expanding/collapsing */		
 			background: linear-gradient(to bottom, #07142A 80%, rgba(0, 0, 0, 1) 98%, black 100%);	
-			border-top: 0.25px dashed #345367;			
+			border-top: 0.25px dashed #345367;	
+			padding-left: 5px;
+			padding-right: 5px;		
         }
 		
 		.side-menu.collapsed div,
@@ -4940,8 +4942,8 @@ $NewHtmlReport = @"
 		padding-left:10px;
 		order:1;
 		border-radius: 0px;
-		margin-right:14px;
-		margin-left:14px;
+		margin-right:5px;
+		margin-left:5px;
 	}
 
 	.stuff:hover{
@@ -4950,8 +4952,6 @@ $NewHtmlReport = @"
 			text-decoration: none;
 			padding-top:5px;
 			padding-bottom:5px;
-			margin-right:14px;
-			margin-left:14px;
 			color: white;
 			border-radius: 5px;
 			outline: .5px solid white;
@@ -5999,17 +5999,17 @@ input[type="checkbox"]:checked::before {
 -->
 <div class="side-menu" id="sideMenu">	
 	
-	<button onclick="toggleMenu()" class="menu-button" style="margin-top: -15px; margin-right: -10px;">
+	<button onclick="toggleMenu()" class="menu-button" style="margin-top: -12px; margin-right: -8px;">
             <span class="icon" style="font-size: 16px; color:#F56A00; transition: color 0.3s ease;" onmouseover="this.style.color='white'" onmouseout="this.style.color='#F56A00'"><i class="fas fa-times"></i></span>
     </button>
 	
     <br>
 
 	<div id="tabs" class="tabs" data-tabs-ignore-url="false">			
-		<label id="noactionmenuheader1"class="tabLabel" style="background-color: transparent; width:100%;color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:8px;font-weight:bolder;border-bottom: 0.25px dashed gray;"><Strong>RESULTS</Strong></label>
+		<label id="noactionmenuheader1"class="tabLabel" style="background-color: transparent; width:100%;color:#F56A00;padding-top:6px;padding-bottom:3px;margin-top:5px;margin-bottom:0px;font-weight:bolder;"><Strong>RESULTS</Strong></label>
 		<label id="btnsummary" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('dashboard');radiobtn.checked = true;updateLabelColors('tabs', 'btnsummary');">Summary Report</label>
 		<label id="btnscaninfo" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('home');radiobtn.checked = true;updateLabelColors('tabs', 'btnscaninfo');">Scan Information</label>		
-		<label id="noactionmenuheader2"class="tabLabel" style="background-color: transparent;width:100%;color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:8px;font-weight:bolder;border-bottom: 0.25px dashed gray;"><Strong>EXPLORE</Strong></label>
+		<label id="noactionmenuheader2"class="tabLabel" style="background-color: transparent;width:100%;color:#F56A00;padding-top:6px;padding-bottom:3px;margin-top:5px;margin-bottom:0px;font-weight:bolder;border-top: 0.25px dashed gray;"><Strong>EXPLORE</Strong></label>
         <label id="btnnetworks" href="#" class="stuff" style="width:100%;" onclick="radiobtn = document.getElementById('SubNets');radiobtn.checked = true;updateLabelColors('tabs', 'btnnetworks');">Networks</label>	
         <label id="btncomputers" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ComputerInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btncomputers');">Computers</label>	  	  			
 		<label id="btnshares" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;updateLabelColors('tabs', 'btnshares');">Share Names</label>					
@@ -6017,10 +6017,10 @@ input[type="checkbox"]:checked::before {
         <label id="btnaces" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnaces');">Insecure ACEs</label>
         <label id="btnidentities" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('IdentityInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnidentities');">Identities</label>
         <label id="btnShareGraph" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareGraph');radiobtn.checked = true;updateLabelColors('tabs', 'btnShareGraph');">ShareGraph</label>	
-        <label id="noactionmenuheader2"class="tabLabel" style="background-color: transparent;width:100%;color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:8px;font-weight:bolder;border-bottom: 0.25px dashed gray;"><Strong>TARGET</Strong></label>			
+        <label id="noactionmenuheader2"class="tabLabel" style="background-color: transparent;width:100%;color:#F56A00;padding-top:6px;padding-bottom:3px;margin-top:5px;margin-bottom:0px;font-weight:bolder;border-top: 0.25px dashed gray;"><Strong>TARGET</Strong></label>			
         <label id="btnif" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF');updateLabelColors('tabs', 'btnif');">Interesting Files</label>			        			
         <label id="btnSecretsPage" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('SecretsPage');radiobtn.checked = true;updateLabelColors('tabs', 'btnSecretsPage');">Extracted Secrets</label>	        
-		<label id="noactionmenuheader3"class="tabLabel" style="background-color: transparent;width:100%;color:#F56A00;padding-top:5px;padding-bottom:5px;margin-top:1px;margin-bottom:8px;font-weight:bolder;border-bottom: 0.25px dashed gray;"><strong>ACT</strong></label>
+		<label id="noactionmenuheader3"class="tabLabel" style="background-color: transparent;width:100%;color:#F56A00;padding-top:6px;padding-bottom:3px;margin-top:5px;margin-bottom:0px;font-weight:bolder;border-top: 0.25px dashed gray;"><strong>ACT</strong></label>
 		<label id="btnexploit" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Attacks');radiobtn.checked = true;updateLabelColors('tabs', 'btnexploit');">Exploit</label>		
 		<label id="btndetect" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Detections');radiobtn.checked = true;updateLabelColors('tabs', 'btndetect');">Detect</label>
 		<label id="btnprioritize" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Remediation');radiobtn.checked = true;updateLabelColors('tabs', 'btnprioritize');">Remediate</label>	        		
@@ -11434,6 +11434,10 @@ const chartOptions = {
                 }]
             }
         }
+    },
+    grid: {
+            show: false,
+	        opacity: 0.5
     },
     dataLabels: {
         enabled: false,
