@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.164
+# Version: v1.165
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -4630,19 +4630,19 @@ $NewHtmlReport = @"
             right: 0;
             width: 40%;
             height: 100%;
-            background-color: rgba(255, 255, 255, 0.9);
-            border-left: 2px solid #ccc;
+            background-color: #FFF;
+            border-left: 2px solid #71808D;
             box-shadow: -5px 0 15px rgba(0, 0, 0, 0.3);
             padding: 20px;
             overflow-y: auto;
-            z-index: 9998;
-            border-radius: 4px;
+            z-index: 9999;
+			opacity: .98;
         }
 
         .modern-resizer {
             width: 5px;
             height: 100%;
-            background-color: #ddd;
+            --background-color: #ddd;
             position: absolute;
             left: 0;
             top: 0;
