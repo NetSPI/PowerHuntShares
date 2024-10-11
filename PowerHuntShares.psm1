@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.168
+# Version: v1.169
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -4986,7 +4986,8 @@ $NewHtmlReport = @"
 	.tabLabel+
 	.tabPanel{
 		display:block;
-        margin-top: 50px;
+  		margin-top: 50px;
+    		margin-left: 10px;
 	}
 	
 	.tabPanel.nojs{
@@ -7468,8 +7469,8 @@ This section includes a list of the credentials that were recovered during data 
 
             // Calculate the offset between the mouse position and the element position
             const rect = element.getBoundingClientRect();
-            offsetX = e.clientX - rect.left + 200; // Subtract 200 from X
-            offsetY = e.clientY - rect.top + 108;  // Add 200 to Y
+            offsetX = e.clientX - rect.left + 220; // Subtract from X
+            offsetY = e.clientY - rect.top + 170;  // Add to Y
 
             // Set the cursor to 'grabbing' when dragging starts
             //targetDiv.style.cursor = 'grabbing';
