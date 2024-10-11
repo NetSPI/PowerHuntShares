@@ -10337,7 +10337,7 @@ s.render(SankeyData);
             const main = document.getElementById('main');
             menu.classList.toggle('collapsed');
 			if (menu.classList.contains('collapsed')) {
-				icon.innerHTML = '<span style="font-size: 16px; color:#F56A00; transition: color 0.3s ease;" onmouseover="this.style.color=\'white\'" onmouseout="this.style.color=\'#F56A00\'">☰</span>';
+				icon.innerHTML = '<span style="font-size: 16px; color:#F56A00; transition: color 0.3s ease; margin-left: -23px;" onmouseover="this.style.color=\'white\'" onmouseout="this.style.color=\'#F56A00\'">☰</span>';
                 main.style.marginLeft = '70px';
 			} else {
 				icon.innerHTML = '<span style="font-size: 16px; color:#F56A00; transition: color 0.3s ease;" onmouseover="this.style.color=\'white\'" onmouseout="this.style.color=\'#F56A00\'"><i class="fas fa-times"></i></span>';
