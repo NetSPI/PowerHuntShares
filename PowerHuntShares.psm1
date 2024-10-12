@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.171
+# Version: v1.172
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -11823,7 +11823,7 @@ function updateLabelColors(divId, objectId) {
         // Apply the desired styles
         objectElement.style.fontWeight = 'normal';
         objectElement.style.color = 'white';
-        objectElement.style.backgroundColor = '#354367'; //#71808d
+        objectElement.style.backgroundColor = 'rgba(53, 67, 103, 0.75)'; //#71808d, #354367
         objectElement.style.transition = 'background-color 0.9s ease, color 0.3s ease';
         objectElement.style.textDecoration = 'none';
         objectElement.style.borderRadius = '5px';
