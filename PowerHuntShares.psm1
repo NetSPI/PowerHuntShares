@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.172
+# Version: v1.173
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -4736,6 +4736,7 @@ $NewHtmlReport = @"
 			-ms-text-size-adjust:100%;
 			z-index: 9998;		
 			--transition: width 0.3s; /* Smooth transition when expanding/collapsing */		
+			transition: width 0.5s ease;
 			background: linear-gradient(to bottom, #07142A 80%, rgba(0, 0, 0, 1) 98%, black 100%);	
 			--border-top: 0.25px dashed #345367;	
 			padding-left: 5px;
@@ -4986,8 +4987,9 @@ $NewHtmlReport = @"
 	.tabLabel+
 	.tabPanel{
 		display:block;
-  		margin-top: 50px;
-    		margin-left: 10px;
+        margin-top: 50px;
+		margin-left: 10px;
+		transition: margin-left 0.3s ease;
 	}
 	
 	.tabPanel.nojs{
@@ -5642,6 +5644,7 @@ $NewHtmlReport = @"
 #main {
 	margin-left: 200px;
 	margin-right: 10px;
+	transition: margin 0.3s ease;
 	--padding-left: 20px;
 }
 
@@ -7052,7 +7055,7 @@ This section provide a summary and list of the affected shares grouped by name. 
 
 <div style="display: flex; margin-left:12px; font-size:11; text-align:left; margin-top: -10px; margin-bottom: 10px;" >			
         <div id="filterCounter" style="margin-top:0px;">Loading...</div>      
-        <a style="font-size:11; margin-left: 5px;" href="#" onclick="extractAndDownloadCSV('sharenametable', 0)">Export</a> &nbsp; | 
+        <a style="font-size:11; margin-left: 5px; color:#71808d;" href="#" onclick="extractAndDownloadCSV('sharenametable', 0)">Export</a> &nbsp; | 
         <a style="font-size:11; margin-left: 5px; color:#71808d; cursor: pointer;" onclick="document.getElementById('filterInput').value = '';applyFiltersAndSort('sharenametable', 'filterInput', 'filterCounter', 'pagination');">Clear</a>
 </div>
 				
@@ -7266,7 +7269,7 @@ This section includes a list of the credentials that were recovered during data 
 
 <div style="display: flex; margin-left:12px; font-size:11; text-align:left; margin-top: -10px; margin-bottom: 10px;" >			
         <div id="secretsCounterTwo" style="margin-top:0px;">Loading...</div>        
-        <a style="font-size:11; margin-left: 5px; color:#71808d;" href="#" onclick="extractAndDownloadCSV('recoveredsecretstable', 1)">Export</a>
+        <a style="font-size:11; margin-left: 5px; color:#71808d;" href="#" onclick="extractAndDownloadCSV('recoveredsecretstable', 1)">Export</a> &nbsp; |
         <a style="font-size:11; margin-left: 5px; color:#71808d; cursor: pointer;" onclick="document.getElementById('secretsInputTwo').value = '';applyFiltersAndSort('recoveredsecretstable', 'secretsInputTwo', 'secretsCounterTwo', 'paginationsecrets');">Clear</a>
 </div>	
 					
@@ -10335,13 +10338,21 @@ s.render(SankeyData);
             const menu = document.getElementById('sideMenu');
             const icon = document.querySelector('.menu-button .icon');
             const main = document.getElementById('main');
+			const mytabs = document.getElementById('tabs');
             menu.classList.toggle('collapsed');
 			if (menu.classList.contains('collapsed')) {
 				icon.innerHTML = '<span style="font-size: 16px; color:#F56A00; transition: color 0.3s ease; margin-left: -23px;" onmouseover="this.style.color=\'white\'" onmouseout="this.style.color=\'#F56A00\'">☰</span>';
                 main.style.marginLeft = '70px';
+				main.style.transition = "margin-left 0.5s ease";
+				mytabs.style.opacity= "0";
 			} else {
 				icon.innerHTML = '<span style="font-size: 16px; color:#F56A00; transition: color 0.3s ease;" onmouseover="this.style.color=\'white\'" onmouseout="this.style.color=\'#F56A00\'"><i class="fas fa-times"></i></span>';
                 main.style.marginLeft = '200px';
+				main.style.transition = "margin-left 0.5s ease";	
+				setTimeout(() => {
+					mytabs.style.opacity= "1";
+				}, 300); // Adjust delay here 				
+				
 			}	
         }
 
