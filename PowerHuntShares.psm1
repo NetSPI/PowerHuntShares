@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.173
+# Version: v1.174
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -3304,6 +3304,102 @@ function Invoke-HuntSMBShares
             $ThisRow
         }
 
+        # ----------------------------------------------------------------------
+        # Analyze Share Names
+        # ----------------------------------------------------------------------
+
+        # Define list of common share names and their decriptions
+        $ShareNameList = New-Object System.Data.DataTable
+        $null = $ShareNameList.Columns.Add("Description")
+        $null = $ShareNameList.Columns.Add("Application")
+        $null = $ShareNameList.Columns.Add("Justification")
+        $null = $ShareNameList.Columns.Add("LocalPath")
+        $null = $ShareNameList.Columns.Add("ShareName")
+        $null = $ShareNameList.Columns.Add("Reference")
+        $null = $ShareNameList.Rows.Add("Software for managing financial accounts and transactions","QuickBooks or Sage","Commonly used for financial management applications. No exact online reference found","C:\Program Files\AccountingSoftware\","Accounting","https://quickbooks.intuit.com/ or https://www.sage.com/")
+        $null = $ShareNameList.Rows.Add("Document capture and routing software","AccuRoute","AccuRoute is a known document management system. No exact online reference","C:\Program Files\Omtool\AccuRoute\Views\","AccuRouteViews","https://www.omtool.com/")
+        $null = $ShareNameList.Rows.Add("Software for managing contact information","Microsoft Outlook or Address Book","Address is commonly associated with contact information. No exact online reference","C:\Users\Public\Contacts\","address","https://www.microsoft.com/en-us/microsoft-365/outlook")
+        $null = $ShareNameList.Rows.Add("Document conversion and transformation software","Adlib PDF Enterprise","Adlib is a known software for document conversion","C:\Program Files\Adlib\PDFEnterprise\","Adlib","https://www.adlibsoftware.com/")
+        $null = $ShareNameList.Rows.Add("Directory for storing job files related to document conversion tasks","Adlib PDF Enterprise","Indicates a directory specifically for job files processed by Adlib software. Similar names used in related documentation.","C:\ProgramData\Adlib\JobFiles\","AdlibJobFiles","https://www.adlibsoftware.com/")
+        $null = $ShareNameList.Rows.Add("An administrative share for remote management.","the Windows Admin Share","C$ is a default administrative share in Windows.","C:\Windows\System32","C$","https://www.microsoft.com")
+        $null = $ShareNameList.Rows.Add("An administrative share for remote management.","the Windows Admin Share","ADMIN$ is a default administrative share in Windows","C:\Windows\","ADMIN$","https://www.microsoft.com")
+        $null = $ShareNameList.Rows.Add("Environment for building cross-platform applications","Adobe AIR","Suggests a workspace related to Adobe AIR","C:\Users\Public\Adobe\AIR\","AIR_Workarea","https://www.adobe.com/products/air.html")
+        $null = $ShareNameList.Rows.Add("Application for loading data into the APMC system","APMC Data Loader","Indicates a directory used by a data loader component of an APMC system. No exact online reference","C:\Program Files\APMC\DataLoader\Files\","APMCDataLoaderFiles","")
+        $null = $ShareNameList.Rows.Add("Tool for bulk copying data between databases","Bulk Copy Program (BCP)","BCPpath refers to the Bulk Copy Program used in SQL Server for efficiently transferring large amounts of data.","C:\Program Files\Microsoft SQL Server\BCP\","BCPpath","https://docs.microsoft.com/en-us/sql/tools/bcp-utility")
+        $null = $ShareNameList.Rows.Add("A hackable text editor for programmers","Atom Editor","ATOM$ likely refers to the Atom text editor","C:\Users\<User>\AppData\Local\atom\","ATOM$","https://atom.io/")
+        $null = $ShareNameList.Rows.Add("Workload automation and job scheduling software","ActiveBatch","The name `"ASCI_ABATLOG`" corresponds to log files for ActiveBatch","C:\Program Files\ActiveBatch\Logs\","ASCI_ABATLOG","https://www.advsyscon.com/en-us/activebatch")
+        $null = $ShareNameList.Rows.Add("Suite of tools for managing and troubleshooting Microsoft System Center Configuration Manager (SCCM)","Configuration Manager Toolbox (SCCM)","CCMToolbox is consistent with tools used for managing SCCM.","C:\Program Files\CCMToolbox\","CCMToolbox","https://www.microsoft.com/en-us/cloud-platform/system-center-configuration-manager")
+        $null = $ShareNameList.Rows.Add("Directory used by print spooler services for managing print jobs","Print Spooler Directory","CcpSpoolDir likely refers to a directory used by print spooler services.","C:\Windows\System32\spool\CcpSpoolDir\","CcpSpoolDir","")
+        $null = $ShareNameList.Rows.Add("Service for managing certificate enrollment","Certificate Enrollment Services","CertEnroll is a well-documented directory used in Microsoft Certificate Services for managing certificates and CRLs.","C:\Windows\System32\CertSrv\CertEnroll\","CertEnroll","https://learn.microsoft.com/en-us/windows-server/networking/core-network-guide/cncg/server-certs/copy-the-ca-certificate-and-crl-to-the-virtual-directory")
+        $null = $ShareNameList.Rows.Add("Software for trading and business management","cieTrade Systems","cieTrade corresponds to the trading and business management software by cieTrade Systems.","C:\Program Files\cieTrade\","cieTrade","https://www.cietrade.com/")
+        $null = $ShareNameList.Rows.Add("Storage for clustered servers","Cluster Shared Volumes (CSV)","ClusterStorage$ is used for Cluster Shared Volumes in Microsoft failover clustering.","C:\ClusterStorage\","ClusterStorage$","https://learn.microsoft.com/en-us/windows-server/failover-clustering/failover-cluster-csvs")
+        $null = $ShareNameList.Rows.Add("Used by Citrix to store user profiles.","Citrix User Profiles","The prefix 'CTX' is commonly associated with Citrix-related shares. CTXPROFILES likely stores user profiles in a Citrix environment.","C:\ProgramData\Citrix\UserProfiles","CTXPROFILES","https://www.citrix.com")
+        $null = $ShareNameList.Rows.Add("Used by Citrix Streaming Service for application delivery.","Citrix Streaming Service Share","The prefix 'Ctx' indicates Citrix-related shares. STShare might stand for Streaming Service Share.","C:\ProgramData\Citrix\StreamingService","CtxSTShare","https://www.citrix.com")
+        $null = $ShareNameList.Rows.Add("The Lansweeper installer shares Program Files (x86)\Lansweeper\PackageShare on your Lansweeper server as DefaultPackageShare$. ","lansweeper","scripts or other files you plan on referencing in your deployment package must be added to the DefaultPackageShare$ folder on your Lansweeper server","'Program Files (x86)\Lansweeper\PackageShare'. Any installers","DefaultPackageShare$","https://community.lansweeper.com/t5/deploying-software-other-changes/deployment-requirements/ta-p/64326")
+        $null = $ShareNameList.Rows.Add("Used by Microsoft Deployment Toolkit (MDT) for storing deployment packages.","Microsoft MDT Deployment Share","'DeploymentShare$' is a known share name used in Microsoft MDT environments for deployment packages. The '$' indicates it is a hidden share.","C:\DeploymentShare","DeploymentShare$","https://www.microsoft.com")
+        $null = $ShareNameList.Rows.Add("Used by Microsoft Distributed File System (DFS) for sharing files across multiple locations.","Distributed File System","'DFS' is a known abbreviation for Microsoft's Distributed File System.","Varies by setup","DFS","https://www.microsoft.com")
+        $null = $ShareNameList.Rows.Add("Storage for Epicor ERP reports","Epicor Reports","EPICORREPORTS is likely related to Epicor ERP reports. Referenced: https://www.epicor.com/","C:\EPICORREPORTS\","EPICORREPORTS","https://www.epicor.com/")
+        $null = $ShareNameList.Rows.Add("Financial software application","FPS Gold","FPSGold is a known financial software application. Referenced: https://www.fpsgold.com/","C:\FPSGold\","FPSGold","https://www.fpsgold.com/")
+        $null = $ShareNameList.Rows.Add("Root directory for FTP transfers","FTP Root","ftproot is a standard directory for FTP transfers. Referenced: https://www.ietf.org/rfc/rfc959.txt","C:\ftproot\","ftproot","https://www.ietf.org/rfc/rfc959.txt")
+        $null = $ShareNameList.Rows.Add("Server for fax services","Fax Server","FxsSrvCp$ is related to Microsoft's Fax Server component. Referenced: https://docs.microsoft.com/","C:\Windows\System32\FxsSrvCp\","FxsSrvCp$","https://docs.microsoft.com/")
+        $null = $ShareNameList.Rows.Add("Folder for GIS file drops","GIS Drop Folder","GISDropFolder is likely used for GIS file drops. Referenced: https://www.esri.com/en-us/home","C:\GISDropFolder\","GISDropFolder","https://www.esri.com/en-us/home")
+        $null = $ShareNameList.Rows.Add("Customer relationship management software","Goldmine CRM","Goldmine is a known CRM software. Referenced: https://www.goldmine.com/","C:\Program Files\Goldmine\","Goldmine","https://www.goldmine.com/")
+        $null = $ShareNameList.Rows.Add("Financial software for GOLDTrak PC","GOLDTrak PC","GOLDTrakPC is a financial software application. Referenced: https://www.goldtrak.com/","C:\Program Files\GOLDTrakPC\","GOLDTrakPC","https://www.goldtrak.com/")
+        $null = $ShareNameList.Rows.Add("Data storage for Microsoft Great Plains","Great Plains Data","GPData refers to Microsoft Great Plains data storage. Referenced: https://dynamics.microsoft.com/en-us/gp-overview/","C:\GPData\","GPData","https://dynamics.microsoft.com/en-us/gp-overview/")
+        $null = $ShareNameList.Rows.Add("Shared directory for Microsoft Great Plains","Great Plains Share","GPShare refers to a shared directory for Microsoft Great Plains. Referenced: https://dynamics.microsoft.com/en-us/gp-overview/","C:\GPShare\","GPShare","https://dynamics.microsoft.com/en-us/gp-overview/")
+        $null = $ShareNameList.Rows.Add("Service registration for HP devices","HP Service Registration","HpcServiceRegistration is related to HP service registration. Referenced: https://www.hp.com/","C:\Program Files\Hewlett-Packard\","HpcServiceRegistration","https://www.hp.com/")
+        $null = $ShareNameList.Rows.Add("Management software for HP devices","HP Device Manager","HPDM refers to HP Device Manager. Referenced: https://www.hp.com/","C:\Program Files\HPDM\","HPDM","https://www.hp.com/")
+        $null = $ShareNameList.Rows.Add("File system integration","Integrated File System","ifs stands for Integrated File System","C:\ifs\","ifs","https://docs.oracle.com/")
+        $null = $ShareNameList.Rows.Add("Directory for web server files (IIS)","Internet Publishing","Standard directory for Internet Information Services (IIS). Referenced: https://docs.microsoft.com/en-us/iis/","C:\Inetpub\","Inetpub","https://docs.microsoft.com/en-us/iis/")
+        $null = $ShareNameList.Rows.Add("Extract, Transform, Load (ETL) tool","Informatica ETL","Informatica is a well-known ETL tool. Referenced: https://www.informatica.com/","C:\Informatica\","Informatica","https://www.informatica.com/")
+        $null = $ShareNameList.Rows.Add("Log files for Java Message Service","JMS Log","Commonly used directory for JMS log files. Referenced: https://www.oracle.com/java/technologies/jms.html","C:\jms_log\","jms_log","https://www.oracle.com/java/technologies/jms.html")
+        $null = $ShareNameList.Rows.Add("IT asset management software","Lansweeper","Known software for IT asset management. Referenced: https://www.lansweeper.com/","C:\Lansweeper$\","Lansweeper$","https://www.lansweeper.com/")
+        $null = $ShareNameList.Rows.Add("Insurance software application","LifePRO Insurance Software","Known insurance software application. Referenced: https://www.lifepro.com/","C:\LifePRO\","LifePRO","https://www.lifepro.com/")
+        $null = $ShareNameList.Rows.Add("Labeling and barcode software","Loftware Labeling Software","Known software for labeling and barcode. Referenced: https://www.loftware.com/","C:\LOFTWARE$\","LOFTWARE$","https://www.loftware.com/")
+        $null = $ShareNameList.Rows.Add("Data directory for Loftware software","Loftware Data","Directory for data related to Loftware software. Referenced: https://www.loftware.com/","C:\LOFTWAREDATA$\","LOFTWAREDATA$","https://www.loftware.com/")
+        $null = $ShareNameList.Rows.Add("Antivirus software","McAfee Antivirus","McAfee is a widely used antivirus software. Referenced: https://www.mcafee.com/","C:\Program Files\McAfee\","McAfee","https://www.mcafee.com/")
+        $null = $ShareNameList.Rows.Add("Medical imaging software","MIMICS Medical Imaging","Known medical imaging software. Referenced: https://www.synapse.org/","C:\Program Files\MIMICS\","MIMICS","https://www.synapse.org/")
+        $null = $ShareNameList.Rows.Add("Database management system by Microsoft","Microsoft SQL Server","Standard directory for Microsoft SQL Server. Referenced: https://docs.microsoft.com/en-us/sql/","C:\Program Files\Microsoft SQL Server\","MSSQL","https://docs.microsoft.com/en-us/sql/")
+        $null = $ShareNameList.Rows.Add("Handles user logins on a network","Net Logon Service","Handles user logins in Windows networks. Referenced: https://docs.microsoft.com/","C:\Windows\System32\NETLOGON\","NETLOGON","https://docs.microsoft.com/")
+        $null = $ShareNameList.Rows.Add("Secure, hidden shared directory used by Nomad software","Secure Nomad Share","Secure and hidden directory for Nomad software. Referenced: https://help.1e.com/TCN81/en/674800-677107-the-nomad-share.html","C:\NomadSHR$\","NomadSHR$","https://docs.microsoft.com/")
+        $null = $ShareNameList.Rows.Add("Shared directory used by Nomad software","Nomad Share","Used by Nomad software for file sharing. Referenced:  https://help.1e.com/TCN81/en/674800-677107-the-nomad-share.html","C:\NomadSHR\","NomadSHR","https://docs.microsoft.com/")
+        $null = $ShareNameList.Rows.Add("Client component of Papercut print management","Papercut Client","Client component of Papercut print management. Referenced: https://www.papercut.com/","C:\Program Files\Papercut\Client\","PCClient","https://www.papercut.com/")
+        $null = $ShareNameList.Rows.Add("Direct print monitoring component of Papercut","Papercut Direct Print Monitor","Direct print monitoring component of Papercut. Referenced: https://www.papercut.com/","C:\Program Files\Papercut\DirectPrintMonitor\","PCDirectPrintMonitor","https://www.papercut.com/")
+        $null = $ShareNameList.Rows.Add("Release station component of Papercut print management","Papercut Release Station","Release station component of Papercut print management. Referenced: https://www.papercut.com/","C:\Program Files\Papercut\Release\","PCRelease","https://www.papercut.com/")
+        $null = $ShareNameList.Rows.Add("Identity and access management system","Oracle Identity Management","Likely related to Oracle Identity Management system","C:\oimx\","oimx","https://www.oracle.com/identity-management/")
+        $null = $ShareNameList.Rows.Add("System managing public key encryption and digital certificates","Public Key Infrastructure","The PKI share is used by systems and applications that implement public key encryption and manage digital certificates, often within a Windows Server environment where Active Directory Certificate Services (AD CS) are used. Referenced: https://docs.microsoft.com/en-us/windows-server/identity/ad-certificate-services/public-key-infrastructure","C:\Program Files\PKI\","PKI","https://docs.microsoft.com/en-us/windows-server/identity/ad-certificate-services/public-key-infrastructure")
+        $null = $ShareNameList.Rows.Add("Default directory for installed programs","Program Files Directory","Default directory for installed programs in Windows. Referenced: https://docs.microsoft.com/","C:\Program Files\","Program Files","https://docs.microsoft.com/")
+        $null = $ShareNameList.Rows.Add("PowerShell reports","PSReports","Likely used for storing PowerShell reports. Referenced: https://docs.microsoft.com/","C:\psreports\","psreports","https://docs.microsoft.com/")
+        $null = $ShareNameList.Rows.Add("Directory used by SAP systems for shared resources","SAP Mount","Directory used by SAP systems for storing shared resources. Referenced: https://www.sap.com/","C:\sapmnt\","sapmnt","https://www.sap.com/")
+        $null = $ShareNameList.Rows.Add("Microsoft System Center Configuration Manager","System Center Configuration Manager","Directory used by Microsoft System Center Configuration Manager. Referenced: https://learn.microsoft.com/en-us/mem/configmgr/core/plan-design/hierarchy/the-content-library","C:\Program Files\Microsoft Configuration Manager\","SCCM","https://learn.microsoft.com/en-us/mem/configmgr/core/plan-design/hierarchy/the-content-library")
+        $null = $ShareNameList.Rows.Add("Content library for SCCM","SCCM Content Library","Content library used by SCCM for storing data. Referenced: https://learn.microsoft.com/en-us/mem/configmgr/core/plan-design/hierarchy/the-content-library","C:\SCCMContentLib\","SCCMContentLib$","https://learn.microsoft.com/en-us/mem/configmgr/core/plan-design/hierarchy/the-content-library")
+        $null = $ShareNameList.Rows.Add("Content library for SCCM on C drive","SCCM Content Library C","Content library used by SCCM for storing data on C drive. Referenced: https://learn.microsoft.com/en-us/mem/configmgr/core/plan-design/hierarchy/the-content-library","C:\SCCMContentLibC\","SCCMContentLibC$","https://learn.microsoft.com/en-us/mem/configmgr/core/plan-design/hierarchy/the-content-library")
+        $null = $ShareNameList.Rows.Add("Content library for SCCM on D drive","SCCM Content Library D","Content library used by SCCM for storing data on D drive. Referenced: https://learn.microsoft.com/en-us/mem/configmgr/core/plan-design/hierarchy/the-content-library","D:\SCCMContentLibD\","SCCMContentLibD$","https://learn.microsoft.com/en-us/mem/configmgr/core/plan-design/hierarchy/the-content-library")
+        $null = $ShareNameList.Rows.Add("Content library for SCCM on E drive","SCCM Content Library E","Content library used by SCCM for storing data on E drive. Referenced: https://learn.microsoft.com/en-us/mem/configmgr/core/plan-design/hierarchy/the-content-library","E:\SCCMContentLibE\","SCCMContentLibE$","https://learn.microsoft.com/en-us/mem/configmgr/core/plan-design/hierarchy/the-content-library")
+        $null = $ShareNameList.Rows.Add("Package library for SCCM on C drive","SCCM Package Library C","Package library used by SCCM for storing package data on C drive. Referenced: https://learn.microsoft.com/en-us/mem/configmgr/core/plan-design/hierarchy/the-content-library","C:\SMSPKGC\","SMSPKGC$","https://learn.microsoft.com/en-us/mem/configmgr/core/plan-design/hierarchy/the-content-library")
+        $null = $ShareNameList.Rows.Add("Package library for SCCM on D drive","SCCM Package Library D","Package library used by SCCM for storing package data on D drive. Referenced: https://learn.microsoft.com/en-us/mem/configmgr/core/plan-design/hierarchy/the-content-library","D:\SMSPKGD\","SMSPKGD$","https://learn.microsoft.com/en-us/mem/configmgr/core/plan-design/hierarchy/the-content-library")
+        $null = $ShareNameList.Rows.Add("Package library for SCCM on E drive","SCCM Package Library E","Package library used by SCCM for storing package data on E drive. Referenced: https://learn.microsoft.com/en-us/mem/configmgr/core/plan-design/hierarchy/the-content-library","E:\SMSPKGE\","SMSPKGE$","https://learn.microsoft.com/en-us/mem/configmgr/core/plan-design/hierarchy/the-content-library")
+        $null = $ShareNameList.Rows.Add("Package library for SCCM on F drive","SCCM Package Library F","Package library used by SCCM for storing package data on F drive. Referenced: https://learn.microsoft.com/en-us/mem/configmgr/core/plan-design/hierarchy/the-content-library","F:\SMSPKGF\","SMSPKGF$","https://learn.microsoft.com/en-us/mem/configmgr/core/plan-design/hierarchy/the-content-library")
+        $null = $ShareNameList.Rows.Add("Package library for SCCM on G drive","SCCM Package Library G","Package library used by SCCM for storing package data on G drive. Referenced: https://learn.microsoft.com/en-us/mem/configmgr/core/plan-design/hierarchy/the-content-library","G:\SMSPKGG\","SMSPKGG$","https://learn.microsoft.com/en-us/mem/configmgr/core/plan-design/hierarchy/the-content-library")
+        $null = $ShareNameList.Rows.Add("Package library for SCCM on S drive","SCCM Package Library S","Package library used by SCCM for storing package data on S drive. Referenced: https://learn.microsoft.com/en-us/mem/configmgr/core/plan-design/hierarchy/the-content-library","S:\SMSPKGS\","SMSPKGS$","https://learn.microsoft.com/en-us/mem/configmgr/core/plan-design/hierarchy/the-content-library")
+        $null = $ShareNameList.Rows.Add("Directory for SCCM signature files","SCCM Signature Files","Directory used by SCCM for storing signature files. Referenced: https://learn.microsoft.com/en-us/mem/configmgr/core/plan-design/hierarchy/the-content-library","C:\SMSSIG\","SMSSIG$","https://learn.microsoft.com/en-us/mem/configmgr/core/plan-design/hierarchy/the-content-library")
+        $null = $ShareNameList.Rows.Add("Directory for storing Sophos antivirus updates","Sophos Update","Used by Sophos antivirus for storing update files. Referenced: https://www.sophos.com/","C:\SophosUpdate\","SophosUpdate","https://www.sophos.com/")
+        $null = $ShareNameList.Rows.Add("Directory for storing SSIS packages and data","SQL Server Integration Services","Used by SQL Server Integration Services to store packages and related data. Referenced: https://docs.microsoft.com/en-us/sql/integration-services/sql-server-integration-services","C:\SSIS\","SSIS","https://docs.microsoft.com/en-us/sql/integration-services/sql-server-integration-services")
+        $null = $ShareNameList.Rows.Add("Platform for delivering services","Service Delivery Platform","Platform used for delivering various services. Referenced: https://www.microsoft.com/","C:\SDP\","SDP","https://www.microsoft.com/")
+        $null = $ShareNameList.Rows.Add("Service for managing and tracking fixed assets","Sage Fixed Assets","Service for managing and tracking fixed assets. Referenced: https://cdn.na.sage.com/docs/en/customer/sfa/23_0/open/fasnwins.pdf","C:\SFAServ\","SFAServ","https://cdn.na.sage.com/docs/en/customer/sfa/23_0/open/fasnwins.pdf")
+        $null = $ShareNameList.Rows.Add("Root directory for SFTP server","SFTP Root Directory","Root directory for SFTP server. Referenced: https://www.openssh.com/","C:\SFTP_Root\","SFTP_Root","https://www.openssh.com/")
+        $null = $ShareNameList.Rows.Add("Shared system volume for domain controllers","System Volume","Shared system volume for domain controllers. Referenced: https://docs.microsoft.com/en-us/windows-server/storage/folder-redirection/deploy-folder-redirection","C:\Windows\SYSVOL\","SYSVOL","https://docs.microsoft.com/en-us/windows-server/storage/folder-redirection/deploy-folder-redirection")
+        $null = $ShareNameList.Rows.Add("ERP software by Infor","SyteLine ERP","ERP software by Infor. Referenced: https://www.infor.com/products/syteline","C:\Syteline\","Syteline","https://www.infor.com/products/syteline")
+        $null = $ShareNameList.Rows.Add("Root directory for TFTP server","TFTP Root Directory","Root directory for TFTP server. Referenced: https://www.tftpd32.jounin.net/tftpd32.html","C:\TFTP-Root\","TFTP-Root","https://www.tftpd32.jounin.net/tftpd32.html")
+        $null = $ShareNameList.Rows.Add("IT help desk and asset management software","Track-It! IT Help Desk","IT help desk and asset management software. Referenced: https://www.trackit.com/","C:\Program Files\TrackIt\","TrackIt","https://www.trackit.com/")
+        $null = $ShareNameList.Rows.Add("Directory for storing packages for update services","Update Services Packages","Directory for storing packages for update services. Referenced: https://docs.microsoft.com/","C:\UpdateServicesPackages\","UpdateServicesPackages","https://docs.microsoft.com/")
+        $null = $ShareNameList.Rows.Add("Directory for WSUS update content","WSUS Content","Directory for WSUS update content. Referenced: https://docs.microsoft.com/en-us/windows-server/administration/windows-server-update-services","C:\WsusContent\","WsusContent","https://docs.microsoft.com/en-us/windows-server/administration/windows-server-update-services")
+        $null = $ShareNameList.Rows.Add("Root directory for web server files","Web Server Root","Root directory for web server files. Referenced: https://docs.microsoft.com/","C:\inetpub\wwwroot\","wwwroot","https://docs.microsoft.com/")
+        $null = $ShareNameList.Rows.Add("Directory for storing Sophos Update Manager installation sets","Sophos Update Manager Installation Set","Directory for storing Sophos Update Manager installation sets. Referenced: https://docs.sophos.com/","C:\SUMInstallSet\","SUMInstallSet","https://docs.sophos.com/")
+        $null = $ShareNameList.Rows.Add("Database supporting RBM Suite","RBM Database","RBMnet is used for the RBM database that supports the UNC path \MHMServer\RBMnet\RBMSuite\Cusdata. Referenced: https://assetmanagementprofessionals.org/discussion/rbm-database","C:\RBMnet\RBMSuite\Cusdata","RBMnet","https://assetmanagementprofessionals.org/discussion/rbm-database")
+        $null = $ShareNameList.Rows.Add("Microsoft service for remote installation and deployment","Remote Installation Services (RIS) / Windows Deployment Services (WDS)","Used by Microsoft's Remote Installation Services or Windows Deployment Services. Default path is C:\RemoteInstall.","C:\RemoteInstall\","REMINST","https://docs.microsoft.com/en-us/windows-server/get-started/windows-server-2016-remote-deployment")
+
+
         # Get share name string list
         $CommonShareNamesTopString = $CommonShareNamesTop5 |
         foreach {
@@ -4211,6 +4307,34 @@ function Invoke-HuntSMBShares
             $RiskLevelSharePathCountHigh 
             $RiskLevelSharePathCountCritical
             #>
+             
+            # Check if the share name is in our library of known applications
+            $ShareNameListValue = "None"
+            $ListShareLocalPath = ""
+            $ShareNameList | 
+            foreach { 
+                                        
+                    $ListShareName         = $_.ShareName
+                    $ListShareDesc         = $_.Description
+                    $ListShareLocalPathC   = $_.LocalPath
+                    if($ListShareLocalPathC -ne ""){
+                        $ListShareLocalPath = "$ListShareLocalPath is the expected local path."
+                    }
+                    $ShareShareJust       = $_.Justification
+                    $ListShareApp         = $_.Application
+                    if($ListShareName -eq $ShareName){
+                        
+                        # Set description
+                        $ShareNameListValue = @"
+                        
+                        The $ListShareName may be associated with $ListShareApp. 
+                        $ListShareDesc
+                        $ShareShareJust 
+                        $ListShareLocalPath
+"@
+
+                    }
+            }            
                                       
             # ----------------------------------------------------------------------
             # Build Share Name Summary Page Rows
@@ -4233,7 +4357,10 @@ function Invoke-HuntSMBShares
                   </button>
                   <div class="content">
                   <div class="filelistparent" style="font-size: 10px;"> 
-                      $ShareDescriptionSample                                                                
+                      $ShareDescriptionSample  
+                      <strong>Share Context Guess</strong><br>
+                      $ShareNameListValue  
+                      <br><br>                                                            
                       <a style="font-size: 10px; cursor: default;" onClick="applyFadedClassAndUpdate(cy, '$ShareName');radiobtn = document.getElementById('ShareGraph');radiobtn.checked = true;updateLabelColors('tabs', 'btnShareGraph');">View in ShareGraph</a><br>
                       <br><strong>Affected Assets</strong><br>
                       <table class="subtable">
