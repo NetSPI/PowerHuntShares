@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.175
+# Version: v1.176
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -2206,7 +2206,7 @@ function Invoke-HuntSMBShares
             # Check for potential read based RCE conditions
             if(($_.ShareName -like 'c$') -or ($_.ShareName -like 'admin$') -or ($_.ShareName -like "*wwwroot*") -or ($_.ShareName -like "*inetpub*") -or ($_.ShareName -like 'c') -or ($_.ShareName -like 'c_share'))
             {
-                $ShareRowHasHighRisk = 1
+                $ShareRowHasHighRisk = 1 
             }else{
                 $ShareRowHasHighRisk = 0
             }
@@ -2279,12 +2279,12 @@ function Invoke-HuntSMBShares
             
             # Set wieghts
             $RiskWeightRCE             = 2
-            $RiskWeightHR              = 9 # Potential RCE - no write access
+            $RiskWeightHR              = 16 # Known high risk Potential RCE - no write access - consider reverting to 9.
             $RiskWeightData            = 8
             $RiskWeightDataVolume      = 1
             $RiskWeightSecrets         = 2
             $RiskWeightSecretsVolume   = 1
-            $RiskWeightWrite           = 4
+            $RiskWeightWrite           = 5 # consider reverting to 4
             $RiskWeightRead            = 3    
             $RiskWeightEmpty           = -1
             $RiskWeightStale           = -1
@@ -2292,7 +2292,7 @@ function Invoke-HuntSMBShares
             # Calculate Risk Score
             $ShareNameRiskValue = 0
             if($ShareRowHasRCE                          -eq  1){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightRCE           } # RCE
-            if($ShareRowHasHighRisk                     -eq  1){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightHR            } # Potential RCE
+            if($ShareRowHasHighRisk                     -eq  1){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightHR            } # Known high risk
             if($ShareRowCountInterestingData            -eq  1){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightData          } # Potential Sensitive Data 
             if($MySensitiveCount                        -gt 10){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightDataVolume    } # Potential Sensitive Data Volume            
             if($ShareRowCountInterestingSecrets         -eq  1){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightSecrets       } # Potential Password Access 
@@ -2301,6 +2301,11 @@ function Invoke-HuntSMBShares
             if($ShareRowHasRead                         -eq  1){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightRead          } # Read Access                          
             if($ShareRowHasEmpty                        -eq  1){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightEmpty         } # Empty Folders
             if($ShareRowHasStale                        -eq  1){ $ShareNameRiskValue =  $ShareNameRiskValue + $RiskWeightStale         } # Stake Folders           
+
+            # Adjust for sub 0 if (shouldnt happen)
+            if($ShareNameRiskValue -lt 0){
+                $ShareNameRiskValue = 1
+            }
 
             # Check risk level - Highest wins
             If($ShareNameRiskValue  -le 4                                    ) { $RiskLevel = "Low"}  
