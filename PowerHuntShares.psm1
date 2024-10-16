@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.176
+# Version: v1.178
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1152,78 +1152,7 @@ function Invoke-HuntSMBShares
         Write-Output " [*][$Time] - Identified $SubnetsCount subnets hosting shares configured with excessive privileges."
         $SubnetSummary | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Inventory-Common-Subnets.csv"               
         $SubnetFile = "$TargetDomain-Shares-Inventory-Common-Subnets.csv"  
-        
-        # Create HTML table for report
-
-        # Setup HTML begin
-        Write-Verbose "[+] Creating html top." 
-        $HTMLSTART = @"
-        <table class="table table-striped table-hover tabledrop">
-"@
-
-        # Get list of columns        
-        $MyCsvColumns = ("Computers","Shares","ExploitableACEs","WriteACEs","ReadACEs","ACEs","Site","Created","Desc","Subnet")
-
-        # Print columns creation  
-        $HTMLTableHeadStart= "<thead><tr>" 
-        $MyCsvColumns |
-        ForEach-Object {
-
-            # Add column
-            $HTMLTableColumn = "<th>$_</th>$HTMLTableColumn"    
-        }
-        $HTMLTableColumn = "$HTMLTableHeadStart$HTMLTableColumn</tr></thead>" 
-
-        # Create table rows
-        Write-Verbose "[+] Creating html table rows."     
-        $HTMLTableRow = $SubnetSummary |
-        ForEach-Object {
-
-            # Create a value contain row data
-            $CurrentRow = $_
-            $PrintRow = ""
-            $MyCsvColumns | 
-            ForEach-Object{
-        
-                try{
-                    $GetValue = $CurrentRow | Select-Object $_ -ExpandProperty $_ -ErrorAction SilentlyContinue
-                    $ColumnIndex = $MyCsvColumns.IndexOf($_) + 1
-
-                    # Set background color based on shifted conditions
-                    $BackgroundColor = ""
-
-                    if ($ColumnIndex -eq 5 -and [int]$GetValue -gt 0) {          # Originally for column 4 = write
-                        $BackgroundColor = ' style="background-color:#FDFFd9;"'  
-                    } elseif ($ColumnIndex -eq 4 -and [int]$GetValue -gt 0) {    # Originally for column 5 = read
-                        $BackgroundColor = ' style="background-color:#FFCC98;"'  
-                    } elseif ($ColumnIndex -eq 3 -and [int]$GetValue -gt 0) {
-                        $BackgroundColor = ' style="background-color:#FC6C84;"'  # Originally for column 2=shares,6=aces,1=computers
-                    }
-
-                    # Append the value with the background color
-                    if($PrintRow -eq ""){
-                        $PrintRow = "<td$BackgroundColor>$GetValue</td>"               
-                    }else{         
-                        $PrintRow = "<td$BackgroundColor>$GetValue</td>$PrintRow"
-                    }
-                }catch{}            
-            }
-
-            # Return row
-            $HTMLTableHeadstart = "<tr>" 
-            $HTMLTableHeadend = "</tr>" 
-            "$HTMLTableHeadStart$PrintRow$HTMLTableHeadend"
-        }
-
-        # Setup HTML end
-        Write-Verbose "[+] Creating html bottom." 
-        $HTMLEND = @"
-          </tbody>
-        </table>
-"@
-
-        # Return it
-        $SubnetSummaryHTML = "$HTMLSTART $HTMLTableColumn $HTMLTableRow $HTMLEND"                                    
+                                         
 
         # ----------------------------------------------------------------------
         # Calculate percentages
@@ -2500,6 +2429,129 @@ function Invoke-HuntSMBShares
         $UniqueFileSystemRightsSeries = "[" + ($UniqueFileSystemRightsCounts -replace(" ",",")) + "]"
         $UniqueFileSystemRightsSeries = $UniqueFileSystemRightsSeries -replace(" ",",")
 
+        # ----------------------------------------------------------------------
+        # Create network table
+        # ----------------------------------------------------------------------
+
+        # Create HTML table for report
+
+        # Setup HTML begin
+        Write-Verbose "[+] Creating html top." 
+        $HTMLSTART = @"
+        <table id= "networktable" class="table table-striped table-hover tabledrop" style="width: 95%">
+"@
+
+        # Get list of columns        
+        $MyCsvColumns = ("Computers","Shares","ExploitableACEs","WriteACEs","ReadACEs","ACEs","Site","Created","Desc","Subnet")
+
+        # Print columns creation  
+        $HTMLTableHeadStart= "<thead><tr>" 
+        $MyCsvColumns |
+        ForEach-Object {
+
+            # Add column
+            $HTMLTableColumn = "<th>$_</th>$HTMLTableColumn"    
+        }
+        $HTMLTableColumn = "$HTMLTableHeadStart$HTMLTableColumn</tr></thead>" 
+
+        # Create table rows
+        Write-Verbose "[+] Creating html table rows."     
+        $HTMLTableRow = $SubnetSummary |
+        ForEach-Object {
+
+            # Create a value contain row data
+            $CurrentRow = $_
+            $PrintRow = ""
+            $MyCsvColumns | 
+            ForEach-Object{
+        
+                try{
+                    $GetValue = $CurrentRow | Select-Object $_ -ExpandProperty $_ -ErrorAction SilentlyContinue
+                    $ColumnIndex = $MyCsvColumns.IndexOf($_) + 1
+
+                    # Set background color based on shifted conditions
+                    $BackgroundColor = ""
+
+                    if ($ColumnIndex -eq 5 -and [int]$GetValue -gt 0) {          # Originally for column 4 = write
+                        $BackgroundColor = ' style="background-color:#FDFFd9;"'  
+                    } elseif ($ColumnIndex -eq 4 -and [int]$GetValue -gt 0) {    # Originally for column 5 = read
+                        $BackgroundColor = ' style="background-color:#FFCC98;"'  
+                    } elseif ($ColumnIndex -eq 3 -and [int]$GetValue -gt 0) {
+                        $BackgroundColor = ' style="background-color:#FC6C84;"'  # Originally for column 2=shares,6=aces,1=computers
+                    }
+
+                    # Append the value with the background color
+                    if($PrintRow -eq ""){
+                        $PrintRow = "<td$BackgroundColor>$GetValue</td>"               
+                    }else{         
+                        $PrintRow = "<td$BackgroundColor>$GetValue</td>$PrintRow"
+                    }
+                }catch{}            
+            }
+
+            # Return row
+            $HTMLTableHeadstart = "<tr>" 
+            $HTMLTableHeadend = "</tr>" 
+            "$HTMLTableHeadStart$PrintRow$HTMLTableHeadend"
+        }
+
+        # Setup HTML end
+        Write-Verbose "[+] Creating html bottom." 
+        $HTMLEND = @"
+          </tbody>
+        </table>
+"@
+
+        # Return it
+        $SubnetSummaryHTML = "$HTMLSTART $HTMLTableColumn $HTMLTableRow $HTMLEND"   
+
+        # Create network risk table data
+        $SubnetTotalLow      = 0
+        $SubnetTotalMedium   = 0
+        $SubnetTotalHigh     = 0
+        $SubnetTotalCritical = 0
+        $SubnetSummary |
+        foreach{
+                
+            # Get subnet without trailing .0
+            $SubnetIp     = $_.Subnet
+            $SubnetIpBase = ($SubnetIp  -split '\.')[0..2] -join '.'
+
+            # Get Low count for subnet
+            $SubnetCountLow         = $ExcessiveSharePrivsFinal | where IpAddress -like "$SubnetIpBase*" | where RiskLevel -eq 'Low' | measure | select count -ExpandProperty count    
+            if($SubnetCountLow -gt 0){
+                $SubnetTotalLow     = $SubnetTotalLow  + 1
+            }
+            
+            # Get Medium count for subnet
+            $SubnetCountMedium      = $ExcessiveSharePrivsFinal | where IpAddress -like "$SubnetIpBase*" | where RiskLevel -eq 'Medium' | measure | select count -ExpandProperty count  
+            if( $SubnetCountMedium -gt 0){
+                $SubnetTotalMedium  = $SubnetTotalMedium + 1
+            }
+            
+            # Get High count for subnet
+            $SubnetCountHigh        = $ExcessiveSharePrivsFinal | where IpAddress -like "$SubnetIpBase*" | where RiskLevel -eq 'High' | measure | select count -ExpandProperty count  
+            if($SubnetCountHigh -gt 0){
+                $SubnetTotalHigh    = $SubnetTotalHigh  + 1
+            }
+            
+            # Get Critical count for subnet
+            $SubnetCountCritical      = $ExcessiveSharePrivsFinal | where IpAddress -like "$SubnetIpBase*" | where RiskLevel -eq 'Critical' | measure | select count -ExpandProperty count                                                          
+            if($SubnetCountCritical -gt 0){
+                $SubnetTotalCritical  = $SubnetTotalCritical  + 1
+            }
+        }
+
+        # Construct the array with the desired pattern
+        $subnetArray = @(
+            $SubnetTotalLow, 
+            $SubnetTotalMedium, 
+            $SubnetTotalHigh,
+            $SubnetTotalCritical
+        )
+
+        # Convert the array to a string in the desired format
+        $subnetChartString = "[" + ($subnetArray -join ",") + "]"
 
         # ----------------------------------------------------------------------
         # Create Identity Insights Summary Information
@@ -7222,20 +7274,21 @@ This section provide a summary and list of the affected shares grouped by name. 
         <a style="font-size:11; margin-left: 5px; color:#71808d; cursor: pointer;" onclick="document.getElementById('filterInput').value = '';applyFiltersAndSort('sharenametable', 'filterInput', 'filterCounter', 'pagination');">Clear</a>
 </div>
 				
-<div class="searchbar" style="text-align:left; display: flex;" >
+<div class="searchbar" style="text-align:left; display: flex; height: 75px;" >
         <img style = "margin-left: 10px; margin-top: 10px; width: 20px; height: 20px; opacity: 0.5;" src="data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAABkAAAAZCAYAAADE6YVjAAAA63pUWHRSYXcgcHJvZmlsZSB0eXBlIGV4aWYAAHjajVFtDsMgCP3vKXYEBKpyHPuV7AY7/p4V23XJkpFA4UHx+Qzb67mHRzMuHHTKJVlKBFNT44qkULf5iJH0iL0w78U7Hs4GAxJ8pZfGjm/AkUevzQ+JY34sOk+qyKarUavj8x2ffSGX70XOQGI/mVb/wRcJOyPt9eKMkpV8u9q60N3K5SqZ05RiVkRlyjkZ8sKkGXqujSj3ddBodqoOjHqMMjjxJlEIUUQ7S2muUhveY8AgSUYxoVXhdghPeEpQuF5pr3SK+anNpdEP++da4Q2MtHXnU4cTLQAAAYRpQ0NQSUNDIHByb2ZpbGUAAHicfZE9SMNAGIbfpkqlVBzaQcQhQ3WyixVxLFUsgoXSVmjVweTSP2jSkKS4OAquBQd/FqsOLs66OrgKguAPiLODk6KLlPhdUmgR4x3HPbz3vS933wFCu85UcyABqJplZFNJsVBcFQOvCNIMIY6wxEw9nVvMw3N83cPH97sYz/Ku+3MMKyWTAT6ROMF0wyLeIJ7dtHTO+8QRVpUU4nPiKYMuSPzIddnlN84VhwWeGTHy2XniCLFY6WO5j1nVUIlniKOKqlG+UHBZ4bzFWa03Wfee/IWhkraS4zqtcaSwhDQyECGjiRrqsBCjXSPFRJbOkx7+McefIZdMrhoYORbQgArJ8YP/we/emuX4tJsUSgKDL7b9MQEEdoFOy7a/j227cwL4n4ErredvtIG5T9JbPS16BIxsAxfXPU3eAy53gNEnXTIkR/LTEspl4P2MvqkIhG+B4Jrbt+45Th+APPVq+QY4OAQmK5S97vHuof6+/VvT7d8PvKxyxAQ5Z2gAAA12aVRYdFhNTDpjb20uYWRvYmUueG1wAAAAAAA8P3hwYWNrZXQgYmVnaW49Iu+7vyIgaWQ9Ilc1TTBNcENlaGlIenJlU3pOVGN6a2M5ZCI/Pgo8eDp4bXBtZXRhIHhtbG5zOng9ImFkb2JlOm5zOm1ldGEvIiB4OnhtcHRrPSJYTVAgQ29yZSA0LjQuMC1FeGl2MiI+CiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPgogIDxyZGY6RGVzY3JpcHRpb24gcmRmOmFib3V0PSIiCiAgICB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIKICAgIHhtbG5zOnN0RXZ0PSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VFdmVudCMiCiAgICB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iCiAgICB4bWxuczpHSU1QPSJodHRwOi8vd3d3LmdpbXAub3JnL3htcC8iCiAgICB4bWxuczp0aWZmPSJodHRwOi8vbnMuYWRvYmUuY29tL3RpZmYvMS4wLyIKICAgIHhtbG5zOnhtcD0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wLyIKICAgeG1wTU06RG9jdW1lbnRJRD0iZ2ltcDpkb2NpZDpnaW1wOmYzOTExMWJjLTMyZDUtNDRjMi1iZDIzLWViZGY2ODIyZjk1MSIKICAgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDoyYzc0NGFmMy1iZWIwLTQwN2QtYTc3Yy1jMTllNTJiMWUyNjkiCiAgIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDpjZTBkZDFmNC01YzViLTQ0NzMtODljNC1lYzI5NjAxM2RlYTAiCiAgIGRjOkZvcm1hdD0iaW1hZ2UvcG5nIgogICBHSU1QOkFQST0iMi4wIgogICBHSU1QOlBsYXRmb3JtPSJXaW5kb3dzIgogICBHSU1QOlRpbWVTdGFtcD0iMTcyODU2NDc1MDg1MTg0MyIKICAgR0lNUDpWZXJzaW9uPSIyLjEwLjM0IgogICB0aWZmOk9yaWVudGF0aW9uPSIxIgogICB4bXA6Q3JlYXRvclRvb2w9IkdJTVAgMi4xMCIKICAgeG1wOk1ldGFkYXRhRGF0ZT0iMjAyNDoxMDoxMFQwNzo1MjoyOS0wNTowMCIKICAgeG1wOk1vZGlmeURhdGU9IjIwMjQ6MTA6MTBUMDc6NTI6MjktMDU6MDAiPgogICA8eG1wTU06SGlzdG9yeT4KICAgIDxyZGY6U2VxPgogICAgIDxyZGY6bGkKICAgICAgc3RFdnQ6YWN0aW9uPSJzYXZlZCIKICAgICAgc3RFdnQ6Y2hhbmdlZD0iLyIKICAgICAgc3RFdnQ6aW5zdGFuY2VJRD0ieG1wLmlpZDo1YWQ3NWQwMS1hZGM1LTQ5YmEtYjBiZC0xYWUwMzc2NjQ2ZTMiCiAgICAgIHN0RXZ0OnNvZnR3YXJlQWdlbnQ9IkdpbXAgMi4xMCAoV2luZG93cykiCiAgICAgIHN0RXZ0OndoZW49IjIwMjQtMTAtMTBUMDc6NTI6MzAiLz4KICAgIDwvcmRmOlNlcT4KICAgPC94bXBNTTpIaXN0b3J5PgogIDwvcmRmOkRlc2NyaXB0aW9uPgogPC9yZGY6UkRGPgo8L3g6eG1wbWV0YT4KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgIAo8P3hwYWNrZXQgZW5kPSJ3Ij8+STJFVQAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAAPYQAAD2EBqD+naQAAAAd0SU1FB+gKCgw0Hlvx/HoAAAAZdEVYdENvbW1lbnQAQ3JlYXRlZCB3aXRoIEdJTVBXgQ4XAAACK0lEQVRIx9WWO2hUURCGv/FJGgk+kBSCoo02phDSKLpNFINYRBAJWogmiEFsLExAfxYsLBQDihuxiCixUFCwEHzANdj6KARBU2mWiIgmgkEsdmxm5RL23uyuQfA05865c+53zpl/5lz4B83qdZS0GugFuoCO1Ksy8Ai4IelZU5BisWiVSmUAGARa3D17xWaPgSOSPtQNkbQIuOXu++MjAK+Ap8A40OruHcAuoCV8JoFOSW/qhZTcvS8mvwOOShqr4bcSuODuh8K3DGyR9AlgYQ5gt7tfjEnPgW2Sxmv5JkkykyTJ/UKh8DlitszM1iZJcgdgQc5GzgVgGjgg6Ucd4rhqZrfD3CepPRMiaZO7t4d5XtJEA4o9ZWYeAunJ20kh9TzSSE5IKocwADrzIJvjqGYkTTaRf1VlbcyDVJNhqskknwq5L86DfIy+rUnImui/5EFeA7i7SdrRBGR7BP5FHuRJSBegv8HAdwEbwnyYJ+GfwPUwuyXtrRPQCgy5ezW/RuZKxok4MoBRSXvmALQBD4D1MXRW0nRm7ZLUCwzPrrhmdhO4JOllyncFcBAYAFbFLkYl9WQWSEl9QCmvpAPfgffAcmBdahEAw8AJSb9qQrIAZnY5iulhd19a4x4BeAsMSrqXeWnlAIYknUwFdiewNRLNInZjWbfiH4ikbne/W2N1VyT185etqq7TNQCl+QCkIUtmjV+TdGy+/laqkONm9tXMvpnZmYjP/9V+A1Vj2qntT1EIAAAAAElFTkSuQmCC">
-        <input type="text" id="filterInput" placeholder="Search" style="margin-top: 5px; height: 30px; font-size: 14px; margin-left: 5px; width: 200px; border: .0px solid #BDBDBD;outline: none;color:#345367; padding-left: 5px;">							
-		<div style="margin-top: 10px; margin-left: 5px; margin-right: 5px; color: gray">Quick Filters: </div>
-		<span style = "color: #71808d;">
-        <label><input type="checkbox" class="filter-checkbox" name="h"> Exploitable</label>
-        <label><input type="checkbox" class="filter-checkbox" name="w"> Write</label>
-        <label><input type="checkbox" class="filter-checkbox" name="r"> Read</label>
-        <label><input type="checkbox" class="filter-checkbox" name="i"> Interesting</label>
-        <label><input type="checkbox" class="filter-checkbox" name="e"> Empty</label>
-        <label><input type="checkbox" class="filter-checkbox" name="s"> Stale</label>
-        <label><input type="checkbox" class="filter-checkbox" name="n"> Default</label>
-		</span>
-</div>	
+        <input type="text" id="filterInput" placeholder="Search" style="margin-top: 5px; height: 30px; font-size: 14px; margin-left: 5px; width: 200px; border: .0px solid #BDBDBD;outline: none;color:#345367; padding-left: 5px;">	
+			<div style="margin-top: 35px; margin-left: -195px; margin-right: 5px; margin-bottom: 10px; color: gray; width: 660px; border-top: 1px dashed lightgray; ">
+			Quick Filters: 
+			<span style = "color: #71808d; margin-top: 25px;  ">
+			<label><input type="checkbox" class="filter-checkbox" name="h"> Exploitable</label>
+			<label><input type="checkbox" class="filter-checkbox" name="w"> Write</label>
+			<label><input type="checkbox" class="filter-checkbox" name="r"> Read</label>
+			<label><input type="checkbox" class="filter-checkbox" name="i"> Interesting</label>
+			<label><input type="checkbox" class="filter-checkbox" name="e"> Empty</label>
+			<label><input type="checkbox" class="filter-checkbox" name="s"> Stale</label>
+			<label><input type="checkbox" class="filter-checkbox" name="n"> Default</label>
+			</span></div>
+</div>
 
 <table id="sharenametable" class="table table-striped table-hover tabledrop" style="width: 95%;  margin-top: 0px;">
   <thead>
@@ -7305,7 +7358,51 @@ This section provides an overview of the affected networks. $SubnetsCount networ
 <br><br>
 </div>
 
+<!-- cards -->
+<div style="width: 96.5%; display: flex; justify-content: space-between;">
+
+  <!-- Left aligned card -->
+  <div style="width: 33%; display: flex; justify-content: flex-start;">
+    <div class="card" style="width: 100%;">
+      <div class="cardtitle" style="color:#71808d; font-size: 14px; font-weight: bold;">
+       Affected Networks
+      </div>
+      <div style="text-align: left;">
+          <span class="percentagetext" style="color:#f29650; text-align: left;">                    
+          $SubnetsCount &nbsp;                  
+          </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right aligned card -->
+  <div style="width: 77%; display: flex; justify-content: flex-end;">
+    <div class="LargeCard" style="width:100%;">									
+	    <div class="chart-container">
+		    <div id="ChartNetworkRisk"></div>
+			<div class="chart-controls"></div>
+        </div>								  							
+    </div>
+  </div>
+
+</div>	
+
+<!-- Export Buttons -->
+<div style="display: flex; margin-left:12px; margin-bottom: 10px; margin-top: -10px; font-size:11; text-align:left;" >		
+        <div id="networkcounter" style="margin-top:0px;">Loading...</div>        
+        <a style="font-size:11; margin-left: 5px; color:#71808d;" href="#" onclick="extractAndDownloadCSV('networktable', 1)">Export</a> &nbsp;&nbsp;| 
+        <a style="font-size:11; margin-left: 5px; color:#71808d; cursor: pointer;" onclick="document.getElementById('networkinput').value = '';applyFiltersAndSort('networktable', 'networkinput', 'networkcounter', 'networkpagination');">Clear</a>
+</div>	
+
+<!-- search -->
+<div class="searchbar" style="text-align:left; display: flex; margin-bottom: -10px;" >
+        <img style = "margin-left: 10px; margin-top: 10px; width: 20px; height: 20px; opacity: 0.5;" src="data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAABkAAAAZCAYAAADE6YVjAAAA63pUWHRSYXcgcHJvZmlsZSB0eXBlIGV4aWYAAHjajVFtDsMgCP3vKXYEBKpyHPuV7AY7/p4V23XJkpFA4UHx+Qzb67mHRzMuHHTKJVlKBFNT44qkULf5iJH0iL0w78U7Hs4GAxJ8pZfGjm/AkUevzQ+JY34sOk+qyKarUavj8x2ffSGX70XOQGI/mVb/wRcJOyPt9eKMkpV8u9q60N3K5SqZ05RiVkRlyjkZ8sKkGXqujSj3ddBodqoOjHqMMjjxJlEIUUQ7S2muUhveY8AgSUYxoVXhdghPeEpQuF5pr3SK+anNpdEP++da4Q2MtHXnU4cTLQAAAYRpQ0NQSUNDIHByb2ZpbGUAAHicfZE9SMNAGIbfpkqlVBzaQcQhQ3WyixVxLFUsgoXSVmjVweTSP2jSkKS4OAquBQd/FqsOLs66OrgKguAPiLODk6KLlPhdUmgR4x3HPbz3vS933wFCu85UcyABqJplZFNJsVBcFQOvCNIMIY6wxEw9nVvMw3N83cPH97sYz/Ku+3MMKyWTAT6ROMF0wyLeIJ7dtHTO+8QRVpUU4nPiKYMuSPzIddnlN84VhwWeGTHy2XniCLFY6WO5j1nVUIlniKOKqlG+UHBZ4bzFWa03Wfee/IWhkraS4zqtcaSwhDQyECGjiRrqsBCjXSPFRJbOkx7+McefIZdMrhoYORbQgArJ8YP/we/emuX4tJsUSgKDL7b9MQEEdoFOy7a/j227cwL4n4ErredvtIG5T9JbPS16BIxsAxfXPU3eAy53gNEnXTIkR/LTEspl4P2MvqkIhG+B4Jrbt+45Th+APPVq+QY4OAQmK5S97vHuof6+/VvT7d8PvKxyxAQ5Z2gAAA12aVRYdFhNTDpjb20uYWRvYmUueG1wAAAAAAA8P3hwYWNrZXQgYmVnaW49Iu+7vyIgaWQ9Ilc1TTBNcENlaGlIenJlU3pOVGN6a2M5ZCI/Pgo8eDp4bXBtZXRhIHhtbG5zOng9ImFkb2JlOm5zOm1ldGEvIiB4OnhtcHRrPSJYTVAgQ29yZSA0LjQuMC1FeGl2MiI+CiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPgogIDxyZGY6RGVzY3JpcHRpb24gcmRmOmFib3V0PSIiCiAgICB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIKICAgIHhtbG5zOnN0RXZ0PSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VFdmVudCMiCiAgICB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iCiAgICB4bWxuczpHSU1QPSJodHRwOi8vd3d3LmdpbXAub3JnL3htcC8iCiAgICB4bWxuczp0aWZmPSJodHRwOi8vbnMuYWRvYmUuY29tL3RpZmYvMS4wLyIKICAgIHhtbG5zOnhtcD0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wLyIKICAgeG1wTU06RG9jdW1lbnRJRD0iZ2ltcDpkb2NpZDpnaW1wOmYzOTExMWJjLTMyZDUtNDRjMi1iZDIzLWViZGY2ODIyZjk1MSIKICAgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDoyYzc0NGFmMy1iZWIwLTQwN2QtYTc3Yy1jMTllNTJiMWUyNjkiCiAgIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDpjZTBkZDFmNC01YzViLTQ0NzMtODljNC1lYzI5NjAxM2RlYTAiCiAgIGRjOkZvcm1hdD0iaW1hZ2UvcG5nIgogICBHSU1QOkFQST0iMi4wIgogICBHSU1QOlBsYXRmb3JtPSJXaW5kb3dzIgogICBHSU1QOlRpbWVTdGFtcD0iMTcyODU2NDc1MDg1MTg0MyIKICAgR0lNUDpWZXJzaW9uPSIyLjEwLjM0IgogICB0aWZmOk9yaWVudGF0aW9uPSIxIgogICB4bXA6Q3JlYXRvclRvb2w9IkdJTVAgMi4xMCIKICAgeG1wOk1ldGFkYXRhRGF0ZT0iMjAyNDoxMDoxMFQwNzo1MjoyOS0wNTowMCIKICAgeG1wOk1vZGlmeURhdGU9IjIwMjQ6MTA6MTBUMDc6NTI6MjktMDU6MDAiPgogICA8eG1wTU06SGlzdG9yeT4KICAgIDxyZGY6U2VxPgogICAgIDxyZGY6bGkKICAgICAgc3RFdnQ6YWN0aW9uPSJzYXZlZCIKICAgICAgc3RFdnQ6Y2hhbmdlZD0iLyIKICAgICAgc3RFdnQ6aW5zdGFuY2VJRD0ieG1wLmlpZDo1YWQ3NWQwMS1hZGM1LTQ5YmEtYjBiZC0xYWUwMzc2NjQ2ZTMiCiAgICAgIHN0RXZ0OnNvZnR3YXJlQWdlbnQ9IkdpbXAgMi4xMCAoV2luZG93cykiCiAgICAgIHN0RXZ0OndoZW49IjIwMjQtMTAtMTBUMDc6NTI6MzAiLz4KICAgIDwvcmRmOlNlcT4KICAgPC94bXBNTTpIaXN0b3J5PgogIDwvcmRmOkRlc2NyaXB0aW9uPgogPC9yZGY6UkRGPgo8L3g6eG1wbWV0YT4KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgIAo8P3hwYWNrZXQgZW5kPSJ3Ij8+STJFVQAAAAZiS0dEAP8A/wD/oL2nkwAAAAlwSFlzAAAPYQAAD2EBqD+naQAAAAd0SU1FB+gKCgw0Hlvx/HoAAAAZdEVYdENvbW1lbnQAQ3JlYXRlZCB3aXRoIEdJTVBXgQ4XAAACK0lEQVRIx9WWO2hUURCGv/FJGgk+kBSCoo02phDSKLpNFINYRBAJWogmiEFsLExAfxYsLBQDihuxiCixUFCwEHzANdj6KARBU2mWiIgmgkEsdmxm5RL23uyuQfA05865c+53zpl/5lz4B83qdZS0GugFuoCO1Ksy8Ai4IelZU5BisWiVSmUAGARa3D17xWaPgSOSPtQNkbQIuOXu++MjAK+Ap8A40OruHcAuoCV8JoFOSW/qhZTcvS8mvwOOShqr4bcSuODuh8K3DGyR9AlgYQ5gt7tfjEnPgW2Sxmv5JkkykyTJ/UKh8DlitszM1iZJcgdgQc5GzgVgGjgg6Ucd4rhqZrfD3CepPRMiaZO7t4d5XtJEA4o9ZWYeAunJ20kh9TzSSE5IKocwADrzIJvjqGYkTTaRf1VlbcyDVJNhqskknwq5L86DfIy+rUnImui/5EFeA7i7SdrRBGR7BP5FHuRJSBegv8HAdwEbwnyYJ+GfwPUwuyXtrRPQCgy5ezW/RuZKxok4MoBRSXvmALQBD4D1MXRW0nRm7ZLUCwzPrrhmdhO4JOllyncFcBAYAFbFLkYl9WQWSEl9QCmvpAPfgffAcmBdahEAw8AJSb9qQrIAZnY5iulhd19a4x4BeAsMSrqXeWnlAIYknUwFdiewNRLNInZjWbfiH4ikbne/W2N1VyT185etqq7TNQCl+QCkIUtmjV+TdGy+/laqkONm9tXMvpnZmYjP/9V+A1Vj2qntT1EIAAAAAElFTkSuQmCC">
+        <input type="text" id="networkinput" placeholder="Search" style="margin-top: 5px; height: 30px; font-size: 14px; margin-left: 5px; width: 300px; border: .0px solid #BDBDBD;outline: none;color:#345367; padding-left: 5px;">							
+</div>	
+
+<!-- table -->
 $SubnetSummaryHTML
+<div id="networkpagination" style="margin:10px;"></div>
 </div>
 
 <!--  
@@ -11013,6 +11110,61 @@ const ChartFGRiska = new ApexCharts(document.querySelector("#ChartFGRiska"), Cha
 ChartFGRiska.render();
 
 // --------------------------
+// Network Page: Chart - Risk Chart
+// --------------------------
+
+const datanetwork = $subnetChartString;
+const categoriesnetwork = ['Low','Medium','High','Critical'];
+
+const ChartNetworkRiskOptions = {
+          series: [{
+          data: datanetwork
+        }],
+          chart: {
+          type: 'bar',
+          height: 200
+        },
+        plotOptions: {
+          bar: {		 
+            borderRadius: 0,
+            borderRadiusApplication: 'end',
+            horizontal: true,
+			colors: {
+				backgroundBarColors: ['#e0e0e0'],
+				backgroundBarOpacity: 1,
+                ranges: [{
+                    from: 0,
+                    to: 1000,
+                    color: '#f29650'
+                }]
+            }
+          }
+        },
+        dataLabels: {
+          enabled: false
+        },
+		  grid: {
+			show: false
+		  },
+        xaxis: {
+          categories: categoriesnetwork,
+        },
+		  title: {
+			text: 'Network Count by Risk Level',
+			align: 'center', // Aligns the title, can be 'left', 'center', or 'right'
+			margin: 10, // Adjusts the space between the title and the chart
+			style: {
+			  fontSize: '16px',
+			  fontWeight: 'bold',
+			  color: '#71808d'
+			}
+		  }
+        };
+
+const ChartNetworkRiskC = new ApexCharts(document.querySelector("#ChartNetworkRisk"), ChartNetworkRiskOptions);
+ChartNetworkRiskC.render();
+
+// --------------------------
 // Share Names Page: Chart - Interesting Files
 // --------------------------
 
@@ -11857,6 +12009,10 @@ function paginationIdForTable(tableId) {
 document.getElementById('filterInput').addEventListener("keyup", () => applyFiltersAndSort('sharenametable', 'filterInput', 'filterCounter', 'pagination'));
 document.querySelectorAll('.filter-checkbox').forEach(checkbox => checkbox.addEventListener('change', () => applyFiltersAndSort('sharenametable', 'filterInput', 'filterCounter', 'pagination')));
 applyFiltersAndSort('sharenametable', 'filterInput', 'filterCounter', 'pagination');
+
+// Initialize network table 
+document.getElementById('networkinput').addEventListener("keyup", () => applyFiltersAndSort('networktable', 'networkinput', 'networkcounter', 'networkpagination'));
+applyFiltersAndSort('networktable', 'networkinput', 'networkcounter', 'networkpagination');
 
 // Initialize folder group table    
 document.getElementById('filterInputTwo').addEventListener("keyup", () => applyFiltersAndSort('foldergrouptable', 'filterInputTwo', 'filterCounterTwo', 'paginationfg'));
