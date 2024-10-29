@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.184
+# Version: v1.185
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -3532,7 +3532,7 @@ function Invoke-HuntSMBShares
         Write-Output " [*][$Time] - $AclWithWriteCount ($PercentAclWriteP) ACLs were found that allowed WRITE access."                               
         Write-Output " [*][$Time] - $AclHighRiskCount ($PercentAclHighRiskP) ACLs were found that are associated with HIGH RISK share names."
         Write-Output " [*][$Time] "
-        Write-Output " [*][$Time] - The 5 most common share names are:"
+        Write-Output " [*][$Time] - The most common share names are:"
         Write-Output " [*][$Time] - $Top5ShareCountTotal of $AllAccessibleSharesCount ($DupPercent) discovered shares are associated with the top $SampleSum share names."
         $CommonShareNamesTop5 |
         foreach {
@@ -16299,7 +16299,7 @@ function Get-PathAcl {
 
                 $Names = @()
                 if ($_.IdentityReference -match '^S-1-5-21-[0-9]+-[0-9]+-[0-9]+-[0-9]+') {
-                    $Object = Get-ADObject -SID $_.IdentityReference
+                    $Object = Get-ADObjectMod -SID $_.IdentityReference
                     $Names = @()
                     $SIDs = @($Object.objectsid)
 
@@ -17582,7 +17582,7 @@ function Add-ObjectAcl {
             $ResolvedPrincipalSID = $PrincipalSID
         }
         else {
-            $Principal = Get-ADObject -Domain $Domain -DomainController $DomainController -Name $PrincipalName -SamAccountName $PrincipalSamAccountName -PageSize $PageSize
+            $Principal = Get-ADObjectMod -Domain $Domain -DomainController $DomainController -Name $PrincipalName -SamAccountName $PrincipalSamAccountName -PageSize $PageSize
             
             if(!$Principal) {
                 throw "Error resolving principal"
@@ -17906,7 +17906,7 @@ function Get-ThisThingComputer {
     }
 }
 
-function Get-ADObject {
+function Get-ADObjectMod {
     [CmdletBinding()]
     Param (
         [Parameter(ValueFromPipeline=$True)]
@@ -18043,8 +18043,8 @@ function Set-ADObject {
         'PageSize' = $PageSize
         'Credential' = $Credential
     }
-    # splat the appropriate arguments to Get-ADObject
-    $RawObject = Get-ADObject -ReturnRaw @Arguments
+    # splat the appropriate arguments to Get-ADObjectMod
+    $RawObject = Get-ADObjectMod -ReturnRaw @Arguments
     
     try {
         # get the modifiable object for this search result
@@ -18112,8 +18112,8 @@ function Invoke-DowngradeAccount {
             'Credential' = $Credential
         }
 
-        # splat the appropriate arguments to Get-ADObject
-        $UACValues = Get-ADObject @Arguments | select useraccountcontrol | ConvertFrom-UACValue
+        # splat the appropriate arguments to Get-ADObjectMod
+        $UACValues = Get-ADObjectMod @Arguments | select useraccountcontrol | ConvertFrom-UACValue
 
         if($Repair) {
 
@@ -18499,7 +18499,7 @@ function Get-ThisThingGroup {
 
             if ($UserName) {
                 # get the raw user object
-                $User = Get-ADObject -SamAccountName $UserName -Domain $Domain -DomainController $DomainController -Credential $Credential -ReturnRaw -PageSize $PageSize | Select-Object -First 1
+                $User = Get-ADObjectMod -SamAccountName $UserName -Domain $Domain -DomainController $DomainController -Credential $Credential -ReturnRaw -PageSize $PageSize | Select-Object -First 1
 
                 if($User) {
                     # convert the user to a directory entry
@@ -18515,7 +18515,7 @@ function Get-ThisThingGroup {
                         # ignore the built in groups
                         if($GroupSid -notmatch '^S-1-5-32-.*') {
                             if($FullData) {
-                                $Group = Get-ADObject -SID $GroupSid -PageSize $PageSize -Domain $Domain -DomainController $DomainController -Credential $Credential
+                                $Group = Get-ADObjectMod -SID $GroupSid -PageSize $PageSize -Domain $Domain -DomainController $DomainController -Credential $Credential
                                 $Group.PSObject.TypeNames.Add('PowerView.Group')
                                 $Group
                             }
@@ -19975,7 +19975,7 @@ function Find-GPOLocation {
                 if($OUComputers -isnot [System.Array]) {$OUComputers = @($OUComputers)}
 
                 ForEach ($TargetSid in $TargetObjectSIDs) {
-                    $Object = Get-ADObject -SID $TargetSid -Domain $Domain -DomainController $DomainController -Credential $Credential -PageSize $PageSize
+                    $Object = Get-ADObjectMod -SID $TargetSid -Domain $Domain -DomainController $DomainController -Credential $Credential -PageSize $PageSize
 
                     $IsGroup = @('268435456','268435457','536870912','536870913') -contains $Object.samaccounttype
 
@@ -20001,7 +20001,7 @@ function Find-GPOLocation {
         Get-ThisThingSite -Domain $Domain -DomainController $DomainController -GUID $GPOguid -PageSize $PageSize -FullData | ForEach-Object {
 
             ForEach ($TargetSid in $TargetObjectSIDs) {
-                $Object = Get-ADObject -SID $TargetSid -Domain $Domain -DomainController $DomainController -Credential $Credential -PageSize $PageSize
+                $Object = Get-ADObjectMod -SID $TargetSid -Domain $Domain -DomainController $DomainController -Credential $Credential -PageSize $PageSize
 
                 $IsGroup = @('268435456','268435457','536870912','536870913') -contains $Object.samaccounttype
 
@@ -20157,7 +20157,7 @@ function Find-GPOComputerAdmin {
 
             $GPOMembers | ForEach-Object {
                 # resolve this SID to a domain object
-                $Object = Get-ADObject -Domain $Domain -DomainController $DomainController -PageSize $PageSize -SID $_
+                $Object = Get-ADObjectMod -Domain $Domain -DomainController $DomainController -PageSize $PageSize -SID $_
 
                 $IsGroup = @('268435456','268435457','536870912','536870913') -contains $Object.samaccounttype
 
@@ -21990,7 +21990,7 @@ function Find-ManagedSecurityGroups {
     Get-ThisThingGroup -FullData -Filter '(managedBy=*)' | Select-Object -Unique distinguishedName,managedBy,cn | ForEach-Object {
 
         # Retrieve the object that the managedBy DN refers to
-        $group_manager = Get-ADObject -ADSPath $_.managedBy | Select-Object cn,distinguishedname,name,samaccounttype,samaccountname
+        $group_manager = Get-ADObjectMod -ADSPath $_.managedBy | Select-Object cn,distinguishedname,name,samaccounttype,samaccountname
 
         # Create a results object to store our findings
         $results_object = New-Object -TypeName PSObject -Property @{
