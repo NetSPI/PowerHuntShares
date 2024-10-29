@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.183
+# Version: v1.184
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -10674,6 +10674,49 @@ Invoke-HuntSMBShares -Threads 20 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\
 <script>
 
 // --------------------------
+// Dashboard Page: Dim Risk chart Items
+// --------------------------
+
+  function simulateLegendClick(seriesName) {
+    // Select the element with the class 'apexcharts-legend-series' and the specified series name
+    const legendItem = document.querySelector(``.apexcharts-legend-series[seriesname='`${seriesName}']``);
+
+    if (legendItem) {
+      // Create a new mouse click event
+      const clickEvent = new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        view: window
+      });
+      
+      // Dispatch the click event on the selected element
+      legendItem.dispatchEvent(clickEvent);
+      
+      console.log(``Simulated click on the legend item: `${seriesName}``);
+    } else {
+      console.log(``Legend item with series name '`${seriesName}' not found.``);
+    }
+  }
+  
+   // Use an interval to check if the legend item exists, then execute
+  window.addEventListener('load', function() {
+    const intervalId = setInterval(() => {
+      if (document.querySelector(``.apexcharts-legend-series[seriesname='Networks']``)) {
+        simulateLegendClick('Networks');
+        clearInterval(intervalId); // Clear the interval once executed
+      }
+	 if (document.querySelector(``.apexcharts-legend-series[seriesname='Computers']``)) {
+        simulateLegendClick('Computers');
+        clearInterval(intervalId); // Clear the interval once executed
+      }	  
+	if (document.querySelector(``.apexcharts-legend-series[seriesname='Shares']``)) {
+        simulateLegendClick('Shares');
+        clearInterval(intervalId); // Clear the interval once executed
+      }	  
+    }, 100); // Check every 100 milliseconds
+   });
+
+// --------------------------
 // Dashboard Page: Timeline Creation Chart
 // --------------------------
 
@@ -11650,7 +11693,7 @@ var maxValueOverall = Math.max(maxNetwork, maxComputer, maxShares, maxACEs);
 // Initialize ApexCharts
 const ChartDashboardRiskOptions = {
   series: [{
-    name: 'Network',
+    name: 'Networks',
     data: DataSeriesNetwork
   }, {
     name: 'Computers',
