@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.182
+# Version: v1.183
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -6666,7 +6666,7 @@ input[type="checkbox"]:checked::before {
     <div class="LargeCard" style="width:100%;">									
 		<div class="chart-container">
 		<div style="color:#4A4A4A;font-size: 16px; margin-top: 10px; margin-left: 10px; margin-bottom: 10px;"><strong>Asset Exposure Summary</strong></div>
-		<div style="margin-left: 10px; margin-right: 10px;  background-color: #edece8; border-left: 6px solid #DFDEDA; padding: 10px; border-radius: 6px; height:90px;">
+		<div style="margin-left: 10px; margin-right: 10px;  background-color: #faf7f7; border: .5px  solid #ebe8e8; padding: 10px; border-radius: 6px; height:90px;">
 		$ExcessiveSharePrivsCount ACL entries, on $ExcessiveSharesCount shares, hosted by $ComputerWithExcessive computers were found configured with excessive privileges on the $TargetDomain domain.		
 		</div>		
 			<! -- top -->
@@ -6747,7 +6747,7 @@ input[type="checkbox"]:checked::before {
     <div class="LargeCard" style="width:100%;">									
 		<div class="chart-container">
 		<div style="color:#4A4A4A;font-size: 16px; margin-top: 10px; margin-left: 10px; margin-bottom: 10px;"><strong>Affected Asset Peer Comparison</strong></div>
-		<div style="margin-left: 10px; margin-right: 10px;  background-color: #edece8; border-left: 6px solid #DFDEDA; padding: 10px; border-radius: 6px; height:90px;">	
+		<div style="margin-left: 10px; margin-right: 10px;  background-color: #faf7f7; border: .5px  solid #ebe8e8; padding: 10px; border-radius: 6px; height: 90px;">	
 		Below is a comaprison between the percent of affected assets in this environment and the average percent of 
 		affected assets observed in other environments. The percentage is calculated based on the total number of 
 		live assets discovered for each asset type.		
@@ -6768,7 +6768,7 @@ input[type="checkbox"]:checked::before {
 <div class="LargeCard" style="width:96%;">	
 	<div style="margin-left: 10px; width: 99%; margin-bottom: 10px;">
 		<div style="color:#4A4A4A;font-size: 16px; margin-top: 10px; margin-left: 10px; margin-bottom: 10px;"><strong>Share Creation Timeline</strong></div>		
-		<div style = "width: 98%; margin-left: 10px;">
+		<div style="width: 97%; margin-left: 10px; margin-right: 10px;  background-color: #faf7f7; border: .5px  solid #ebe8e8; padding: 10px; border-radius: 6px; height:120px;">
 		Below is a time series chart to help provide a sense of when shares were created and at what point critical and high risk shares were introduced into the environment.
 		By reading the chart left to right, you can see that shares were created in this environment between $ShareFirstDate and $ShareLastDate. You can zoom into any section of the chart by clicking or using the chart controls in the upper right hand corner of the chart.    
 		$ShareCriticalTime
@@ -6779,7 +6779,7 @@ input[type="checkbox"]:checked::before {
 		</div>
 	 </div>
 	 
-	 <div class="LargeCard" style="width:96%;">	
+	 <div class="LargeCard" style="width:96%;margin-left: 20px;">	
 			<a href="#" id="DashLink" style="text-decoration:none;">
 			</a>																	
 			<div class="chart-container">
@@ -6795,7 +6795,7 @@ input[type="checkbox"]:checked::before {
 <div class="LargeCard" style="width:96%;">	
                      <div style="margin-left: 10px; width: 99%; margin-bottom: 10px;">
                         <div style="color:#4A4A4A;font-size: 16px; margin-top: 10px; margin-left: 10px; margin-bottom: 10px;"><strong>Remediation & Prioritization Recommendations</strong></div>
-                        <div style = "width: 98%; margin-left: 10px;">      
+                        <div style="width: 97%; margin-left: 10px; margin-right: 10px;  background-color: #faf7f7; border: .5px  solid #ebe8e8; padding: 10px; border-radius: 6px; height:165px;">
 	                    Remediate share ACEs by risk level, starting with critical and high risks. Review the share creation timeline and share name details from other sections for additional context.
 						Consider remediating mutliple ACEs at one time based on natural share groupings to reduce the number of remediation tasks.<br><br>
 						Group Examples:
@@ -6808,7 +6808,7 @@ input[type="checkbox"]:checked::before {
                      </div>
 					 </div>
 
-		            <div class="LargeCard" style="width:96%;">	
+		            <div class="LargeCard" style="width:96%; margin-left: 20px;">	
 							<a href="#" id="DashLink" style="text-decoration:none;">
 							</a>
 																	
