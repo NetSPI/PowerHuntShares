@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.180
+# Version: v1.182
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -1869,7 +1869,7 @@ function Invoke-HuntSMBShares
         }        
 
         # Generate counts for dashabord summary and for "Recovered Secrets" Page
-        $SecretsRecoveredCount = $MySecretsTbl | Select-Object ComputerName, ShareName, UncFilePath, FileName, Section, ObjectName, TargetURL, TargetServer, TargetPort, Database, Domain, Username, Password, PasswordEnc, KeyFilePath -Unique | measure | select count -ExpandProperty count 
+        $SecretsRecoveredCount = $MySecretsTbl | Where ComputerName -NotLike "" | Select-Object ComputerName, ShareName, UncFilePath, FileName, Section, ObjectName, TargetURL, TargetServer, TargetPort, Database, Domain, Username, Password, PasswordEnc, KeyFilePath -Unique | measure | select count -ExpandProperty count 
 
         # Generate count of file that secrests were recovered from (instead of total recovered secrets)
         $SecretsRecoveredFileCount = $MySecretsTbl | Select-Object UncFilePath -Unique | measure | select count -ExpandProperty count 
@@ -1976,7 +1976,6 @@ function Invoke-HuntSMBShares
            # Output or append the generated HTML table row
            $MySecretsTbl
         }
-
 
         # ----------------------------------------------------------------------
         # Create Share Name Application Fingerprint Library
@@ -2505,41 +2504,61 @@ function Invoke-HuntSMBShares
         # Return it
         $SubnetSummaryHTML = "$HTMLSTART $HTMLTableColumn $HTMLTableRow $HTMLEND"   
 
-        # Create network risk table data
+        # Create network risk table data - each network is placed in one severity - the highest
         $SubnetTotalLow      = 0
         $SubnetTotalMedium   = 0
         $SubnetTotalHigh     = 0
         $SubnetTotalCritical = 0
+
+        # Create totals affected for each severity
+        $AllNetworksWithCriticalCount  = 0
+        $AllNetworksWithHighCount      = 0
+		$AllNetworksWithMediumCount    = 0
+		$AllNetworksWithLowCount       = 0
+
         $SubnetSummary |
         foreach{
+
+            $CumulativeSevScore = 0
                 
             # Get subnet without trailing .0
             $SubnetIp     = $_.Subnet
             $SubnetIpBase = ($SubnetIp  -split '\.')[0..2] -join '.'
 
             # Get Low count for subnet
-            $SubnetCountLow         = $ExcessiveSharePrivsFinal | where IpAddress -like "$SubnetIpBase*" | where RiskLevel -eq 'Low' | measure | select count -ExpandProperty count    
+            $SubnetCountLow                  = $ExcessiveSharePrivsFinal | where IpAddress -like "$SubnetIpBase*" | where RiskLevel -eq 'Low' | measure | select count -ExpandProperty count    
             if($SubnetCountLow -gt 0){
-                $SubnetTotalLow     = $SubnetTotalLow  + 1
+                $AllNetworksWithLowCount     = $AllNetworksWithLowCount  + 1
+                $CumulativeSevScore          = $CumulativeSevScore + 1
             }
             
             # Get Medium count for subnet
-            $SubnetCountMedium      = $ExcessiveSharePrivsFinal | where IpAddress -like "$SubnetIpBase*" | where RiskLevel -eq 'Medium' | measure | select count -ExpandProperty count  
+            $SubnetCountMedium               = $ExcessiveSharePrivsFinal | where IpAddress -like "$SubnetIpBase*" | where RiskLevel -eq 'Medium' | measure | select count -ExpandProperty count  
             if( $SubnetCountMedium -gt 0){
-                $SubnetTotalMedium  = $SubnetTotalMedium + 1
+                $AllNetworksWithMediumCount  = $AllNetworksWithMediumCount + 1
+                $CumulativeSevScore          = $CumulativeSevScore + 1
             }
             
             # Get High count for subnet
             $SubnetCountHigh        = $ExcessiveSharePrivsFinal | where IpAddress -like "$SubnetIpBase*" | where RiskLevel -eq 'High' | measure | select count -ExpandProperty count  
             if($SubnetCountHigh -gt 0){
-                $SubnetTotalHigh    = $SubnetTotalHigh  + 1
+                $AllNetworksWithHighCount    = $AllNetworksWithHighCount  + 1
+                $CumulativeSevScore          = $CumulativeSevScore + 1
             }
             
             # Get Critical count for subnet
-            $SubnetCountCritical      = $ExcessiveSharePrivsFinal | where IpAddress -like "$SubnetIpBase*" | where RiskLevel -eq 'Critical' | measure | select count -ExpandProperty count                                                          
+            $SubnetCountCritical               = $ExcessiveSharePrivsFinal | where IpAddress -like "$SubnetIpBase*" | where RiskLevel -eq 'Critical' | measure | select count -ExpandProperty count                                                          
             if($SubnetCountCritical -gt 0){
-                $SubnetTotalCritical  = $SubnetTotalCritical  + 1
+                $AllNetworksWithCriticalCount  = $AllNetworksWithCriticalCount  + 1
+                $CumulativeSevScore            = $CumulativeSevScore + 1
             }
+
+            # Check count to determine the highest severity for each network
+            if ($CumulativeSevScore -eq 1){$SubnetTotalLow      = $SubnetTotalLow       + 1}
+            if ($CumulativeSevScore -eq 2){$SubnetTotalMedium   = $SubnetTotalMedium    + 1}
+            if ($CumulativeSevScore -eq 3){$SubnetTotalHigh     = $SubnetTotalHigh      + 1}
+            if ($CumulativeSevScore -eq 4){$SubnetTotalCritical = $SubnetTotalCritical  + 1}
+
         }
 
         # Construct the array with the desired pattern
@@ -2629,11 +2648,17 @@ function Invoke-HuntSMBShares
         # Create Computer Insights Summary Information
         # ---------------------------------------------------------------------- 
 
-        # Reset global computer risk levels
+        # Reset global computer risk levels - one severity per computer, the highest one.
         $RiskLevelComputersCountCritical = 0
         $RiskLevelComputersCountHigh     = 0
         $RiskLevelComputersCountMedium   = 0
         $RiskLevelComputersCountLow      = 0
+
+        # Total Computers Affected by Severity - one computer may have many
+		$AllComputersWithCriticalCount = $ExcessiveSharePrivsFinal | where RiskLevel -eq 'Critical' | Select ComputerName -Unique | Measure | Select Count -ExpandProperty Count
+        $AllComputersWithHighCount     = $ExcessiveSharePrivsFinal | where RiskLevel -eq 'High'     | Select ComputerName -Unique | Measure | Select Count -ExpandProperty Count
+		$AllComputersWithMediumCount   = $ExcessiveSharePrivsFinal | where RiskLevel -eq 'Medium'   | Select ComputerName -Unique | Measure | Select Count -ExpandProperty Count
+		$AllComputersWithLowCount      = $ExcessiveSharePrivsFinal | where RiskLevel -eq 'Low'      | Select ComputerName -Unique | Measure | Select Count -ExpandProperty Count
 
         # Rest row data
         $ComputerTableRows = ""
@@ -2645,6 +2670,10 @@ function Invoke-HuntSMBShares
         # Get computer count
         $ComputersChartCount      = $ComputerPageComputerList | measure | select count -ExpandProperty count # Unique folder group
 
+        
+        # Initialize an empty array to store os counts for vulnerabile computers
+        $OperatingSystemCounts = @()
+
         # Process each computer & add data to final risk counts
         $ComputerPageComputerList |
         foreach {
@@ -2654,6 +2683,16 @@ function Invoke-HuntSMBShares
 
              # Get os version
              $ComputerPageOS = $DomainComputers | Where ComputerName -eq $TargetComputers | Select OperatingSystem -ExpandProperty OperatingSystem
+
+             # Add or increment OS
+             $item = $OperatingSystemCounts | Where-Object { $_.Name -eq $ComputerPageOS }
+             if ($item) {
+                # If the item exists, increment its Value by 1
+                $item.Value += 1
+             } else {
+                # If the item does not exist, add it with the specified value
+                $OperatingSystemCounts += @{Name = $ComputerPageOS; Value = 1}
+             }
 
              # Grab the risk level for the highest risk acl for the share name
              $ComputersTopACLRiskScore = $ExcessiveSharePrivsFinal | where ComputerName -eq $TargetComputers  | select RiskScore | sort RiskScore -Descending | select -First 1  | select RiskScore -ExpandProperty RiskScore
@@ -2766,7 +2805,7 @@ function Invoke-HuntSMBShares
         # Get count of unique operating systems
         $DomainComputerOSCount = $DomainComputerOSList | measure | select count -ExpandProperty count
 
-        # Get count of each operating system - the counts are off
+        # Get count of each operating system 
         $DomainComputerOSSum = $DomainComputerOSList | 
         Foreach {
             
@@ -2792,10 +2831,10 @@ function Invoke-HuntSMBShares
         # Create java script chart objects - names
         $DomainComputerOSListJsNames  = ""
         $DomainComputerOSListJsValues = ""
-        $DomainComputerOSSum |
+        $OperatingSystemCounts |
         foreach{
-            $TargetOSName  = $_.os 
-            $TargetOSValue = $_.count
+            $TargetOSName  = $_.Name 
+            $TargetOSValue = $_.Value
             $DomainComputerOSListJsNames  = $DomainComputerOSListJsNames  + ",'" + $TargetOSName + "'"
             $DomainComputerOSListJsValues = $DomainComputerOSListJsValues + "," + $TargetOSValue
         }
@@ -2812,6 +2851,12 @@ function Invoke-HuntSMBShares
         # ----------------------------------------------------------------------
         # Create Share Name Insights Data
         # ----------------------------------------------------------------------  
+
+        # Total Shares Affected by Severity - one computer may have many
+        $AllSharesWithCriticalCount = $ExcessiveSharePrivsFinal | where RiskLevel -eq 'Critical' | Select SharePath -Unique | Measure | Select Count -ExpandProperty Count
+        $AllSharesWithHighCount     = $ExcessiveSharePrivsFinal | where RiskLevel -eq 'High'     | Select SharePath -Unique | Measure | Select Count -ExpandProperty Count
+		$AllSharesWithMediumCount   = $ExcessiveSharePrivsFinal | where RiskLevel -eq 'Medium'   | Select SharePath -Unique | Measure | Select Count -ExpandProperty Count
+		$AllSharesWithLowCount      = $ExcessiveSharePrivsFinal | where RiskLevel -eq 'Low'      | Select SharePath -Unique | Measure | Select Count -ExpandProperty Count
 
         # Get unique share name count
         $ShareNameChartCount       = $ExcessiveSharePrivsFinal | where ShareName -ne "" | select ShareName -Unique | 
@@ -3001,6 +3046,100 @@ function Invoke-HuntSMBShares
           $SanKeyLow = ""
         }
 
+        <# HTML apexcharts.js sankey chart example
+
+        // --------------------------
+        // Dashboard Page: Sankey Chart
+        // --------------------------
+
+
+          const SankeyData = {
+          nodes: [
+            {
+              id: 'Networks ($SubnetsCount)',
+              title: 'Networks ($SubnetsCount)',
+              color: '#6f5420',
+            },
+            {
+              id: 'Computers ($ComputerWithExcessive)',
+              title: 'Computers ($ComputerWithExcessive)',
+              color: '#7D825E',
+            },
+            {
+              id: 'Shares ($ExcessiveSharesCount)',
+              title: 'Shares ($ExcessiveSharesCount)',
+              color: '#f29650', 
+            },
+            {
+              id: 'ACEs ($ExcessiveSharePrivsCount)',
+              title: 'ACEs ($ExcessiveSharePrivsCount)',
+              color: '#345367', 
+            },
+            {
+              id: 'Critical ($RiskLevelCountCritical)',
+              title: 'Critical ($RiskLevelCountCritical)',
+              color: '#772400', 
+            },
+            {
+              id: 'High ($RiskLevelCountHigh)',
+              title: 'High ($RiskLevelCountHigh)',
+              color: '#f56a00', 
+            },
+            {
+              id: 'Medium ($RiskLevelCountMedium)',
+              title: 'Medium ($RiskLevelCountMedium)',
+              color: '#6f5420', 
+            },
+            {
+              id: 'Low ($RiskLevelCountLow)',
+              title: 'Low ($RiskLevelCountLow)',
+              color: '#f3f1e6', 
+            },
+          ],
+          edges: [
+              {
+              source: 'Networks ($SubnetsCount)',
+              target: 'Computers ($ComputerWithExcessive)',
+              value: $ComputerWithExcessive,
+              color: '#000', // Custom color for this edge 
+            },
+            {
+              source: 'Computers ($ComputerWithExcessive)',
+              target: 'Shares ($ExcessiveSharesCount)',
+              value: $ExcessiveSharesCount,
+              color: '#000', // Custom color for this edge
+            },
+            {
+              source: 'Shares ($ExcessiveSharesCount)',
+              target: 'ACEs ($ExcessiveSharePrivsCount)',
+              value: $ExcessiveSharePrivsCount,
+              color: '#000', // Custom color for this edge
+            },    
+            $SanKeyCritical
+            $SanKeyHigh
+            $SanKeyMedium
+            $SanKeyLow
+          ],
+        };
+
+        const graphOptions = {
+          nodeWidth: 10,
+          fontFamily: 'Quicksand, sans-serif', 
+          fontSize: '14px',  
+          fontWeight: 400,
+          fontColor: '#345367',
+          height: 200,
+          width: 1200,
+          spacing: 10, // margin
+          enableTooltip: true,
+          canvasStyle: 'border: 0px solid #caced0;',
+        };
+        const s = new ApexSankey(document.getElementById('svg-sankey'), graphOptions);
+        s.render(SankeyData);
+
+
+        #>
+
         # ----------------------------------------------------------------------
         # Generate Share Creation Timeline Data Series Objects
         # ---------------------------------------------------------------------- 
@@ -3096,7 +3235,7 @@ function Invoke-HuntSMBShares
         }
 
         if($ShareCriticalHighCheck -eq 1){
-            $ShareCriticalHighLine = "The orange and red trend areas reflect the cumulative number of critical and high risk shares in the environment so you can easily observe when/if they were introduced."
+            $ShareCriticalHighLine = "The red and purple trend lines reflect the cumulative number of critical and high risk shares in the environment so you can easily observe when/if they were introduced."
         }
 
         
@@ -5425,10 +5564,6 @@ $NewHtmlReport = @"
 		text-decoration:underline
 	}
 	
-	li{
-		list-style-type:none
-	}
-	
 	.mobile{
 		display:none;
 		height:0;
@@ -6225,24 +6360,24 @@ input[type="checkbox"]:checked::before {
     <br>
 
 	<div id="tabs" class="tabs" data-tabs-ignore-url="false">			
-		<label id="noactionmenuheader1"class="tabLabel" style="background-color: transparent; width:100%;color:#F56A00;padding-top:6px;padding-bottom:3px;margin-top:5px;margin-bottom:0px;font-weight:bolder;"><Strong>RESULTS</Strong></label>
-		<label id="btnsummary" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('dashboard');radiobtn.checked = true;updateLabelColors('tabs', 'btnsummary');">Summary Report</label>
-		<label id="btnscaninfo" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('home');radiobtn.checked = true;updateLabelColors('tabs', 'btnscaninfo');">Scan Information</label>		
-		<label id="noactionmenuheader2"class="tabLabel" style="background-color: transparent;width:100%;color:#F56A00;padding-top:6px;padding-bottom:3px;margin-top:5px;margin-bottom:0px;font-weight:bolder;border-top: 0.25px solid rgba(53, 67, 103, 0.5);"><Strong>EXPLORE</Strong></label>
-        <label id="btnnetworks" href="#" class="stuff" style="width:100%;" onclick="radiobtn = document.getElementById('SubNets');radiobtn.checked = true;updateLabelColors('tabs', 'btnnetworks');">Networks</label>	
-        <label id="btncomputers" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ComputerInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btncomputers');">Computers</label>	  	  			
-		<label id="btnshares" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;updateLabelColors('tabs', 'btnshares');">Share Names</label>					
-		<label id="btnfgs" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareFolders');radiobtn.checked = true;updateLabelColors('tabs', 'btnfgs');">Folder Groups</label>
-        <label id="btnaces" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnaces');">Insecure ACEs</label>
-        <label id="btnidentities" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('IdentityInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnidentities');">Identities</label>
-        <label id="btnShareGraph" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('ShareGraph');radiobtn.checked = true;updateLabelColors('tabs', 'btnShareGraph');">ShareGraph</label>	
-        <label id="noactionmenuheader2"class="tabLabel" style="background-color: transparent;width:100%;color:#F56A00;padding-top:6px;padding-bottom:3px;margin-top:5px;margin-bottom:0px;font-weight:bolder;border-top: 0.25px solid rgba(53, 67, 103, 0.5);"><Strong>TARGET</Strong></label>			
-        <label id="btnif" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF');updateLabelColors('tabs', 'btnif');">Interesting Files</label>			        			
-        <label id="btnSecretsPage" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('SecretsPage');radiobtn.checked = true;updateLabelColors('tabs', 'btnSecretsPage');">Extracted Secrets</label>	        
-		<label id="noactionmenuheader3"class="tabLabel" style="background-color: transparent;width:100%;color:#F56A00;padding-top:6px;padding-bottom:3px;margin-top:5px;margin-bottom:0px;font-weight:bolder;border-top: 0.25px solid rgba(53, 67, 103, 0.5);"><strong>ACT</strong></label>
-		<label id="btnexploit" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Attacks');radiobtn.checked = true;updateLabelColors('tabs', 'btnexploit');">Exploit</label>		
-		<label id="btndetect" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Detections');radiobtn.checked = true;updateLabelColors('tabs', 'btndetect');">Detect</label>
-		<label id="btnprioritize" href="#" class="stuff" style="width:100%;" onClick="radiobtn = document.getElementById('Remediation');radiobtn.checked = true;updateLabelColors('tabs', 'btnprioritize');">Remediate</label>	        		
+		<label id="noactionmenuheader1"class="tabLabel"   style="background-color: transparent; width:100%;color:#F56A00;padding-top:6px;padding-bottom:3px;margin-top:5px;margin-bottom:0px;font-weight:bolder;"><Strong>RESULTS</Strong></label>
+		<label id="btnsummary" href="#" class="stuff"     style="margin-top: 2px; margin-bottom: 2px; display: flex; align-items: center; width:100%;" onClick="radiobtn = document.getElementById('dashboard');radiobtn.checked = true;updateLabelColors('tabs', 'btnsummary');"><img src="data:image/svg+xml;base64, PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGZpbGw9Im5vbmUiIHZpZXdCb3g9Ii0wLjUgLTAuNSAxNSAxNSIgaWQ9IkNyZWF0ZS1DaGFydC0tU3RyZWFtbGluZS1VbHRpbWF0ZS5zdmciIGhlaWdodD0iMTUiIHdpZHRoPSIxNSI+PGRlc2M+Q3JlYXRlIENoYXJ0IFN0cmVhbWxpbmUgSWNvbjogaHR0cHM6Ly9zdHJlYW1saW5laHEuY29tPC9kZXNjPjxwYXRoIGZpbGw9IiNjNGM0YzgiIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTAgMS42MDQxNjY2NjY2NjY2NjY3QzAgMC43MjA4Nzc1MDAwMDAwMDAxIDAuNzIwODc3NTAwMDAwMDAwMSAwIDEuNjA0MTY2NjY2NjY2NjY2NyAwaDEwLjc5MTY2NjY2NjY2NjY2OEMxMy4yNzkxMTY2NjY2NjY2NjcgMCAxNCAwLjcyMDg3NzUwMDAwMDAwMDEgMTQgMS42MDQxNjY2NjY2NjY2NjY3djEwLjc5MTY2NjY2NjY2NjY2OGMwIDAuODgzMjgzMzMzMzMzMzMzNCAtMC43MjA4ODMzMzMzMzMzMzM0IDEuNjA0MTY2NjY2NjY2NjY2NyAtMS42MDQxNjY2NjY2NjY2NjY3IDEuNjA0MTY2NjY2NjY2NjY2N0gxLjYwNDE2NjY2NjY2NjY2NjdDMC43MjA4Nzc1MDAwMDAwMDAxIDE0IDAgMTMuMjc5MTE2NjY2NjY2NjY3IDAgMTIuMzk1ODMzMzMzMzMzMzM0VjEuNjA0MTY2NjY2NjY2NjY2N1ptNi4xNTMxMTY2NjY2NjY2NjcgMS43NDg5NzkxNjY2NjY2NjY4YzAuMTMzMTE2NjY2NjY2NjY2NjYgLTAuMTMzMTE2NjY2NjY2NjY2NjYgMC4zMTc4NTgzMzMzMzMzMzM0IC0wLjIwMzEzNDE2NjY2NjY2NjY3IDAuNTI2MDUgLTAuMjAzMTM0MTY2NjY2NjY2NjdoMC41ODMzMzMzMzMzMzMzMzM0YzAuMjA4MTMzMzMzMzMzMzMzMzQgMCAwLjM5Mjg3NTAwMDAwMDAwMDAzIDAuMDcwMDE3NSAwLjUyNTk5MTY2NjY2NjY2NjYgMC4yMDMxMzQxNjY2NjY2NjY2NyAwLjEzMzExNjY2NjY2NjY2NjY2IDAuMTMzMTEwODMzMzMzMzMzMzQgMC4yMDMxNzUwMDAwMDAwMDAwMiAwLjMxNzg5MzMzMzMzMzMzMzM2IDAuMjAzMTc1MDAwMDAwMDAwMDIgMC41MjYwMzI1VjEwLjc2MjUwMDAwMDAwMDAwMWMwIDAuMjA4MTMzMzMzMzMzMzMzMzQgLTAuMDcwMDU4MzMzMzMzMzMzMzMgMC4zOTI5MzMzMzMzMzMzMzMzNiAtMC4yMDMxNzUwMDAwMDAwMDAwMiAwLjUyNjA1IC0wLjEzMzExNjY2NjY2NjY2NjY2IDAuMTMzMTE2NjY2NjY2NjY2NjYgLTAuMzE3ODU4MzMzMzMzMzMzNCAwLjIwMzExNjY2NjY2NjY2NjcgLTAuNTI1OTkxNjY2NjY2NjY2NiAwLjIwMzExNjY2NjY2NjY2NjdoLTAuNTgzMzMzMzMzMzMzMzMzNGMtMC4yMDgxOTE2NjY2NjY2NjY2NiAwIC0wLjM5MjkzMzMzMzMzMzMzMzM2IC0wLjA3IC0wLjUyNjA1IC0wLjIwMzExNjY2NjY2NjY2NjcgLTAuMTMzMTE2NjY2NjY2NjY2NjYgLTAuMTMzMTE2NjY2NjY2NjY2NjYgLTAuMjAzMTE2NjY2NjY2NjY2NyAtMC4zMTc5MTY2NjY2NjY2NjY3NCAtMC4yMDMxMTY2NjY2NjY2NjY3IC0wLjUyNjA1VjMuODc5MTc4MzMzMzMzMzMzNGMwIC0wLjIwODEzOTE2NjY2NjY2NjY4IDAuMDcgLTAuMzkyOTIxNjY2NjY2NjY2NjcgMC4yMDMxMTY2NjY2NjY2NjY3IC0wLjUyNjAzMjVabS0zLjcyNTc1IDUuMjQ5OTcwODMzMzMzMzM0YzAuMTMzMTEwODMzMzMzMzMzMzQgLTAuMTMzMDU4MzMzMzMzMzMzMzMgMC4zMTc4OTMzMzMzMzMzMzMzNiAtMC4yMDMxMTY2NjY2NjY2NjY3IDAuNTI2MDM4MzMzMzMzMzMzNCAtMC4yMDMxMTY2NjY2NjY2NjY3aDAuNTgzMzMzMzMzMzMzMzMzNGMwLjIwODEzOTE2NjY2NjY2NjY4IDAgMC4zOTI5MjE2NjY2NjY2NjY2NyAwLjA3MDA1ODMzMzMzMzMzMzMzIDAuNTI2MDMyNSAwLjIwMzExNjY2NjY2NjY2NjcgMC4xMzMxMTY2NjY2NjY2NjY2NiAwLjEzMzExNjY2NjY2NjY2NjY2IDAuMjAzMTM0MTY2NjY2NjY2NjcgMC4zMTc5MTY2NjY2NjY2NjY3NCAwLjIwMzEzNDE2NjY2NjY2NjY3IDAuNTI2MDV2MS42MzMzMzMzMzMzMzMzMzMzYzAgMC4yMDgxMzMzMzMzMzMzMzMzNCAtMC4wNzAwMTc1IDAuMzkyOTMzMzMzMzMzMzMzMzYgLTAuMjAzMTM0MTY2NjY2NjY2NjcgMC41MjYwNSAtMC4xMzMxMTA4MzMzMzMzMzMzNCAwLjEzMzExNjY2NjY2NjY2NjY2IC0wLjMxNzg5MzMzMzMzMzMzMzM2IDAuMjAzMTE2NjY2NjY2NjY2NyAtMC41MjYwMzI1IDAuMjAzMTE2NjY2NjY2NjY2N2gtMC41ODMzMzMzMzMzMzMzMzM0Yy0wLjIwODE0NTAwMDAwMDAwMDAyIDAgLTAuMzkyOTI3NTAwMDAwMDAwMDQgLTAuMDcgLTAuNTI2MDM4MzMzMzMzMzMzNCAtMC4yMDMxMTY2NjY2NjY2NjY3IC0wLjEzMzExNjY2NjY2NjY2NjY2IC0wLjEzMzExNjY2NjY2NjY2NjY2IC0wLjIwMzEyODMzMzMzMzMzMzMzIC0wLjMxNzkxNjY2NjY2NjY2Njc0IC0wLjIwMzEyODMzMzMzMzMzMzMzIC0wLjUyNjA1di0xLjYzMzMzMzMzMzMzMzMzMzNjMCAtMC4yMDgxMzMzMzMzMzMzMzMzNCAwLjA3MDAxMTY2NjY2NjY2NjY3IC0wLjM5MjkzMzMzMzMzMzMzMzM2IDAuMjAzMTI4MzMzMzMzMzMzMzMgLTAuNTI2MDVabTcuNDUxNSAtMi4zMzMzMzMzMzMzMzMzMzM1YzAuMTMzMDU4MzMzMzMzMzMzMzMgLTAuMTMzMDU4MzMzMzMzMzMzMzMgMC4zMTc4NTgzMzMzMzMzMzM0IC0wLjIwMzExNjY2NjY2NjY2NjcgMC41MjU5OTE2NjY2NjY2NjY2IC0wLjIwMzExNjY2NjY2NjY2NjdoMC41ODMzMzMzMzMzMzMzMzM0YzAuMjA4MTMzMzMzMzMzMzMzMzQgMCAwLjM5MjkzMzMzMzMzMzMzMzM2IDAuMDcwMDU4MzMzMzMzMzMzMzMgMC41MjYwNSAwLjIwMzExNjY2NjY2NjY2NjcgMC4xMzMxMTY2NjY2NjY2NjY2NiAwLjEzMzExNjY2NjY2NjY2NjY2IDAuMjAzMTE2NjY2NjY2NjY2NyAwLjMxNzkxNjY2NjY2NjY2Njc0IDAuMjAzMTE2NjY2NjY2NjY2NyAwLjUyNjA1djMuOTY2NjY2NjY2NjY2NjY3YzAgMC4yMDgxMzMzMzMzMzMzMzMzNCAtMC4wNyAwLjM5MjkzMzMzMzMzMzMzMzM2IC0wLjIwMzExNjY2NjY2NjY2NjcgMC41MjYwNSAtMC4xMzMxMTY2NjY2NjY2NjY2NiAwLjEzMzExNjY2NjY2NjY2NjY2IC0wLjMxNzkxNjY2NjY2NjY2Njc0IDAuMjAzMTE2NjY2NjY2NjY2NyAtMC41MjYwNSAwLjIwMzExNjY2NjY2NjY2NjdoLTAuNTgzMzMzMzMzMzMzMzMzNGMtMC4yMDgxMzMzMzMzMzMzMzMzNCAwIC0wLjM5MjkzMzMzMzMzMzMzMzM2IC0wLjA3IC0wLjUyNTk5MTY2NjY2NjY2NjYgLTAuMjAzMTE2NjY2NjY2NjY2NyAtMC4xMzMxMTY2NjY2NjY2NjY2NiAtMC4xMzMxMTY2NjY2NjY2NjY2NiAtMC4yMDMxNzUwMDAwMDAwMDAwMiAtMC4zMTc5MTY2NjY2NjY2NjY3NCAtMC4yMDMxNzUwMDAwMDAwMDAwMiAtMC41MjYwNXYtMy45NjY2NjY2NjY2NjY2NjdjMCAtMC4yMDgxMzMzMzMzMzMzMzMzNCAwLjA3MDA1ODMzMzMzMzMzMzMzIC0wLjM5MjkzMzMzMzMzMzMzMzM2IDAuMjAzMTc1MDAwMDAwMDAwMDIgLTAuNTI2MDVaIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZS13aWR0aD0iMSI+PC9wYXRoPjwvc3ZnPg==" />&nbsp;&nbsp;Summary Report</label>
+		<label id="btnscaninfo" href="#" class="stuff"    style="margin-top: 2px; margin-bottom: 2px; display: flex; align-items: center; width:100%;" onClick="radiobtn = document.getElementById('home');radiobtn.checked = true;updateLabelColors('tabs', 'btnscaninfo');"><img src="data:image/svg+xml;base64, PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9Ii0wLjUgLTAuNSAxNSAxNSIgaWQ9IlBvY2tldC1DYXN0cy1Mb2dvLS1TdHJlYW1saW5lLVVsdGltYXRlLnN2ZyIgaGVpZ2h0PSIxNSIgd2lkdGg9IjE1Ij48ZGVzYz5Qb2NrZXQgQ2FzdHMgTG9nbyBTdHJlYW1saW5lIEljb246IGh0dHBzOi8vc3RyZWFtbGluZWhxLmNvbTwvZGVzYz48cGF0aCBkPSJNNyAwYTcgNyAwIDEgMCA3IDdBNyA3IDAgMCAwIDcgMFptMCA4Ljc1djEuMTY2NjY2NjY2NjY2NjY2N2EyLjkxNjY2NjY2NjY2NjY2NyAyLjkxNjY2NjY2NjY2NjY2NyAwIDEgMSAyLjkxNjY2NjY2NjY2NjY2NyAtMi45MTY2NjY2NjY2NjY2NjdoLTEuMTY2NjY2NjY2NjY2NjY2N2ExLjc1IDEuNzUgMCAxIDAgLTEuNzUgMS43NVptMCAtNS44MzMzMzMzMzMzMzMzMzRhNC4wODMzMzMzMzMzMzMzMzQgNC4wODMzMzMzMzMzMzMzMzQgMCAwIDAgMCA4LjE2NjY2NjY2NjY2NjY2OHYxLjE2NjY2NjY2NjY2NjY2NjdhNS4yNSA1LjI1IDAgMSAxIDUuMjUgLTUuMjVoLTEuMTY2NjY2NjY2NjY2NjY2N2E0LjA4MzMzMzMzMzMzMzMzNCA0LjA4MzMzMzMzMzMzMzMzNCAwIDAgMCAtNC4wODMzMzMzMzMzMzMzMzQgLTQuMDgzMzMzMzMzMzMzMzM0WiIgZmlsbD0iI2M0YzRjOCIgc3Ryb2tlLXdpZHRoPSIxIj48L3BhdGg+PC9zdmc+" />&nbsp;&nbsp;Scan Info</label>		
+		<label id="noactionmenuheader2"class="tabLabel"   style="margin-top: 2px; background-color: transparent;width:100%;color:#F56A00;padding-top:6px;padding-bottom:3px;margin-top:5px;margin-bottom:0px;font-weight:bolder;border-top: 0.25px solid rgba(53, 67, 103, 0.5);"><Strong>EXPLORE</Strong></label>
+        <label id="btnnetworks" href="#" class="stuff"    style="margin-top: 2px; margin-bottom: 2px; display: flex; align-items: center; width:100%;" onclick="radiobtn = document.getElementById('SubNets');radiobtn.checked = true;updateLabelColors('tabs', 'btnnetworks');"><img src="data:image/svg+xml;base64, PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9Ii0wLjUgLTAuNSAxNSAxNSIgaWQ9IkVhcnRoLTMtLVN0cmVhbWxpbmUtVWx0aW1hdGUuc3ZnIiBoZWlnaHQ9IjE1IiB3aWR0aD0iMTUiPjxkZXNjPkVhcnRoIDMgU3RyZWFtbGluZSBJY29uOiBodHRwczovL3N0cmVhbWxpbmVocS5jb208L2Rlc2M+PGc+PHBhdGggZD0iTTkuMDgyNTAwMDAwMDAwMDAxIDMuMjA4MzMzMzMzMzMzMzMzNWEwLjE0IDAuMTQgMCAwIDAgMC4xMjI1IC0wLjA2NDE2NjY2NjY2NjY2NjY4IDAuMTQgMC4xNCAwIDAgMCAwIC0wLjEzNDE2NjY2NjY2NjY2NjY4QTUuNzA1IDUuNzA1IDAgMCAwIDcuMDc1ODMzMzMzMzMzMzM0NSAwLjI1MDgzMzMzMzMzMzMzMzM1YTAuMTQgMC4xNCAwIDAgMCAtMC4xNTE2NjY2NjY2NjY2NjY2NyAwIDUuNzA1IDUuNzA1IDAgMCAwIC0yLjE0NjY2NjY2NjY2NjY2NyAyLjc1OTE2NjY2NjY2NjY2NyAwLjE0IDAuMTQgMCAwIDAgMCAwLjEzNDE2NjY2NjY2NjY2NjY4IDAuMTQgMC4xNCAwIDAgMCAwLjEyMjUgMC4wNjQxNjY2NjY2NjY2NjY2OFoiIGZpbGw9IiNjNGM0YzgiIHN0cm9rZS13aWR0aD0iMSI+PC9wYXRoPjxwYXRoIGQ9Ik0xMC43NjgzMzMzMzMzMzMzMzQgNi40MTY2NjY2NjY2NjY2NjdhMC4xNTE2NjY2NjY2NjY2NjY2NyAwLjE1MTY2NjY2NjY2NjY2NjY3IDAgMCAwIDAuMTQ1ODMzMzMzMzMzMzMzMzQgMC4xNGgyLjkxNjY2NjY2NjY2NjY2N2EwLjE1NzUwMDAwMDAwMDAwMDAzIDAuMTU3NTAwMDAwMDAwMDAwMDMgMCAwIDAgMC4xMTA4MzMzMzMzMzMzMzMzNCAtMC4wNDY2NjY2NjY2NjY2NjY2NyAwLjE1MTY2NjY2NjY2NjY2NjY3IDAuMTUxNjY2NjY2NjY2NjY2NjcgMCAwIDAgMC4wMzUgLTAuMTEwODMzMzMzMzMzMzMzMzQgNi44NTQxNjY2NjY2NjY2NjcgNi44NTQxNjY2NjY2NjY2NjcgMCAwIDAgLTAuNTgzMzMzMzMzMzMzMzMzNCAtMi4yMzQxNjY2NjY2NjY2NjcgMC4xNDU4MzMzMzMzMzMzMzMzNCAwLjE0NTgzMzMzMzMzMzMzMzM0IDAgMCAwIC0wLjEzNDE2NjY2NjY2NjY2NjY4IC0wLjA4MTY2NjY2NjY2NjY2NjY4aC0yLjYwMTY2NjY2NjY2NjY2N2EwLjE0NTgzMzMzMzMzMzMzMzM0IDAuMTQ1ODMzMzMzMzMzMzMzMzQgMCAwIDAgLTAuMTEwODMzMzMzMzMzMzMzMzQgMC4wNTI1IDAuMTM0MTY2NjY2NjY2NjY2NjggMC4xMzQxNjY2NjY2NjY2NjY2OCAwIDAgMCAwIDAuMTIyNSAxMi45MTUwMDAwMDAwMDAwMDEgMTIuOTE1MDAwMDAwMDAwMDAxIDAgMCAxIDAuMjIxNjY2NjY2NjY2NjY2NjggMi4xNTgzMzMzMzMzMzMzMzM3WiIgZmlsbD0iI2M0YzRjOCIgc3Ryb2tlLXdpZHRoPSIxIj48L3BhdGg+PHBhdGggZD0iTTkuNzUzMzMzMzMzMzMzMzM0IDYuNTYyNWEwLjE1NzUwMDAwMDAwMDAwMDAzIDAuMTU3NTAwMDAwMDAwMDAwMDMgMCAwIDAgMC4xMDUgLTAuMDQ2NjY2NjY2NjY2NjY2NjcgMC4xMzQxNjY2NjY2NjY2NjY2OCAwLjEzNDE2NjY2NjY2NjY2NjY4IDAgMCAwIDAuMDU4MzMzMzMzMzMzMzMzMzQgLTAuMDk5MTY2NjY2NjY2NjY2NjggMTEuNzU0MTY2NjY2NjY2NjY2IDExLjc1NDE2NjY2NjY2NjY2NiAwIDAgMCAtMC4yOTE2NjY2NjY2NjY2NjY3IC0yLjIxNjY2NjY2NjY2NjY2NyAwLjE1MTY2NjY2NjY2NjY2NjY3IDAuMTUxNjY2NjY2NjY2NjY2NjcgMCAwIDAgLTAuMTY5MTY2NjY2NjY2NjY2NjYgLTAuMTE2NjY2NjY2NjY2NjY2NjhINC41NDQxNjY2NjY2NjY2NjdhMC4xNTE2NjY2NjY2NjY2NjY2NyAwLjE1MTY2NjY2NjY2NjY2NjY3IDAgMCAwIC0wLjE0NTgzMzMzMzMzMzMzMzM0IDAuMTEwODMzMzMzMzMzMzMzMzRBMTEuNzU0MTY2NjY2NjY2NjY2IDExLjc1NDE2NjY2NjY2NjY2NiAwIDAgMCA0LjA4MzMzMzMzMzMzMzMzNCA2LjQxNjY2NjY2NjY2NjY2N2EwLjEzNDE2NjY2NjY2NjY2NjY4IDAuMTM0MTY2NjY2NjY2NjY2NjggMCAwIDAgMC4wMzUgMC4xMDUgMC4xNTc1MDAwMDAwMDAwMDAwMyAwLjE1NzUwMDAwMDAwMDAwMDAzIDAgMCAwIDAuMTA1IDAuMDQ2NjY2NjY2NjY2NjY2NjdaIiBmaWxsPSIjYzRjNGM4IiBzdHJva2Utd2lkdGg9IjEiPjwvcGF0aD48cGF0aCBkPSJNNC45MTc1IDEwLjc5MTY2NjY2NjY2NjY2OGEwLjE0IDAuMTQgMCAwIDAgLTAuMTIyNSAwLjA2NDE2NjY2NjY2NjY2NjY4IDAuMTQgMC4xNCAwIDAgMCAwIDAuMTM0MTY2NjY2NjY2NjY2NjggNS43MDUgNS43MDUgMCAwIDAgMi4xNDY2NjY2NjY2NjY2NjcgMi43NTkxNjY2NjY2NjY2NjcgMC4xNCAwLjE0IDAgMCAwIDAuMTUxNjY2NjY2NjY2NjY2NjcgMCA1LjcwNSA1LjcwNSAwIDAgMCAyLjE0NjY2NjY2NjY2NjY2NyAtMi43NTkxNjY2NjY2NjY2NjcgMC4xNCAwLjE0IDAgMCAwIDAgLTAuMTM0MTY2NjY2NjY2NjY2NjggMC4xMzQxNjY2NjY2NjY2NjY2OCAwLjEzNDE2NjY2NjY2NjY2NjY4IDAgMCAwIC0wLjExNjY2NjY2NjY2NjY2NjY4IC0wLjA2NDE2NjY2NjY2NjY2NjY4WiIgZmlsbD0iI2M0YzRjOCIgc3Ryb2tlLXdpZHRoPSIxIj48L3BhdGg+PHBhdGggZD0iTTQuMjUyNSA3LjQzNzUwMDAwMDAwMDAwMWEwLjE1NzUwMDAwMDAwMDAwMDAzIDAuMTU3NTAwMDAwMDAwMDAwMDMgMCAwIDAgLTAuMTEwODMzMzMzMzMzMzMzMzQgMC4wNDY2NjY2NjY2NjY2NjY2NyAwLjEzNDE2NjY2NjY2NjY2NjY4IDAuMTM0MTY2NjY2NjY2NjY2NjggMCAwIDAgLTAuMDU4MzMzMzMzMzMzMzMzMzQgMC4wOTkxNjY2NjY2NjY2NjY2OCAxMS43NTQxNjY2NjY2NjY2NjYgMTEuNzU0MTY2NjY2NjY2NjY2IDAgMCAwIDAuMjkxNjY2NjY2NjY2NjY2NyAyLjIxNjY2NjY2NjY2NjY2NyAwLjE1MTY2NjY2NjY2NjY2NjY3IDAuMTUxNjY2NjY2NjY2NjY2NjcgMCAwIDAgMC4xNDU4MzMzMzMzMzMzMzMzNCAwLjExMDgzMzMzMzMzMzMzMzM0aDQuOTExNjY2NjY2NjY2NjY3YTAuMTUxNjY2NjY2NjY2NjY2NjcgMC4xNTE2NjY2NjY2NjY2NjY2NyAwIDAgMCAwLjE0NTgzMzMzMzMzMzMzMzM0IC0wLjExMDgzMzMzMzMzMzMzMzM0QTExLjc1NDE2NjY2NjY2NjY2NiAxMS43NTQxNjY2NjY2NjY2NjYgMCAwIDAgOS45MTY2NjY2NjY2NjY2NjggNy41ODMzMzMzMzMzMzMzMzRhMC4xMzQxNjY2NjY2NjY2NjY2OCAwLjEzNDE2NjY2NjY2NjY2NjY4IDAgMCAwIC0wLjAzNSAtMC4xMDUgMC4xNTc1MDAwMDAwMDAwMDAwMyAwLjE1NzUwMDAwMDAwMDAwMDAzIDAgMCAwIC0wLjEwNSAtMC4wNDY2NjY2NjY2NjY2NjY2N1oiIGZpbGw9IiNjNGM0YzgiIHN0cm9rZS13aWR0aD0iMSI+PC9wYXRoPjxwYXRoIGQ9Ik0wLjAzNSA2LjQxNjY2NjY2NjY2NjY2N2EwLjE1MTY2NjY2NjY2NjY2NjY3IDAuMTUxNjY2NjY2NjY2NjY2NjcgMCAwIDAgMC4wMzUgMC4xMTA4MzMzMzMzMzMzMzMzNCAwLjE1NzUwMDAwMDAwMDAwMDAzIDAuMTU3NTAwMDAwMDAwMDAwMDMgMCAwIDAgMC4xMTA4MzMzMzMzMzMzMzMzNCAwLjA0NjY2NjY2NjY2NjY2NjY3aDIuOTE2NjY2NjY2NjY2NjY3YTAuMTUxNjY2NjY2NjY2NjY2NjcgMC4xNTE2NjY2NjY2NjY2NjY2NyAwIDAgMCAwLjEzNDE2NjY2NjY2NjY2NjY4IC0wLjE1NzUwMDAwMDAwMDAwMDAzQTEyLjkxNTAwMDAwMDAwMDAwMSAxMi45MTUwMDAwMDAwMDAwMDEgMCAwIDEgMy41IDQuMjU4MzMzMzMzMzMzMzM0YTAuMTM0MTY2NjY2NjY2NjY2NjggMC4xMzQxNjY2NjY2NjY2NjY2OCAwIDAgMCAwIC0wLjEyMjUgMC4xNDU4MzMzMzMzMzMzMzMzNCAwLjE0NTgzMzMzMzMzMzMzMzM0IDAgMCAwIC0wLjE1NzUwMDAwMDAwMDAwMDAzIC0wLjA1MjVIMC43NDA4MzMzMzMzMzMzMzMzYTAuMTQ1ODMzMzMzMzMzMzMzMzQgMC4xNDU4MzMzMzMzMzMzMzMzNCAwIDAgMCAtMC4xNTc1MDAwMDAwMDAwMDAwMyAwLjA4NzUwMDAwMDAwMDAwMDAxQTYuODU0MTY2NjY2NjY2NjY3IDYuODU0MTY2NjY2NjY2NjY3IDAgMCAwIDAuMDM1IDYuNDE2NjY2NjY2NjY2NjY3WiIgZmlsbD0iI2M0YzRjOCIgc3Ryb2tlLXdpZHRoPSIxIj48L3BhdGg+PHBhdGggZD0iTTMuMjMxNjY2NjY2NjY2NjY3IDcuNTgzMzMzMzMzMzMzMzM0YTAuMTUxNjY2NjY2NjY2NjY2NjcgMC4xNTE2NjY2NjY2NjY2NjY2NyAwIDAgMCAtMC4xNDU4MzMzMzMzMzMzMzMzNCAtMC4xNGgtMi45MTY2NjY2NjY2NjY2NjdhMC4xNTc1MDAwMDAwMDAwMDAwMyAwLjE1NzUwMDAwMDAwMDAwMDAzIDAgMCAwIC0wLjExMDgzMzMzMzMzMzMzMzM0IDAuMDQ2NjY2NjY2NjY2NjY2NjcgMC4xNTE2NjY2NjY2NjY2NjY2NyAwLjE1MTY2NjY2NjY2NjY2NjY3IDAgMCAwIC0wLjAyMzMzMzMzMzMzMzMzMzMzNCAwLjA5MzMzMzMzMzMzMzMzMzM0IDYuODU0MTY2NjY2NjY2NjY3IDYuODU0MTY2NjY2NjY2NjY3IDAgMCAwIDAuNTgzMzMzMzMzMzMzMzMzNCAyLjIzNDE2NjY2NjY2NjY2NyAwLjE0NTgzMzMzMzMzMzMzMzM0IDAuMTQ1ODMzMzMzMzMzMzMzMzQgMCAwIDAgMC4xMzQxNjY2NjY2NjY2NjY2OCAwLjA4NzUwMDAwMDAwMDAwMDAxaDIuNTkwMDAwMDAwMDAwMDAwM2EwLjE0NTgzMzMzMzMzMzMzMzM0IDAuMTQ1ODMzMzMzMzMzMzMzMzQgMCAwIDAgMC4xMTA4MzMzMzMzMzMzMzMzNCAtMC4wNTI1IDAuMTM0MTY2NjY2NjY2NjY2NjggMC4xMzQxNjY2NjY2NjY2NjY2OCAwIDAgMCAwIC0wLjEyMjVBMTIuOTE1MDAwMDAwMDAwMDAxIDEyLjkxNTAwMDAwMDAwMDAwMSAwIDAgMSAzLjIzMTY2NjY2NjY2NjY2NyA3LjU4MzMzMzMzMzMzMzMzNFoiIGZpbGw9IiNjNGM0YzgiIHN0cm9rZS13aWR0aD0iMSI+PC9wYXRoPjxwYXRoIGQ9Ik0zLjgwMzMzMzMzMzMzMzMzMzIgMTAuODkwODMzMzMzMzMzMzM1YTAuMTQ1ODMzMzMzMzMzMzMzMzQgMC4xNDU4MzMzMzMzMzMzMzMzNCAwIDAgMCAtMC4xNCAtMC4wOTkxNjY2NjY2NjY2NjY2OEgxLjQwMDAwMDAwMDAwMDAwMDFhMC4xNCAwLjE0IDAgMCAwIC0wLjEyODMzMzMzMzMzMzMzMzM1IDAuMDc1ODMzMzMzMzMzMzMzMzQgMC4xNCAwLjE0IDAgMCAwIDAgMC4xNTE2NjY2NjY2NjY2NjY2NyA3LjAzNTAwMDAwMDAwMDAwMSA3LjAzNTAwMDAwMDAwMDAwMSAwIDAgMCAzLjg5MDgzMzMzMzMzMzMzMzYgMi43MzU4MzMzMzMzMzMzMzQgMC4xNTE2NjY2NjY2NjY2NjY2NyAwLjE1MTY2NjY2NjY2NjY2NjY3IDAgMCAwIDAuMTYzMzMzMzMzMzMzMzMzMzYgLTAuMDY0MTY2NjY2NjY2NjY2NjggMC4xNCAwLjE0IDAgMCAwIDAgLTAuMTc1MDAwMDAwMDAwMDAwMDIgNy41ODMzMzMzMzMzMzMzMzQgNy41ODMzMzMzMzMzMzMzMzQgMCAwIDEgLTEuNTIyNSAtMi42MjVaIiBmaWxsPSIjYzRjNGM4IiBzdHJva2Utd2lkdGg9IjEiPjwvcGF0aD48cGF0aCBkPSJNMTAuMzM2NjY2NjY2NjY2NjY2IDEwLjc5MTY2NjY2NjY2NjY2OGEwLjE0NTgzMzMzMzMzMzMzMzM0IDAuMTQ1ODMzMzMzMzMzMzMzMzQgMCAwIDAgLTAuMTQgMC4wOTkxNjY2NjY2NjY2NjY2OCA3LjU4MzMzMzMzMzMzMzMzNCA3LjU4MzMzMzMzMzMzMzMzNCAwIDAgMSAtMS41MTA4MzMzMzMzMzMzMzMzIDIuNjI1IDAuMTQgMC4xNCAwIDAgMCAwIDAuMTc1MDAwMDAwMDAwMDAwMDIgMC4xNTE2NjY2NjY2NjY2NjY2NyAwLjE1MTY2NjY2NjY2NjY2NjY3IDAgMCAwIDAuMTYzMzMzMzMzMzMzMzMzMzYgMC4wNjQxNjY2NjY2NjY2NjY2OCA3LjAzNTAwMDAwMDAwMDAwMSA3LjAzNTAwMDAwMDAwMDAwMSAwIDAgMCAzLjg5MDgzMzMzMzMzMzMzMzYgLTIuNzM1ODMzMzMzMzMzMzM0IDAuMTM0MTY2NjY2NjY2NjY2NjggMC4xMzQxNjY2NjY2NjY2NjY2OCAwIDAgMCAwIC0wLjE0NTgzMzMzMzMzMzMzMzM0IDAuMTM0MTY2NjY2NjY2NjY2NjggMC4xMzQxNjY2NjY2NjY2NjY2OCAwIDAgMCAtMC4xMjgzMzMzMzMzMzMzMzMzNSAtMC4wODE2NjY2NjY2NjY2NjY2OFoiIGZpbGw9IiNjNGM0YzgiIHN0cm9rZS13aWR0aD0iMSI+PC9wYXRoPjxwYXRoIGQ9Ik0zLjY2MzMzMzMzMzMzMzMzMzYgMy4yMDgzMzMzMzMzMzMzMzM1YTAuMTQ1ODMzMzMzMzMzMzMzMzQgMC4xNDU4MzMzMzMzMzMzMzMzNCAwIDAgMCAwLjE0IC0wLjA5OTE2NjY2NjY2NjY2NjY4QTcuNTgzMzMzMzMzMzMzMzM0IDcuNTgzMzMzMzMzMzMzMzM0IDAgMCAxIDUuMzE0MTY2NjY2NjY2NjY3IDAuNDg0MTY2NjY2NjY2NjY2N2EwLjE0IDAuMTQgMCAwIDAgMCAtMC4xNzUwMDAwMDAwMDAwMDAwMiAwLjE1MTY2NjY2NjY2NjY2NjY3IDAuMTUxNjY2NjY2NjY2NjY2NjcgMCAwIDAgLTAuMTQ1ODMzMzMzMzMzMzMzMzQgLTAuMDY0MTY2NjY2NjY2NjY2NjggNy4wMzUwMDAwMDAwMDAwMDEgNy4wMzUwMDAwMDAwMDAwMDEgMCAwIDAgLTMuODkwODMzMzMzMzMzMzMzNiAyLjczNTgzMzMzMzMzMzMzNCAwLjEzNDE2NjY2NjY2NjY2NjY4IDAuMTM0MTY2NjY2NjY2NjY2NjggMCAwIDAgMCAwLjE0NTgzMzMzMzMzMzMzMzM0IDAuMTM0MTY2NjY2NjY2NjY2NjggMC4xMzQxNjY2NjY2NjY2NjY2OCAwIDAgMCAwLjEyODMzMzMzMzMzMzMzMzM1IDAuMDgxNjY2NjY2NjY2NjY2NjhaIiBmaWxsPSIjYzRjNGM4IiBzdHJva2Utd2lkdGg9IjEiPjwvcGF0aD48cGF0aCBkPSJNMTMuOTY1MDAwMDAwMDAwMDAyIDcuNTgzMzMzMzMzMzMzMzM0YTAuMTUxNjY2NjY2NjY2NjY2NjcgMC4xNTE2NjY2NjY2NjY2NjY2NyAwIDAgMCAtMC4wMzUgLTAuMTEwODMzMzMzMzMzMzMzMzQgMC4xNTc1MDAwMDAwMDAwMDAwMyAwLjE1NzUwMDAwMDAwMDAwMDAzIDAgMCAwIC0wLjExMDgzMzMzMzMzMzMzMzM0IC0wLjA0NjY2NjY2NjY2NjY2NjY3aC0yLjkxNjY2NjY2NjY2NjY2N2EwLjE1MTY2NjY2NjY2NjY2NjY3IDAuMTUxNjY2NjY2NjY2NjY2NjcgMCAwIDAgLTAuMTQ1ODMzMzMzMzMzMzMzMzQgMC4xNEExMi45MTUwMDAwMDAwMDAwMDEgMTIuOTE1MDAwMDAwMDAwMDAxIDAgMCAxIDEwLjUgOS43NDE2NjY2NjY2NjY2NjdhMC4xMzQxNjY2NjY2NjY2NjY2OCAwLjEzNDE2NjY2NjY2NjY2NjY4IDAgMCAwIDAgMC4xMjI1IDAuMTQ1ODMzMzMzMzMzMzMzMzQgMC4xNDU4MzMzMzMzMzMzMzMzNCAwIDAgMCAwLjExMDgzMzMzMzMzMzMzMzM0IDAuMDUyNWgyLjYwMTY2NjY2NjY2NjY2N2EwLjE0NTgzMzMzMzMzMzMzMzM0IDAuMTQ1ODMzMzMzMzMzMzMzMzQgMCAwIDAgMC4xMzQxNjY2NjY2NjY2NjY2OCAtMC4wODc1MDAwMDAwMDAwMDAwMUE2Ljg1NDE2NjY2NjY2NjY2NyA2Ljg1NDE2NjY2NjY2NjY2NyAwIDAgMCAxMy45NjUwMDAwMDAwMDAwMDIgNy41ODMzMzMzMzMzMzMzMzRaIiBmaWxsPSIjYzRjNGM4IiBzdHJva2Utd2lkdGg9IjEiPjwvcGF0aD48cGF0aCBkPSJNMTAuMTk2NjY2NjY2NjY2NjY3IDMuMTA5MTY2NjY2NjY2NjY3YTAuMTQ1ODMzMzMzMzMzMzMzMzQgMC4xNDU4MzMzMzMzMzMzMzMzNCAwIDAgMCAwLjE0IDAuMDk5MTY2NjY2NjY2NjY2NjhoMi4yNjMzMzMzMzMzMzMzMzNhMC4xNCAwLjE0IDAgMCAwIDAuMTI4MzMzMzMzMzMzMzMzMzUgLTAuMDc1ODMzMzMzMzMzMzMzMzQgMC4xNCAwLjE0IDAgMCAwIDAgLTAuMTUxNjY2NjY2NjY2NjY2NjdBNy4wMzUwMDAwMDAwMDAwMDEgNy4wMzUwMDAwMDAwMDAwMDEgMCAwIDAgOC44MzE2NjY2NjY2NjY2NjcgMC4yNDVhMC4xNTE2NjY2NjY2NjY2NjY2NyAwLjE1MTY2NjY2NjY2NjY2NjY3IDAgMCAwIC0wLjE2MzMzMzMzMzMzMzMzMzM2IDAuMDY0MTY2NjY2NjY2NjY2NjggMC4xNCAwLjE0IDAgMCAwIDAgMC4xNzUwMDAwMDAwMDAwMDAwMiA3LjU4MzMzMzMzMzMzMzMzNCA3LjU4MzMzMzMzMzMzMzMzNCAwIDAgMSAxLjUyODMzMzMzMzMzMzMzMzUgMi42MjVaIiBmaWxsPSIjYzRjNGM4IiBzdHJva2Utd2lkdGg9IjEiPjwvcGF0aD48L2c+PC9zdmc+" />&nbsp;&nbsp;Networks</label>	
+        <label id="btncomputers" href="#" class="stuff"   style="margin-top: 2px; margin-bottom: 2px; display: flex; align-items: center; width:100%;" onClick="radiobtn = document.getElementById('ComputerInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btncomputers');"><img src="data:image/svg+xml;base64, PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9Ii0wLjUgLTAuNSAxNSAxNSIgaWQ9IlNjcmVlbi0xLUFsdGVybmF0ZS0tU3RyZWFtbGluZS1VbHRpbWF0ZS5zdmciIGhlaWdodD0iMTUiIHdpZHRoPSIxNSI+PGRlc2M+U2NyZWVuIDEgQWx0ZXJuYXRlIFN0cmVhbWxpbmUgSWNvbjogaHR0cHM6Ly9zdHJlYW1saW5laHEuY29tPC9kZXNjPjxwYXRoIGQ9Ik0xMy4xMjUgMGgtMTIuMjVBMC44NzUgMC44NzUgMCAwIDAgMCAwLjg3NVYxMC41YTAuODc1IDAuODc1IDAgMCAwIDAuODc1IDAuODc1aDUuMzk1ODMzMzMzMzMzMzM0YTAuMTQ1ODMzMzMzMzMzMzMzMzQgMC4xNDU4MzMzMzMzMzMzMzMzNCAwIDAgMSAwLjE0NTgzMzMzMzMzMzMzMzM0IDAuMTQ1ODMzMzMzMzMzMzMzMzR2MS4xNjY2NjY2NjY2NjY2NjY3YTAuMTQ1ODMzMzMzMzMzMzMzMzQgMC4xNDU4MzMzMzMzMzMzMzMzNCAwIDAgMSAtMC4xNDU4MzMzMzMzMzMzMzMzNCAwLjE0NTgzMzMzMzMzMzMzMzM0SDQuMzc1YTAuNTgzMzMzMzMzMzMzMzMzNCAwLjU4MzMzMzMzMzMzMzMzMzQgMCAwIDAgMCAxLjE2NjY2NjY2NjY2NjY2NjdoNS4yNWEwLjU4MzMzMzMzMzMzMzMzMzQgMC41ODMzMzMzMzMzMzMzMzM0IDAgMCAwIDAgLTEuMTY2NjY2NjY2NjY2NjY2N2gtMS44OTU4MzMzMzMzMzMzMzM1YTAuMTQ1ODMzMzMzMzMzMzMzMzQgMC4xNDU4MzMzMzMzMzMzMzMzNCAwIDAgMSAtMC4xNDU4MzMzMzMzMzMzMzMzNCAtMC4xNDU4MzMzMzMzMzMzMzMzNHYtMS4xNjY2NjY2NjY2NjY2NjY3YTAuMTQ1ODMzMzMzMzMzMzMzMzQgMC4xNDU4MzMzMzMzMzMzMzMzNCAwIDAgMSAwLjE0NTgzMzMzMzMzMzMzMzM0IC0wLjE0NTgzMzMzMzMzMzMzMzM0aDUuMzk1ODMzMzMzMzMzMzM0QTAuODc1IDAuODc1IDAgMCAwIDE0IDEwLjVWMC44NzVBMC44NzUgMC44NzUgMCAwIDAgMTMuMTI1IDBaTTEyLjgzMzMzMzMzMzMzMzMzNCA4Ljc1YTAuMjkxNjY2NjY2NjY2NjY2NyAwLjI5MTY2NjY2NjY2NjY2NjcgMCAwIDEgLTAuMjkxNjY2NjY2NjY2NjY2NyAwLjI5MTY2NjY2NjY2NjY2NjdoLTExLjA4MzMzMzMzMzMzMzMzNEEwLjI5MTY2NjY2NjY2NjY2NjcgMC4yOTE2NjY2NjY2NjY2NjY3IDAgMCAxIDEuMTY2NjY2NjY2NjY2NjY2NyA4Ljc1VjEuNDU4MzMzMzMzMzMzMzMzNWEwLjI5MTY2NjY2NjY2NjY2NjcgMC4yOTE2NjY2NjY2NjY2NjY3IDAgMCAxIDAuMjkxNjY2NjY2NjY2NjY2NyAtMC4yOTE2NjY2NjY2NjY2NjY3aDExLjA4MzMzMzMzMzMzMzMzNGEwLjI5MTY2NjY2NjY2NjY2NjcgMC4yOTE2NjY2NjY2NjY2NjY3IDAgMCAxIDAuMjkxNjY2NjY2NjY2NjY2NyAwLjI5MTY2NjY2NjY2NjY2NjdaIiBmaWxsPSIjYzRjNGM4IiBzdHJva2Utd2lkdGg9IjEiPjwvcGF0aD48L3N2Zz4=" />&nbsp;&nbsp;Computers</label>	  	  			
+		<label id="btnshares" href="#" class="stuff"      style="margin-top: 2px; margin-bottom: 2px; display: flex; align-items: center; width:100%;" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;updateLabelColors('tabs', 'btnshares');"><img src="data:image/svg+xml;base64, PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9Ii0wLjUgLTAuNSAxNSAxNSIgaWQ9IkZvbGRlci1FbXB0eS0xLS1TdHJlYW1saW5lLVVsdGltYXRlLnN2ZyIgaGVpZ2h0PSIxNSIgd2lkdGg9IjE1Ij48ZGVzYz5Gb2xkZXIgRW1wdHkgMSBTdHJlYW1saW5lIEljb246IGh0dHBzOi8vc3RyZWFtbGluZWhxLmNvbTwvZGVzYz48cGF0aCBkPSJNMTMuMTI1IDIuOTE2NjY2NjY2NjY2NjY3SDYuNTU2NjY2NjY2NjY2NjY3NWEwLjI5MTY2NjY2NjY2NjY2NjcgMC4yOTE2NjY2NjY2NjY2NjY3IDAgMCAxIC0wLjI2MjUgLTAuMTYzMzMzMzMzMzMzMzMzMzZsLTAuNTU0MTY2NjY2NjY2NjY2NyAtMS4xMDI1QTAuODc1IDAuODc1IDAgMCAwIDQuOTU4MzMzMzMzMzMzMzM0IDEuMTY2NjY2NjY2NjY2NjY2N2gtNC4wODMzMzMzMzMzMzMzMzRBMC44NzUgMC44NzUgMCAwIDAgMCAyLjA0MTY2NjY2NjY2NjY2N3Y5LjkxNjY2NjY2NjY2NjY2OEEwLjg3NSAwLjg3NSAwIDAgMCAwLjg3NSAxMi44MzMzMzMzMzMzMzMzMzRoMTIuMjVhMC44NzUgMC44NzUgMCAwIDAgMC44NzUgLTAuODc1di04LjE2NjY2NjY2NjY2NjY2OEEwLjg3NSAwLjg3NSAwIDAgMCAxMy4xMjUgMi45MTY2NjY2NjY2NjY2NjdaIiBmaWxsPSIjYzRjNGM4IiBzdHJva2Utd2lkdGg9IjEiPjwvcGF0aD48L3N2Zz4=" />&nbsp;&nbsp;Share Names</label>					
+		<label id="btnfgs" href="#" class="stuff"         style="margin-top: 2px; margin-bottom: 2px; display: flex; align-items: center; width:100%;" onClick="radiobtn = document.getElementById('ShareFolders');radiobtn.checked = true;updateLabelColors('tabs', 'btnfgs');"><img src="data:image/svg+xml;base64, PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9Ii0wLjUgLTAuNSAxNSAxNSIgaWQ9IkNvZGluZy1BcHBzLVdlYnNpdGUtQmlnLURhdGEtVm9sdW1lLUZvbGRlci0tU3RyZWFtbGluZS1VbHRpbWF0ZS5zdmciIGhlaWdodD0iMTUiIHdpZHRoPSIxNSI+PGRlc2M+Q29kaW5nIEFwcHMgV2Vic2l0ZSBCaWcgRGF0YSBWb2x1bWUgRm9sZGVyIFN0cmVhbWxpbmUgSWNvbjogaHR0cHM6Ly9zdHJlYW1saW5laHEuY29tPC9kZXNjPjxnPjxwYXRoIGQ9Ik0xMi44MzMzMzMzMzMzMzMzMzQgMS4xNjY2NjY2NjY2NjY2NjY3aC0zLjA4NTgzMzMzMzMzMzMzMzRhMC4yOTc1MDAwMDAwMDAwMDAwNCAwLjI5NzUwMDAwMDAwMDAwMDA0IDAgMCAxIC0wLjIxIC0wLjA4NzUwMDAwMDAwMDAwMDAxTDguODQzMzMzMzMzMzMzMzM0IDAuMzU1ODMzMzMzMzMzMzMzMzNBMS4xNjY2NjY2NjY2NjY2NjY3IDEuMTY2NjY2NjY2NjY2NjY2NyAwIDAgMCA4LjAwMzMzMzMzMzMzMzMzNCAwaC0yLjAwMDgzMzMzMzMzMzMzMzVBMS4zMyAxLjMzIDAgMCAwIDQuNjY2NjY2NjY2NjY2NjY3IDEuMzM1ODMzMzMzMzMzMzMzNHYwLjU4MzMzMzMzMzMzMzMzMzRoMS4wMDMzMzMzMzMzMzMzMzM0YTIuMDY1IDIuMDY1IDAgMCAxIDEuNDcwMDAwMDAwMDAwMDAwMiAwLjYyNDE2NjY2NjY2NjY2NjhsMC41MTkxNjY2NjY2NjY2NjY3IDAuNTQyNTAwMDAwMDAwMDAwMUgxMC41YTIuMDQxNjY2NjY2NjY2NjY3IDIuMDQxNjY2NjY2NjY2NjY3IDAgMCAxIDIuMDQxNjY2NjY2NjY2NjY3IDIuMDQxNjY2NjY2NjY2NjY3VjguMTY2NjY2NjY2NjY2NjY4aDAuNzA1ODMzMzMzMzMzMzMzM0MxNCA4LjE2NjY2NjY2NjY2NjY2OCAxNCA3LjU4MzMzMzMzMzMzMzMzNCAxNCA2LjgzMDgzMzMzMzMzMzMzNFYyLjMzMzMzMzMzMzMzMzMzMzVhMS4xNjY2NjY2NjY2NjY2NjY3IDEuMTY2NjY2NjY2NjY2NjY2NyAwIDAgMCAtMS4xNjY2NjY2NjY2NjY2NjY3IC0xLjE2NjY2NjY2NjY2NjY2NjdaIiBmaWxsPSIjYzRjNGM4IiBzdHJva2Utd2lkdGg9IjEiPjwvcGF0aD48cGF0aCBkPSJNNy45OTc1MDAwMDAwMDAwMDEgMTRIMS4zMzU4MzMzMzMzMzMzMzM0QTEuMzMgMS4zMyAwIDAgMSAwIDEyLjY2NDE2NjY2NjY2NjY2OHYtNS40OTVBMS4zMyAxLjMzIDAgMCAxIDEuMzM1ODMzMzMzMzMzMzMzNCA1LjgzMzMzMzMzMzMzMzMzNGgyLjAwMDgzMzMzMzMzMzMzMzVhMS4xNjY2NjY2NjY2NjY2NjY3IDEuMTY2NjY2NjY2NjY2NjY2NyAwIDAgMSAwLjg0IDAuMzU1ODMzMzMzMzMzMzMzMzNsMC42OTQxNjY2NjY2NjY2NjY3IDAuNzIzMzMzMzMzMzMzMzMzNGEwLjI5NzUwMDAwMDAwMDAwMDA0IDAuMjk3NTAwMDAwMDAwMDAwMDQgMCAwIDAgMC4yMSAwLjA4NzUwMDAwMDAwMDAwMDAxSDguMTY2NjY2NjY2NjY2NjY4YTEuMTY2NjY2NjY2NjY2NjY2NyAxLjE2NjY2NjY2NjY2NjY2NjcgMCAwIDEgMS4xNjY2NjY2NjY2NjY2NjY3IDEuMTY2NjY2NjY2NjY2NjY2N3Y0LjQ5NzUwMDAwMDAwMDAwMDVBMS4zMyAxLjMzIDAgMCAxIDcuOTk3NTAwMDAwMDAwMDAxIDE0WiIgZmlsbD0iI2M0YzRjOCIgc3Ryb2tlLXdpZHRoPSIxIj48L3BhdGg+PHBhdGggZD0iTTEwLjUgMy45NTUwMDAwMDAwMDAwMDA1aC0zLjA4NTgzMzMzMzMzMzMzMzRhMC4yOCAwLjI4IDAgMCAxIC0wLjIxIC0wLjA5MzMzMzMzMzMzMzMzMzM0bC0wLjY5NDE2NjY2NjY2NjY2NjcgLTAuNzE3NWExLjE2NjY2NjY2NjY2NjY2NjcgMS4xNjY2NjY2NjY2NjY2NjY3IDAgMCAwIC0wLjg0IC0wLjM1NTgzMzMzMzMzMzMzMzMzSDMuNjY5MTY2NjY2NjY2NjY3QTEuMzMgMS4zMyAwIDAgMCAyLjMzMzMzMzMzMzMzMzMzMzUgNC4xMTgzMzMzMzMzMzMzMzNWNC45NTgzMzMzMzMzMzMzMzRoMS4wMDMzMzMzMzMzMzMzMzM0YTIuMDY1IDIuMDY1IDAgMCAxIDEuNDcwMDAwMDAwMDAwMDAwMiAwLjYyNDE2NjY2NjY2NjY2NjhsMC41MTkxNjY2NjY2NjY2NjY3IDAuNTQyNTAwMDAwMDAwMDAwMUg4LjE2NjY2NjY2NjY2NjY2OGEyLjA0MTY2NjY2NjY2NjY2NyAyLjA0MTY2NjY2NjY2NjY2NyAwIDAgMSAyLjA0MTY2NjY2NjY2NjY2NyAyLjA0MTY2NjY2NjY2NjY2N3YyLjc4ODMzMzMzMzMzMzMzMzZoMC4xMjI1QTEuMzM1ODMzMzMzMzMzMzMzNCAxLjMzNTgzMzMzMzMzMzMzMzQgMCAwIDAgMTEuNjY2NjY2NjY2NjY2NjY4IDkuNjE5MTY2NjY2NjY2NjY3VjUuMTIxNjY2NjY2NjY2NjY3YTEuMTY2NjY2NjY2NjY2NjY2NyAxLjE2NjY2NjY2NjY2NjY2NjcgMCAwIDAgLTEuMTY2NjY2NjY2NjY2NjY2NyAtMS4xNjY2NjY2NjY2NjY2NjY3WiIgZmlsbD0iI2M0YzRjOCIgc3Ryb2tlLXdpZHRoPSIxIj48L3BhdGg+PC9nPjwvc3ZnPg==" />&nbsp;&nbsp;Folder Groups</label>
+        <label id="btnaces" href="#" class="stuff"        style="margin-top: 2px; margin-bottom: 2px; display: flex; align-items: center; width:100%;" onClick="radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnaces');"><img src="data:image/svg+xml;base64, PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9Ii0wLjUgLTAuNSAxNSAxNSIgaWQ9IkxvY2stVW5sb2NrLS1TdHJlYW1saW5lLVVsdGltYXRlLnN2ZyIgaGVpZ2h0PSIxNSIgd2lkdGg9IjE1Ij48ZGVzYz5Mb2NrIFVubG9jayBTdHJlYW1saW5lIEljb246IGh0dHBzOi8vc3RyZWFtbGluZWhxLmNvbTwvZGVzYz48cGF0aCBkPSJNMTEuMzc1IDUuNTQxNjY2NjY2NjY2NjY3aC0wLjQzNzVWMy45Mzc1MDAwMDAwMDAwMDA0QTMuOTM3NTAwMDAwMDAwMDAwNCAzLjkzNzUwMDAwMDAwMDAwMDQgMCAwIDAgMy4yMjU4MzMzMzMzMzMzMzM2IDIuODA1ODMzMzMzMzMzMzMzYTAuNzI5MTY2NjY2NjY2NjY2NyAwLjcyOTE2NjY2NjY2NjY2NjcgMCAwIDAgMS40MDAwMDAwMDAwMDAwMDAxIDAuNDIgMi40NzkxNjY2NjY2NjY2NjcgMi40NzkxNjY2NjY2NjY2NjcgMCAwIDEgNC44NTMzMzMzMzMzMzMzMzM1IDAuNzExNjY2NjY2NjY2NjY2N1Y1LjI1YTAuMjkxNjY2NjY2NjY2NjY2NyAwLjI5MTY2NjY2NjY2NjY2NjcgMCAwIDEgLTAuMjkxNjY2NjY2NjY2NjY2NyAwLjI5MTY2NjY2NjY2NjY2NjdIMi42MjVhMS4xNjY2NjY2NjY2NjY2NjY3IDEuMTY2NjY2NjY2NjY2NjY2NyAwIDAgMCAtMS4xNjY2NjY2NjY2NjY2NjY3IDEuMTY2NjY2NjY2NjY2NjY2N1YxMi44MzMzMzMzMzMzMzMzMzRhMS4xNjY2NjY2NjY2NjY2NjY3IDEuMTY2NjY2NjY2NjY2NjY2NyAwIDAgMCAxLjE2NjY2NjY2NjY2NjY2NjcgMS4xNjY2NjY2NjY2NjY2NjY3aDguNzVhMS4xNjY2NjY2NjY2NjY2NjY3IDEuMTY2NjY2NjY2NjY2NjY2NyAwIDAgMCAxLjE2NjY2NjY2NjY2NjY2NjcgLTEuMTY2NjY2NjY2NjY2NjY2N1Y2LjcwODMzMzMzMzMzMzMzNGExLjE2NjY2NjY2NjY2NjY2NjcgMS4xNjY2NjY2NjY2NjY2NjY3IDAgMCAwIC0xLjE2NjY2NjY2NjY2NjY2NjcgLTEuMTY2NjY2NjY2NjY2NjY2N1ptLTUuNTQxNjY2NjY2NjY2NjY3IDMuNWExLjE2NjY2NjY2NjY2NjY2NjcgMS4xNjY2NjY2NjY2NjY2NjY3IDAgMCAxIDIuMzMzMzMzMzMzMzMzMzMzNSAwIDEuMTY2NjY2NjY2NjY2NjY2NyAxLjE2NjY2NjY2NjY2NjY2NjcgMCAwIDEgLTAuNTgzMzMzMzMzMzMzMzMzNCAxLjAwMzMzMzMzMzMzMzMzMzR2MS4zM2EwLjU4MzMzMzMzMzMzMzMzMzQgMC41ODMzMzMzMzMzMzMzMzM0IDAgMCAxIC0xLjE2NjY2NjY2NjY2NjY2NjcgMHYtMS4zM2ExLjE2NjY2NjY2NjY2NjY2NjcgMS4xNjY2NjY2NjY2NjY2NjY3IDAgMCAxIC0wLjU4MzMzMzMzMzMzMzMzMzQgLTEuMDAzMzMzMzMzMzMzMzMzNFoiIGZpbGw9IiNjNGM0YzgiIHN0cm9rZS13aWR0aD0iMSI+PC9wYXRoPjwvc3ZnPg==" />&nbsp;&nbsp;Insecure ACEs</label>
+        <label id="btnidentities" href="#" class="stuff"  style="margin-top: 2px; margin-bottom: 2px; display: flex; align-items: center; width:100%;" onClick="radiobtn = document.getElementById('IdentityInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnidentities');"><img src="data:image/svg+xml;base64, PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9Ii0wLjUgLTAuNSAxNSAxNSIgaWQ9IlNpbmdsZS1OZXV0cmFsLUFjdGlvbnMtLVN0cmVhbWxpbmUtVWx0aW1hdGUuc3ZnIiBoZWlnaHQ9IjE1IiB3aWR0aD0iMTUiPjxkZXNjPlNpbmdsZSBOZXV0cmFsIEFjdGlvbnMgU3RyZWFtbGluZSBJY29uOiBodHRwczovL3N0cmVhbWxpbmVocS5jb208L2Rlc2M+PGc+PHBhdGggZD0iTTQuMjI5MTY2NjY2NjY2NjY3IDQuMzc1YTIuNzcwODMzMzMzMzMzMzMzNSAyLjc3MDgzMzMzMzMzMzMzMzUgMCAxIDAgNS41NDE2NjY2NjY2NjY2NjcgMCAyLjc3MDgzMzMzMzMzMzMzMzUgMi43NzA4MzMzMzMzMzMzMzM1IDAgMSAwIC01LjU0MTY2NjY2NjY2NjY2NyAwIiBmaWxsPSIjYzRjNGM4IiBzdHJva2Utd2lkdGg9IjEiPjwvcGF0aD48cGF0aCBkPSJNNyA3LjcyOTE2NjY2NjY2NjY2N2E0LjM3NSA0LjM3NSAwIDAgMCAtNC4zNzUgNC4zNzUgMC4yOTE2NjY2NjY2NjY2NjY3IDAuMjkxNjY2NjY2NjY2NjY2NyAwIDAgMCAwLjI5MTY2NjY2NjY2NjY2NjcgMC4yOTE2NjY2NjY2NjY2NjY3aDguMTY2NjY2NjY2NjY2NjY4YTAuMjkxNjY2NjY2NjY2NjY2NyAwLjI5MTY2NjY2NjY2NjY2NjcgMCAwIDAgMC4yOTE2NjY2NjY2NjY2NjY3IC0wLjI5MTY2NjY2NjY2NjY2NjcgNC4zNzUgNC4zNzUgMCAwIDAgLTQuMzc1IC00LjM3NVoiIGZpbGw9IiNjNGM0YzgiIHN0cm9rZS13aWR0aD0iMSI+PC9wYXRoPjwvZz48L3N2Zz4=" />&nbsp;&nbsp;Identities</label>
+        <label id="btnShareGraph" href="#" class="stuff"  style="margin-top: 2px; margin-bottom: 2px; display: flex; align-items: center; width:100%;" onClick="radiobtn = document.getElementById('ShareGraph');radiobtn.checked = true;updateLabelColors('tabs', 'btnShareGraph');"><img src="data:image/svg+xml;base64, PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGZpbGw9Im5vbmUiIHZpZXdCb3g9Ii0wLjUgLTAuNSAxNSAxNSIgaWQ9IlRleHQtRmxvdy1Db2x1bW5zLS1TdHJlYW1saW5lLVVsdGltYXRlLnN2ZyIgaGVpZ2h0PSIxNSIgd2lkdGg9IjE1Ij48ZGVzYz5UZXh0IEZsb3cgQ29sdW1ucyBTdHJlYW1saW5lIEljb246IGh0dHBzOi8vc3RyZWFtbGluZWhxLmNvbTwvZGVzYz48cGF0aCBmaWxsPSIjYzRjNGM4IiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMy42NjczMjUwMDAwMDAwMDIgMS4yMDg4MjQxNjY2NjY2NjY4YzAgLTAuNTYzNzkxNjY2NjY2NjY2NyAtMC40NTcwNDE2NjY2NjY2NjY3IC0xLjAyMDgzNTY2NjY2NjY2NjcgLTEuMDIwODMzMzMzMzMzMzMzNSAtMS4wMjA4MzU2NjY2NjY2NjY3aC0yLjk4Mjc1ODMzMzMzMzMzMzRjLTAuNTYzNzkxNjY2NjY2NjY2NyAwIC0xLjAyMDgzMzMzMzMzMzMzMzUgMC40NTcwNDQgLTEuMDIwODMzMzMzMzMzMzMzNSAxLjAyMDgzNTY2NjY2NjY2Njd2Mi45ODI3NDY2NjY2NjY2NjY0YzAgMC4wNjIxMDc1IDAuMDA1NTQxNjY2NjY2NjY2NjY3IDAuMTIyOTI1ODMzMzMzMzMzMzUgMC4wMTYxNTgzMzMzMzMzMzMzMzQgMC4xODE5NzY2NjY2NjY2NjY2OEw0LjI3NDMyODMzMzMzMzMzNCA4Ljc1ODI4MzMzMzMzMzMzNWMtMC4wMTA1ODc1IDAuMDEwNjE2NjY2NjY2NjY2NjY4IC0wLjAyMDY3OTE2NjY2NjY2NjY3IDAuMDIxNDY2NjY2NjY2NjY2NjcgLTAuMDMwMjgwODMzMzMzMzMzMzMzIDAuMDMyNjY2NjY2NjY2NjY2NjcgLTAuMDI3NDUxNjY2NjY2NjY2NjY2IC0wLjAwMjIxNjY2NjY2NjY2NjY2NjcgLTAuMDU1MjEyNTAwMDAwMDAwMDA1IC0wLjAwMzMyNTAwMDAwMDAwMDAwMDMgLTAuMDgzMjQxNjY2NjY2NjY2NjcgLTAuMDAzMzI1MDAwMDAwMDAwMDAwM0gzLjI1MzkwOTE2NjY2NjY2N2wtMC4wMDAwMDU4MzMzMzMzMzMzMzMzMyAtMy41NzI5NDU4MzMzMzMzMzM3aDAuOTA2OTAyNTAwMDAwMDAwMWMwLjU2Mzc5MTY2NjY2NjY2NjcgMCAxLjAyMDgzMzMzMzMzMzMzMzUgLTAuNDU3MDQxNjY2NjY2NjY2NyAxLjAyMDgzMzMzMzMzMzMzMzUgLTEuMDIwODMzMzMzMzMzMzMzNVYxLjIxMTA5OTE2NjY2NjY2NjZjMCAtMC41NjM3OTE2NjY2NjY2NjY3IC0wLjQ1NzA0MTY2NjY2NjY2NjcgLTEuMDIwODMyMTY2NjY2NjY2NyAtMS4wMjA4MzMzMzMzMzMzMzM1IC0xLjAyMDgzMjE2NjY2NjY2NjdIMS4xNzgwNTkxNjY2NjY2NjY5Yy0wLjU2Mzc5MTY2NjY2NjY2NjcgMCAtMS4wMjA4MzI3NSAwLjQ1NzA0MDUwMDAwMDAwMDA3IC0xLjAyMDgzMjc1IDEuMDIwODMyMTY2NjY2NjY2N3YyLjk4Mjc0NjY2NjY2NjY2NjRjMCAwLjU2Mzc5MTY2NjY2NjY2NjcgMC40NTcwNDEwODMzMzMzMzMzIDEuMDIwODMzMzMzMzMzMzMzNSAxLjAyMDgzMjc1IDEuMDIwODMzMzMzMzMzMzMzNWgwLjkwOTE3NzVsMC4wMDAwMDU4MzMzMzMzMzMzMzMzMyAzLjU3Mjk0NTgzMzMzMzMzMzdoLTAuOTA5MTgzMzMzMzMzMzMzM2MtMC41NjM3OTE2NjY2NjY2NjY3IDAgLTEuMDIwODMyNzUgMC40NTcwNDE2NjY2NjY2NjY3IC0xLjAyMDgzMjc1IDEuMDIwODMzMzMzMzMzMzMzNXYyLjk4MjcwMDAwMDAwMDAwMDRjMCAwLjU2Mzc5MTY2NjY2NjY2NjcgMC40NTcwNDEwODMzMzMzMzMzIDEuMDIwODMzMzMzMzMzMzMzNSAxLjAyMDgzMjc1IDEuMDIwODMzMzMzMzMzMzMzNWgyLjk4Mjc0NjY2NjY2NjY2NjRjMC41NjM3OTE2NjY2NjY2NjY3IDAgMS4wMjA4MzMzMzMzMzMzMzM1IC0wLjQ1NzA0MTY2NjY2NjY2NjcgMS4wMjA4MzMzMzMzMzMzMzM1IC0xLjAyMDgzMzMzMzMzMzMzMzV2LTIuOTgyNzAwMDAwMDAwMDAwNGMwIC0wLjA5MzkxNjY2NjY2NjY2NjY4IC0wLjAxMjY3IC0wLjE4NDgwMDAwMDAwMDAwMDAyIC0wLjAzNjM5NDE2NjY2NjY2NjY3IC0wLjI3MTEzMzMzMzMzMzMzMzM0TDkuNDg1NjQxNjY2NjY2NjY2IDUuMTk2OTE2NjY2NjY2NjY3NWMwLjA1NzgwODMzMzMzMzMzMzM0IDAuMDEwMTc5MTY2NjY2NjY2NjY4IDAuMTE3MzY2NjY2NjY2NjY2NjcgMC4wMTU0ODc1MDAwMDAwMDAwMDEgMC4xNzgwOTE2NjY2NjY2NjY2OCAwLjAxNTQ4NzUwMDAwMDAwMDAwMWgwLjkwOTE4MzMzMzMzMzMzMzN2NS40NzU2MDQxNjY2NjY2NjdoLTEuNjY1NjVjLTAuMTc2OTgzMzMzMzMzMzMzMzUgMCAtMC4zMzY1MjUgMC4xMDY1NzUgLTAuNDA0MjUgMC4yNzAwODMzMzMzMzMzMzMzNCAtMC4wNjc2NjY2NjY2NjY2NjY2OCAwLjE2MzQ1IC0wLjAzMDI3NTAwMDAwMDAwMDAwMyAwLjM1MTYzMzMzMzMzMzMzMzM1IDAuMDk0ODUgMC40NzY3NTgzMzMzMzMzMzM0bDIuMjQ5MDQxNjY2NjY2NjY3IDIuMjQ5MDQxNjY2NjY2NjY3YzAuMTcwODU4MzMzMzMzMzMzMzMgMC4xNzA4NTgzMzMzMzMzMzMzMyAwLjQ0Nzg4MzMzMzMzMzMzMzQgMC4xNzA4NTgzMzMzMzMzMzMzMyAwLjYxODc0MTY2NjY2NjY2NjcgMGwyLjI0ODk4MzMzMzMzMzMzMzMgLTIuMjQ5MDQxNjY2NjY2NjY3YzAuMTI1MTI1MDAwMDAwMDAwMDEgLTAuMTI1MTI1MDAwMDAwMDAwMDEgMC4xNjI1NzUwMDAwMDAwMDAwMyAtMC4zMTMzMDgzMzMzMzMzMzMzNiAwLjA5NDg1IC0wLjQ3Njc1ODMzMzMzMzMzMzQgLTAuMDY3NzI1MDAwMDAwMDAwMDEgLTAuMTYzNTA4MzMzMzMzMzMzMzQgLTAuMjI3MjY2NjY2NjY2NjY2NjcgLTAuMjcwMDgzMzMzMzMzMzMzMzQgLTAuNDA0MTkxNjY2NjY2NjY2NjcgLTAuMjcwMDgzMzMzMzMzMzMzMzRIMTEuNzM5NTgzMzMzMzMzMzM0VjUuMjEyNDA0MTY2NjY2NjY2NWgwLjkwNjkwODMzMzMzMzMzMzRjMC41NjM3OTE2NjY2NjY2NjY3IDAgMS4wMjA4MzMzMzMzMzMzMzM1IC0wLjQ1NzA0NzUwMDAwMDAwMDA1IDEuMDIwODMzMzMzMzMzMzMzNSAtMS4wMjA4MzMzMzMzMzMzMzM1VjEuMjA4ODI0MTY2NjY2NjY2OFoiIGNsaXAtcnVsZT0iZXZlbm9kZCIgc3Ryb2tlLXdpZHRoPSIxIj48L3BhdGg+PC9zdmc+" />&nbsp;&nbsp;ShareGraph</label>	
+        <label id="noactionmenuheader2"class="tabLabel"   style="margin-top: 2px; background-color: transparent;width:100%;color:#F56A00;padding-top:6px;padding-bottom:3px;margin-top:5px;margin-bottom:0px;font-weight:bolder;border-top: 0.25px solid rgba(53, 67, 103, 0.5);"><Strong>TARGET</Strong></label>			
+        <label id="btnif" href="#" class="stuff"          style="margin-top: 2px; margin-bottom: 2px; display: flex; align-items: center; width:100%;" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF');updateLabelColors('tabs', 'btnif');"><img src="data:image/svg+xml;base64, PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9Ii0wLjUgLTAuNSAxNSAxNSIgaWQ9IkNvbW1vbi1GaWxlLVRleHQtV2FybmluZy0tU3RyZWFtbGluZS1VbHRpbWF0ZS5zdmciIGhlaWdodD0iMTUiIHdpZHRoPSIxNSI+PGRlc2M+Q29tbW9uIEZpbGUgVGV4dCBXYXJuaW5nIFN0cmVhbWxpbmUgSWNvbjogaHR0cHM6Ly9zdHJlYW1saW5laHEuY29tPC9kZXNjPjxnPjxwYXRoIGQ9Ik0xMS42NjY2NjY2NjY2NjY2NjggNC4zNzVhMC41ODMzMzMzMzMzMzMzMzM0IDAuNTgzMzMzMzMzMzMzMzMzNCAwIDAgMCAtMC41ODMzMzMzMzMzMzMzMzM0IC0wLjU4MzMzMzMzMzMzMzMzMzRoLTQuMDgzMzMzMzMzMzMzMzM0YTAuNTgzMzMzMzMzMzMzMzMzNCAwLjU4MzMzMzMzMzMzMzMzMzQgMCAwIDAgMCAxLjE2NjY2NjY2NjY2NjY2NjdoNC4wODMzMzMzMzMzMzMzMzRhMC41ODMzMzMzMzMzMzMzMzM0IDAuNTgzMzMzMzMzMzMzMzMzNCAwIDAgMCAwLjU4MzMzMzMzMzMzMzMzMzQgLTAuNTgzMzMzMzMzMzMzMzMzNFoiIGZpbGw9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMSI+PC9wYXRoPjxwYXRoIGQ9Ik03LjI5MTY2NjY2NjY2NjY2NyA2LjQxNjY2NjY2NjY2NjY2N2EwLjU4MzMzMzMzMzMzMzMzMzQgMC41ODMzMzMzMzMzMzMzMzM0IDAgMCAwIDAgMS4xNjY2NjY2NjY2NjY2NjY3aDIuMzMzMzMzMzMzMzMzMzMzNWEwLjU4MzMzMzMzMzMzMzMzMzQgMC41ODMzMzMzMzMzMzMzMzM0IDAgMCAwIDAgLTEuMTY2NjY2NjY2NjY2NjY2N1oiIGZpbGw9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMSI+PC9wYXRoPjxwYXRoIGQ9Ik0xMy42NTU4MzMzMzMzMzMzMzQgMS43NSAxMi4yNSAwLjM0NDE2NjY2NjY2NjY2NjdBMS4xNjY2NjY2NjY2NjY2NjY3IDEuMTY2NjY2NjY2NjY2NjY2NyAwIDAgMCAxMS40Mjc1IDBINC42NjY2NjY2NjY2NjY2NjdhMS4xNjY2NjY2NjY2NjY2NjY3IDEuMTY2NjY2NjY2NjY2NjY2NyAwIDAgMCAtMS4xNjY2NjY2NjY2NjY2NjY3IDEuMTY2NjY2NjY2NjY2NjY2N3Y0LjU2MTY2NjY2NjY2NjY2N2EwLjE0NTgzMzMzMzMzMzMzMzM0IDAuMTQ1ODMzMzMzMzMzMzMzMzQgMCAwIDAgMC4xMzQxNjY2NjY2NjY2NjY2OCAwLjE0NTgzMzMzMzMzMzMzMzM0IDQuODQ3NTAwMDAwMDAwMDAxIDQuODQ3NTAwMDAwMDAwMDAxIDAgMCAxIDAuODQ1ODMzMzMzMzMzMzMzMyAwLjEyMjUgMC4xNCAwLjE0IDAgMCAwIDAuMTg2NjY2NjY2NjY2NjY2NjggLTAuMTM0MTY2NjY2NjY2NjY2NjhWMS40NTgzMzMzMzMzMzMzMzM1YTAuMjkxNjY2NjY2NjY2NjY2NyAwLjI5MTY2NjY2NjY2NjY2NjcgMCAwIDEgMC4yOTE2NjY2NjY2NjY2NjY3IC0wLjI5MTY2NjY2NjY2NjY2NjdoNi4zNDY2NjY2NjY2NjY2NjhhMC4yNzQxNjY2NjY2NjY2NjY2NyAwLjI3NDE2NjY2NjY2NjY2NjY3IDAgMCAxIDAuMjA0MTY2NjY2NjY2NjY2NjYgMC4wODc1MDAwMDAwMDAwMDAwMWwxLjIzNjY2NjY2NjY2NjY2NjggMS4yMzY2NjY2NjY2NjY2NjY4YTAuMjc0MTY2NjY2NjY2NjY2NjcgMC4yNzQxNjY2NjY2NjY2NjY2NyAwIDAgMSAwLjA4NzUwMDAwMDAwMDAwMDAxIDAuMjA0MTY2NjY2NjY2NjY2NjZWMTAuNWEwLjI5MTY2NjY2NjY2NjY2NjcgMC4yOTE2NjY2NjY2NjY2NjY3IDAgMCAxIC0wLjI5MTY2NjY2NjY2NjY2NjcgMC4yOTE2NjY2NjY2NjY2NjY3aC00Ljg2NWEwLjE1MTY2NjY2NjY2NjY2NjY3IDAuMTUxNjY2NjY2NjY2NjY2NjcgMCAwIDAgLTAuMTM0MTY2NjY2NjY2NjY2NjggMC4yMTU4MzMzMzMzMzMzMzMzNWwwLjQ2MDgzMzMzMzMzMzMzMzQgMC44NzVhMC4xNDU4MzMzMzMzMzMzMzMzNCAwLjE0NTgzMzMzMzMzMzMzMzM0IDAgMCAwIDAuMTI4MzMzMzMzMzMzMzMzMzUgMC4wNzU4MzMzMzMzMzMzMzMzNEgxMi44MzMzMzMzMzMzMzMzMzRhMS4xNjY2NjY2NjY2NjY2NjY3IDEuMTY2NjY2NjY2NjY2NjY2NyAwIDAgMCAxLjE2NjY2NjY2NjY2NjY2NjcgLTEuMTY2NjY2NjY2NjY2NjY2N1YyLjU3MjUwMDAwMDAwMDAwMDJBMS4xNjY2NjY2NjY2NjY2NjY3IDEuMTY2NjY2NjY2NjY2NjY2NyAwIDAgMCAxMy42NTU4MzMzMzMzMzMzMzQgMS43NVoiIGZpbGw9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMSI+PC9wYXRoPjxwYXRoIGQ9Ik00LjUzODMzMzMzMzMzMzMzNCA3LjE1NzUwMDAwMDAwMDAwMWEwLjg0NTgzMzMzMzMzMzMzMzMgMC44NDU4MzMzMzMzMzMzMzMzIDAgMCAwIC0xLjQ5MzMzMzMzMzMzMzMzMzQgMEwwLjA5MzMzMzMzMzMzMzMzMzM0IDEyLjc3NUEwLjg0IDAuODQgMCAwIDAgMC44NCAxNGg1LjkwMzMzMzMzMzMzMzMzM2EwLjgzNDE2NjY2NjY2NjY2NjcgMC44MzQxNjY2NjY2NjY2NjY3IDAgMCAwIDAuNzQ2NjY2NjY2NjY2NjY2NyAtMS4yMTkxNjY2NjY2NjY2NjY3Wk0zLjM1NDE2NjY2NjY2NjY2NyA5LjMzMzMzMzMzMzMzMzMzNGEwLjQzNzUgMC40Mzc1IDAgMCAxIDAuODc1IDB2MS43NWEwLjQzNzUgMC40Mzc1IDAgMCAxIC0wLjg3NSAwWm0wLjQzNzUgMy42NDU4MzMzMzMzMzMzMzM1YTAuNTgzMzMzMzMzMzMzMzMzNCAwLjU4MzMzMzMzMzMzMzMzMzQgMCAxIDEgMC41ODMzMzMzMzMzMzMzMzM0IC0wLjU4MzMzMzMzMzMzMzMzMzQgMC41ODMzMzMzMzMzMzMzMzM0IDAuNTgzMzMzMzMzMzMzMzMzNCAwIDAgMSAtMC41ODMzMzMzMzMzMzMzMzM0IDAuNTgzMzMzMzMzMzMzMzMzNFoiIGZpbGw9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMSI+PC9wYXRoPjwvZz48L3N2Zz4=" />&nbsp;&nbsp;Interesting Files</label>			        			
+        <label id="btnSecretsPage" href="#" class="stuff" style="margin-top: 2px; margin-bottom: 2px; display: flex; align-items: center; width:100%;" onClick="radiobtn = document.getElementById('SecretsPage');radiobtn.checked = true;updateLabelColors('tabs', 'btnSecretsPage');"><img src="data:image/svg+xml;base64, PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9Ii0wLjUgLTAuNSAxNSAxNSIgaWQ9IkxvZ2luLUtleXMtLVN0cmVhbWxpbmUtVWx0aW1hdGUuc3ZnIiBoZWlnaHQ9IjE1IiB3aWR0aD0iMTUiPjxkZXNjPkxvZ2luIEtleXMgU3RyZWFtbGluZSBJY29uOiBodHRwczovL3N0cmVhbWxpbmVocS5jb208L2Rlc2M+PGc+PHBhdGggZD0iTTcuODc1MDAwMDAwMDAwMDAxIDUuMjVBMy41IDMuNSAwIDAgMCA3IDIuOTE2NjY2NjY2NjY2NjY3VjEuNDU4MzMzMzMzMzMzMzMzNWExLjQ1ODMzMzMzMzMzMzMzMzUgMS40NTgzMzMzMzMzMzMzMzM1IDAgMCAwIC0yLjkxNjY2NjY2NjY2NjY2NyAwVjEuNzVhMy41IDMuNSAwIDAgMCAtMC44NzUgNi43OTU4MzMzMzMzMzMzMzR2MC4zNzMzMzMzMzMzMzMzMzMzNWwtMC40OTU4MzMzMzMzMzMzMzMzNSAwLjUwMTY2NjY2NjY2NjY2NjdhMC4yOCAwLjI4IDAgMCAwIDAgMC40MDgzMzMzMzMzMzMzMzMzbDAuNDk1ODMzMzMzMzMzMzMzMzUgMC41MDE2NjY2NjY2NjY2NjY3djAuMzM4MzMzMzMzMzMzMzMzM2wtMC40OTU4MzMzMzMzMzMzMzMzNSAwLjUwMTY2NjY2NjY2NjY2NjdhMC4yOCAwLjI4IDAgMCAwIDAgMC40MDgzMzMzMzMzMzMzMzMzbDAuNDk1ODMzMzMzMzMzMzMzMzUgMC41MDE2NjY2NjY2NjY2NjY3VjEyLjgzMzMzMzMzMzMzMzMzNGEwLjI3NDE2NjY2NjY2NjY2NjY3IDAuMjc0MTY2NjY2NjY2NjY2NjcgMCAwIDAgMC4wODc1MDAwMDAwMDAwMDAwMSAwLjIwNDE2NjY2NjY2NjY2NjY2bDAuODc1IDAuODc1YTAuMjggMC4yOCAwIDAgMCAwLjQwODMzMzMzMzMzMzMzMzMgMGwwLjg3NSAtMC44NzVBMC4yNzQxNjY2NjY2NjY2NjY2NyAwLjI3NDE2NjY2NjY2NjY2NjY3IDAgMCAwIDUuNTQxNjY2NjY2NjY2NjY3IDEyLjgzMzMzMzMzMzMzMzMzNHYtNC4yODc1YTMuNSAzLjUgMCAwIDAgMi4zMzMzMzMzMzMzMzMzMzM1IC0zLjI5NTgzMzMzMzMzMzMzNFptLTMuNSAtMS43NWEwLjU4MzMzMzMzMzMzMzMzMzQgMC41ODMzMzMzMzMzMzMzMzM0IDAgMSAxIC0wLjU4MzMzMzMzMzMzMzMzMzQgMC41ODMzMzMzMzMzMzMzMzM0IDAuNTgzMzMzMzMzMzMzMzMzNCAwLjU4MzMzMzMzMzMzMzMzMzQgMCAwIDEgMC41ODMzMzMzMzMzMzMzMzM0IC0wLjU4MzMzMzMzMzMzMzMzMzRabTEuMTY2NjY2NjY2NjY2NjY2NyAtMi45MTY2NjY2NjY2NjY2NjdBMC44NzUgMC44NzUgMCAwIDEgNi40MTY2NjY2NjY2NjY2NjcgMS40NTgzMzMzMzMzMzMzMzM1djAuOTUwODMzMzMzMzMzMzMzM2EzLjQ1OTE2NjY2NjY2NjY2NjUgMy40NTkxNjY2NjY2NjY2NjY1IDAgMCAwIC0xLjE2NjY2NjY2NjY2NjY2NjcgLTAuNTQ4MzMzMzMzMzMzMzMzM1YyLjkxNjY2NjY2NjY2NjY2N0g0LjY2NjY2NjY2NjY2NjY2N1YxLjQ1ODMzMzMzMzMzMzMzMzVBMC44NzUgMC44NzUgMCAwIDEgNS41NDE2NjY2NjY2NjY2NjcgMC41ODMzMzMzMzMzMzMzMzM0WiIgZmlsbD0iI2M0YzRjOCIgc3Ryb2tlLXdpZHRoPSIxIj48L3BhdGg+PHBhdGggZD0ibTEzLjAzNzUwMDAwMDAwMDAwMSAxMC41IC0zLjAyNzUwMDAwMDAwMDAwMDMgLTMuMDMzMzMzMzMzMzMzMzMzN0EzLjUgMy41IDAgMCAwIDkuMzMzMzMzMzMzMzMzMzM0IDMuNWEzLjYxNjY2NjY2NjY2NjY2NyAzLjYxNjY2NjY2NjY2NjY2NyAwIDAgMCAtMC41ODMzMzMzMzMzMzMzMzM0IC0wLjQ0MzMzMzMzMzMzMzMzMzM2IDAuMjk3NTAwMDAwMDAwMDAwMDQgMC4yOTc1MDAwMDAwMDAwMDAwNCAwIDAgMCAtMC4zNTU4MzMzMzMzMzMzMzMzMyAwIDAuMjkxNjY2NjY2NjY2NjY2NyAwLjI5MTY2NjY2NjY2NjY2NjcgMCAwIDAgLTAuMDcgMC4zNDQxNjY2NjY2NjY2NjY3QTQuMzE2NjY2NjY2NjY2NjY3IDQuMzE2NjY2NjY2NjY2NjY3IDAgMCAxIDguNzUgNS4yNWE0LjM2MzMzMzMzMzMzMzMzNCA0LjM2MzMzMzMzMzMzMzMzNCAwIDAgMSAtMi4wMjQxNjY2NjY2NjY2NjcgMy42ODY2NjY2NjY2NjY2NjcgMC4yOTE2NjY2NjY2NjY2NjY3IDAuMjkxNjY2NjY2NjY2NjY2NyAwIDAgMCAtMC4xMjI1IDAuMzI2NjY2NjY2NjY2NjY2NyAwLjI5NzUwMDAwMDAwMDAwMDA0IDAuMjk3NTAwMDAwMDAwMDAwMDQgMCAwIDAgMC4yOCAwLjIxIDMuNjA1IDMuNjA1IDAgMCAwIDEuNDgxNjY2NjY2NjY2NjY2NyAtMC4zNDQxNjY2NjY2NjY2NjY3bDAuMzc5MTY2NjY2NjY2NjY2NyAwLjMzMjV2MC43NDY2NjY2NjY2NjY2NjY3YTAuMjkxNjY2NjY2NjY2NjY2NyAwLjI5MTY2NjY2NjY2NjY2NjcgMCAwIDAgMC4yOTE2NjY2NjY2NjY2NjY3IDAuMjkxNjY2NjY2NjY2NjY2N2gwLjc1MjUwMDAwMDAwMDAwMDFsMC4xMjI1IDAuMTI4MzMzMzMzMzMzMzMzMzV2MC43NDY2NjY2NjY2NjY2NjY3YTAuMjkxNjY2NjY2NjY2NjY2NyAwLjI5MTY2NjY2NjY2NjY2NjcgMCAwIDAgMC4yOTE2NjY2NjY2NjY2NjY3IDAuMjkxNjY2NjY2NjY2NjY2N2gwLjY1MzMzMzMzMzMzMzMzMzRsMC41MzY2NjY2NjY2NjY2NjY3IDAuNTAxNjY2NjY2NjY2NjY2N2EwLjI4IDAuMjggMCAwIDAgMC4xOTgzMzMzMzMzMzMzMzMzNiAwLjA4MTY2NjY2NjY2NjY2NjY4SDEyLjgzMzMzMzMzMzMzMzMzNGEwLjI5MTY2NjY2NjY2NjY2NjcgMC4yOTE2NjY2NjY2NjY2NjY3IDAgMCAwIDAuMjkxNjY2NjY2NjY2NjY2NyAtMC4yOTE2NjY2NjY2NjY2NjY3di0xLjIzNjY2NjY2NjY2NjY2NjhhMC4yNzQxNjY2NjY2NjY2NjY2NyAwLjI3NDE2NjY2NjY2NjY2NjY3IDAgMCAwIC0wLjA4NzUwMDAwMDAwMDAwMDAxIC0wLjIyMTY2NjY2NjY2NjY2NjY4WiIgZmlsbD0iI2M0YzRjOCIgc3Ryb2tlLXdpZHRoPSIxIj48L3BhdGg+PC9nPjwvc3ZnPg==" />&nbsp;&nbsp;Extracted Secrets</label>	        
+		<label id="noactionmenuheader3"class="tabLabel"   style="margin-top: 2px; background-color: transparent;width:100%;color:#F56A00;padding-top:6px;padding-bottom:3px;margin-top:5px;margin-bottom:0px;font-weight:bolder;border-top: 0.25px solid rgba(53, 67, 103, 0.5);"><strong>ACT</strong></label>
+		<label id="btnexploit" href="#" class="stuff"     style="margin-top: 2px; margin-bottom: 2px; display: flex; align-items: center; width:100%;" onClick="radiobtn = document.getElementById('Attacks');radiobtn.checked = true;updateLabelColors('tabs', 'btnexploit');"><img src="data:image/svg+xml;base64, PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9Ii0wLjUgLTAuNSAxNSAxNSIgaWQ9IlByb3RlY3Rpb24tU2hpZWxkLVNrdWxsLS1TdHJlYW1saW5lLVVsdGltYXRlLnN2ZyIgaGVpZ2h0PSIxNSIgd2lkdGg9IjE1Ij48ZGVzYz5Qcm90ZWN0aW9uIFNoaWVsZCBTa3VsbCBTdHJlYW1saW5lIEljb246IGh0dHBzOi8vc3RyZWFtbGluZWhxLmNvbTwvZGVzYz48Zz48cGF0aCBkPSJNMTQgMS4xNjY2NjY2NjY2NjY2NjY3YTEuMTY2NjY2NjY2NjY2NjY2NyAxLjE2NjY2NjY2NjY2NjY2NjcgMCAwIDAgLTEuMTY2NjY2NjY2NjY2NjY2NyAtMS4xNjY2NjY2NjY2NjY2NjY3SDEuMTY2NjY2NjY2NjY2NjY2N2ExLjE2NjY2NjY2NjY2NjY2NjcgMS4xNjY2NjY2NjY2NjY2NjY3IDAgMCAwIC0xLjE2NjY2NjY2NjY2NjY2NjcgMS4xNjY2NjY2NjY2NjY2NjY3djQuMjY0MTY2NjY2NjY2NjY3QTguODI1ODMzMzMzMzMzMzM0IDguODI1ODMzMzMzMzMzMzM0IDAgMCAwIDYuOTE4MzMzMzMzMzMzMzMzIDE0YTAuMzk2NjY2NjY2NjY2NjY2NyAwLjM5NjY2NjY2NjY2NjY2NjcgMCAwIDAgMC4xMTY2NjY2NjY2NjY2NjY2OCAwIDAuNDE0MTY2NjY2NjY2NjY2NyAwLjQxNDE2NjY2NjY2NjY2NjcgMCAwIDAgMC4xMTY2NjY2NjY2NjY2NjY2OCAwQTguODMxNjY2NjY2NjY2NjY3IDguODMxNjY2NjY2NjY2NjY3IDAgMCAwIDE0IDUuMzY2NjY2NjY2NjY2NjY2Wm0tMy41IDUuNTY0OTk5OTk5OTk5OTk5NWExLjc1IDEuNzUgMCAwIDEgLTEuMjQ4MzMzMzMzMzMzMzMzNSAxLjY4IDAuMjg1ODMzMzMzMzMzMzMzMzMgMC4yODU4MzMzMzMzMzMzMzMzMyAwIDAgMCAtMC4yMSAwLjI4djAuMzczMzMzMzMzMzMzMzMzMzVBMC44NzUgMC44NzUgMCAwIDEgOC4zNDE2NjY2NjY2NjY2NjcgOS45MTY2NjY2NjY2NjY2NjhhMC4xMzQxNjY2NjY2NjY2NjY2OCAwLjEzNDE2NjY2NjY2NjY2NjY4IDAgMCAxIC0wLjEyMjUgLTAuMDI5MTY2NjY2NjY2NjY2NjcgMC4xNDU4MzMzMzMzMzMzMzMzNCAwLjE0NTgzMzMzMzMzMzMzMzM0IDAgMCAxIC0wLjA1MjUgLTAuMTEwODMzMzMzMzMzMzMzMzRWOC43NWEwLjI5MTY2NjY2NjY2NjY2NjcgMC4yOTE2NjY2NjY2NjY2NjY3IDAgMCAwIC0wLjU4MzMzMzMzMzMzMzMzMzQgMHYxLjAyMDgzMzMzMzMzMzMzMzVhMC4xNDU4MzMzMzMzMzMzMzMzNCAwLjE0NTgzMzMzMzMzMzMzMzM0IDAgMCAxIC0wLjE0NTgzMzMzMzMzMzMzMzM0IDAuMTQ1ODMzMzMzMzMzMzMzMzRoLTAuODc1YTAuMTQ1ODMzMzMzMzMzMzMzMzQgMC4xNDU4MzMzMzMzMzMzMzMzNCAwIDAgMSAtMC4xNDU4MzMzMzMzMzMzMzMzNCAtMC4xNDU4MzMzMzMzMzMzMzMzNFY4Ljc1YTAuMjkxNjY2NjY2NjY2NjY2NyAwLjI5MTY2NjY2NjY2NjY2NjcgMCAwIDAgLTAuNTgzMzMzMzMzMzMzMzMzNCAwdjEuMDA5MTY2NjY2NjY2NjY2OGEwLjE0NTgzMzMzMzMzMzMzMzM0IDAuMTQ1ODMzMzMzMzMzMzMzMzQgMCAwIDEgLTAuMDUyNSAwLjExMDgzMzMzMzMzMzMzMzM0IDAuMTM0MTY2NjY2NjY2NjY2NjggMC4xMzQxNjY2NjY2NjY2NjY2OCAwIDAgMSAtMC4xMjI1IDAuMDQ2NjY2NjY2NjY2NjY2NjcgMC44NzUgMC44NzUgMCAwIDEgLTAuNzAwMDAwMDAwMDAwMDAwMSAtMC44NTc1di0wLjM3MzMzMzMzMzMzMzMzMzM1YTAuMjkxNjY2NjY2NjY2NjY2NyAwLjI5MTY2NjY2NjY2NjY2NjcgMCAwIDAgLTAuMjEgLTAuMjhBMS43NSAxLjc1IDAgMCAxIDMuNSA2LjcwMjUwMDAwMDAwMDAwMVY1LjgzMzMzMzMzMzMzMzMzNGEzLjUgMy41IDAgMCAxIDcgMFoiIGZpbGw9IiNjNGM0YzgiIHN0cm9rZS13aWR0aD0iMSI+PC9wYXRoPjxwYXRoIGQ9Ik00LjM3NSA2LjExOTE2NjY2NjY2NjY2NzVhMC44NzUgMC44NzUgMCAxIDAgMS43NSAwIDAuODc1IDAuODc1IDAgMSAwIC0xLjc1IDAiIGZpbGw9IiNjNGM0YzgiIHN0cm9rZS13aWR0aD0iMSI+PC9wYXRoPjxwYXRoIGQ9Ik03Ljg3NTAwMDAwMDAwMDAwMSA2LjExOTE2NjY2NjY2NjY2NzVhMC44NzUgMC44NzUgMCAxIDAgMS43NSAwIDAuODc1IDAuODc1IDAgMSAwIC0xLjc1IDAiIGZpbGw9IiNjNGM0YzgiIHN0cm9rZS13aWR0aD0iMSI+PC9wYXRoPjwvZz48L3N2Zz4=" />&nbsp;&nbsp;Exploit</label>		
+		<label id="btndetect" href="#" class="stuff"      style="margin-top: 2px; margin-bottom: 2px; display: flex; align-items: center; width:100%;" onClick="radiobtn = document.getElementById('Detections');radiobtn.checked = true;updateLabelColors('tabs', 'btndetect');"><img src="data:image/svg+xml;base64, PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9Ii0wLjUgLTAuNSAxNSAxNSIgaWQ9IlNoaWVsZC1XYXJuaW5nLS1TdHJlYW1saW5lLVVsdGltYXRlLnN2ZyIgaGVpZ2h0PSIxNSIgd2lkdGg9IjE1Ij48ZGVzYz5TaGllbGQgV2FybmluZyBTdHJlYW1saW5lIEljb246IGh0dHBzOi8vc3RyZWFtbGluZWhxLmNvbTwvZGVzYz48Zz48cGF0aCBkPSJNMTMuNjYxNjY2NjY2NjY2NjY5IDAuMzMyNUExLjE2NjY2NjY2NjY2NjY2NjcgMS4xNjY2NjY2NjY2NjY2NjY3IDAgMCAwIDEyLjgzMzMzMzMzMzMzMzMzNCAwSDEuMTY2NjY2NjY2NjY2NjY2N2ExLjE2NjY2NjY2NjY2NjY2NjcgMS4xNjY2NjY2NjY2NjY2NjY3IDAgMCAwIC0xLjE2NjY2NjY2NjY2NjY2NjcgMS4xNjY2NjY2NjY2NjY2NjY3djQuMjY0MTY2NjY2NjY2NjY3QTguODI1ODMzMzMzMzMzMzM0IDguODI1ODMzMzMzMzMzMzM0IDAgMCAwIDYuOTE4MzMzMzMzMzMzMzMzIDE0YTAuMzk2NjY2NjY2NjY2NjY2NyAwLjM5NjY2NjY2NjY2NjY2NjcgMCAwIDAgMC4xMTY2NjY2NjY2NjY2NjY2OCAwIDAuNDE0MTY2NjY2NjY2NjY2NyAwLjQxNDE2NjY2NjY2NjY2NjcgMCAwIDAgMC4xMTY2NjY2NjY2NjY2NjY2OCAwQTguODMxNjY2NjY2NjY2NjY3IDguODMxNjY2NjY2NjY2NjY3IDAgMCAwIDE0IDUuMzY2NjY2NjY2NjY2NjY2VjEuMTY2NjY2NjY2NjY2NjY2N2ExLjE2NjY2NjY2NjY2NjY2NjcgMS4xNjY2NjY2NjY2NjY2NjY3IDAgMCAwIC0wLjMzODMzMzMzMzMzMzMzMzMgLTAuODM0MTY2NjY2NjY2NjY2N1ptLTIuOTkyNSA4LjYwNDE2NjY2NjY2NjY2OGEwLjg1MTY2NjY2NjY2NjY2NjcgMC44NTE2NjY2NjY2NjY2NjY3IDAgMCAxIC0wLjcxNzUgMC40MDI0OTk5OTk5OTk5OTk5N0g0LjA0ODMzMzMzMzMzMzMzNGEwLjg1MTY2NjY2NjY2NjY2NjcgMC44NTE2NjY2NjY2NjY2NjY3IDAgMCAxIC0wLjcxNzUgLTAuNDAyNDk5OTk5OTk5OTk5OTcgMC44NDU4MzMzMzMzMzMzMzMzIDAuODQ1ODMzMzMzMzMzMzMzMyAwIDAgMSAwIC0wLjgyMjVsMi45NTE2NjY2NjY2NjY2NjY3IC01LjYxNzUwMDAwMDAwMDAwMWEwLjg0NTgzMzMzMzMzMzMzMzMgMC44NDU4MzMzMzMzMzMzMzMzIDAgMCAxIDEuNDkzMzMzMzMzMzMzMzMzNCAwbDIuOTUxNjY2NjY2NjY2NjY2NyA1LjYxNzUwMDAwMDAwMDAwMWEwLjg0NTgzMzMzMzMzMzMzMzMgMC44NDU4MzMzMzMzMzMzMzMzIDAgMCAxIC0wLjA1ODMzMzMzMzMzMzMzMzM0IDAuODIyNVoiIGZpbGw9IiNjNGM0YzgiIHN0cm9rZS13aWR0aD0iMSI+PC9wYXRoPjxwYXRoIGQ9Ik02LjQxNjY2NjY2NjY2NjY2NyA3Ljg4MDgzMzMzMzMzMzMzM2EwLjU4MzMzMzMzMzMzMzMzMzQgMC41ODMzMzMzMzMzMzMzMzM0IDAgMSAwIDEuMTY2NjY2NjY2NjY2NjY2NyAwIDAuNTgzMzMzMzMzMzMzMzMzNCAwLjU4MzMzMzMzMzMzMzMzMzQgMCAxIDAgLTEuMTY2NjY2NjY2NjY2NjY2NyAwIiBmaWxsPSIjYzRjNGM4IiBzdHJva2Utd2lkdGg9IjEiPjwvcGF0aD48cGF0aCBkPSJNNyA2Ljg2YTAuNDQzMzMzMzMzMzMzMzMzMzYgMC40NDMzMzMzMzMzMzMzMzMzNiAwIDAgMCAwLjQzNzUgLTAuNDM3NVY0LjY2NjY2NjY2NjY2NjY2N2EwLjQzNzUgMC40Mzc1IDAgMSAwIC0wLjg3NSAwdjEuNzVhMC40NDMzMzMzMzMzMzMzMzMzNiAwLjQ0MzMzMzMzMzMzMzMzMzM2IDAgMCAwIDAuNDM3NSAwLjQ0MzMzMzMzMzMzMzMzMzM2WiIgZmlsbD0iI2M0YzRjOCIgc3Ryb2tlLXdpZHRoPSIxIj48L3BhdGg+PC9nPjwvc3ZnPg==" />&nbsp;&nbsp;Detect</label>
+		<label id="btnprioritize" href="#" class="stuff"  style="margin-top: 2px; margin-bottom: 2px; display: flex; align-items: center; width:100%;" onClick="radiobtn = document.getElementById('Remediation');radiobtn.checked = true;updateLabelColors('tabs', 'btnprioritize');"><img src="data:image/svg+xml;base64, PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9Ii0wLjUgLTAuNSAxNSAxNSIgaWQ9IkNoZWNrLVNoaWVsZC0tU3RyZWFtbGluZS1VbHRpbWF0ZS5zdmciIGhlaWdodD0iMTUiIHdpZHRoPSIxNSI+PGRlc2M+Q2hlY2sgU2hpZWxkIFN0cmVhbWxpbmUgSWNvbjogaHR0cHM6Ly9zdHJlYW1saW5laHEuY29tPC9kZXNjPjxwYXRoIGQ9Ik0xMS45MTE2NjY2NjY2NjY2NjkgMEgyLjA4ODMzMzMzMzMzMzMzMzRhMC44NzUgMC44NzUgMCAwIDAgLTAuODY5MTY2NjY2NjY2NjY2OCAwLjg3NXYzLjY1MTY2NjY2NjY2NjY2N2ExMC42NTE2NjY2NjY2NjY2NjkgMTAuNjUxNjY2NjY2NjY2NjY5IDAgMCAwIDUuNjQ2NjY2NjY2NjY2NjY2NSA5LjQzODMzMzMzMzMzMzMzNCAwLjI3NDE2NjY2NjY2NjY2NjY3IDAuMjc0MTY2NjY2NjY2NjY2NjcgMCAwIDAgMC4yNjgzMzMzMzMzMzMzMzMzNyAwIDEwLjY1MTY2NjY2NjY2NjY2OSAxMC42NTE2NjY2NjY2NjY2NjkgMCAwIDAgNS42NDY2NjY2NjY2NjY2NjY1IC05LjQzODMzMzMzMzMzMzMzNFYwLjg3NUEwLjg3NSAwLjg3NSAwIDAgMCAxMS45MTE2NjY2NjY2NjY2NjkgMFpNMTAuNDQxNjY2NjY2NjY2NjY2IDQuNjMxNjY2NjY2NjY2NjY3bC00LjE0NzUwMDAwMDAwMDAwMSAzLjkwODMzMzMzMzMzMzMzMzdhMC41ODMzMzMzMzMzMzMzMzM0IDAuNTgzMzMzMzMzMzMzMzMzNCAwIDAgMSAtMC4zOTY2NjY2NjY2NjY2NjY3IDAuMTU3NTAwMDAwMDAwMDAwMDMgMC41ODMzMzMzMzMzMzMzMzM0IDAuNTgzMzMzMzMzMzMzMzMzNCAwIDAgMSAtMC40MTQxNjY2NjY2NjY2NjY3IC0wLjE2OTE2NjY2NjY2NjY2NjY2TDQuMDgzMzMzMzMzMzMzMzM0IDcuMTI4MzMzMzMzMzMzMzM0YTAuNTgzMzMzMzMzMzMzMzMzNCAwLjU4MzMzMzMzMzMzMzMzMzQgMCAwIDEgMCAtMC44MjI1IDAuNTgzMzMzMzMzMzMzMzMzNCAwLjU4MzMzMzMzMzMzMzMzMzQgMCAwIDEgMC44MjgzMzMzMzMzMzMzMzM0IDBsMC45OCAwLjk5MTY2NjY2NjY2NjY2NjcgMy43MzMzMzMzMzMzMzMzMzQgLTMuNWEwLjU4MzMzMzMzMzMzMzMzMzQgMC41ODMzMzMzMzMzMzMzMzM0IDAgMCAxIDAuODE2NjY2NjY2NjY2NjY2NyAwLjgzNDE2NjY2NjY2NjY2NjdaIiBmaWxsPSIjYzRjNGM4IiBzdHJva2Utd2lkdGg9IjEiPjwvcGF0aD48L3N2Zz4=" />&nbsp;&nbsp;Remediate</label>	        		
 	</div>
 </div>
 <div id="main">
@@ -6331,144 +6466,367 @@ input[type="checkbox"]:checked::before {
 		<label class="tabLabel" onClick="updateTab('dashboard',false)" for="dashboard"></label>
 		<div id="tabPanel" class="tabPanel">
 		<h2 style="margin-top: 65px;margin-left:10px;margin-bottom: 17px;">Summary Report</h2>	
-		<div style="margin-left: 10px; width: 90%;">
-	    This page provides a summary of the share scan results, observations, risks, and prioritized recommendations.
-		<br><br>				
-        </div>
-		<div style="min-height: 450px;">	
+		<div style="min-height: 450px;">
+
+<!--  
+|||||||||| CARD: Intro text
+-->
+        <div style="margin-left: 10px; width: 98%; margin-bottom: 10px;">
+            Testing was conducted between $StartTime and $EndTime to identify network shares configured with excessive privileges hosted on computers joined to the $TargetDomain domain. 
+            In total, $RiskLevelCountCritical critical, $RiskLevelCountHigh high, $RiskLevelCountMedium medium, and  $RiskLevelCountLow low risk <a href="https://en.wikipedia.org/wiki/Security_descriptor">ACE (Access Control Entry)</a> configurations were discovered across $ExcessiveSharesCount shares, hosted by $ComputerWithExcessive computers in the $TargetDomain Active Directory domain. 
+            Overall, $InterestingFilesAllFilesCount interesting files were found accessible to all domain users that could potentially lead to unauthorized data access or remote code execution. The affected shares were found hosting $InterestingFilesAllObjectsSecretCount files that may contain passwords and $InterestingFilesAllObjectsSensitiveCount files that may contain sensitive data. $SecretsRecoveredCount credentials were recovered from $SecretsRecoveredFileCount of the discovered $InterestingFilesAllObjectsSecretCount secrets files. 
+		    <br><br>
+		    The summary report below includes an overview of the affected assets, data & finding exposure, share creation timelines, and general recommendations.
+        </div>	
 												
 <!--  
-|||||||||| CARD: RISK AND INTERESTING FILE SUMMARY
+|||||||||| CARD: Finding and Data Exposure Summary Cards
 -->
-                     <div style="margin-left: 10px; width: 90%;">
-                        <span style="color:#4A4A4A; font-size: 16px;"><strong>Risk & Data Exposure</strong><br></span>
-	                    In total, $RiskLevelCountCritical critical, $RiskLevelCountHigh high, $RiskLevelCountMedium medium, and  $RiskLevelCountLow low risk <a href="https://en.wikipedia.org/wiki/Security_descriptor">ACE (Access Control Entry)</a> configurations were discovered across $ExcessiveSharesCount shares, hosted by $ComputerWithExcessive computers in the $TargetDomain Active Directory domain. The affected shares were found hosting $InterestingFilesAllObjectsSecretCount files that may contain passwords and $InterestingFilesAllObjectsSensitiveCount files that may contain sensitive data. $SecretsRecoveredCount credentials were recovered from $SecretsRecoveredFileCount of the discovered $InterestingFilesAllObjectsSecretCount secrets files. Overall, $InterestingFilesAllFilesCount interesting files were found accessible to all domain users that could potentially lead to unauthorized data access or remote code execution. 
-						<br><br>View the 
-						<a href="#" onClick="radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnaces');" >Insecure ACEs</a>,  
-						<a href="#" onClick="radiobtn = document.getElementById('SecretsPage');radiobtn.checked = true;updateLabelColors('tabs', 'btnSecretsPage');">Extracted Secrets</a>,  and 
-						<a href="#" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;updateLabelColors('tabs', 'btnif');">Interesting Files</a> sections for more details.</div>
 
-		            <div class="LargeCard" style="width:43.75%;">	
-							<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnaces');" style="text-decoration:none;">
-							</a>
-																	
-									<div class="chart-container">
-									<div id="ChartDashboardRisk"></div>
-										<div class="chart-controls"></div>
-									</div>								  							
-							
-					</div>									
+<div style="width: 99%; display: flex; justify-content: space-between;">
+
+  <!-- Finding Summary Card -->
+  <div style="width: 50%; display: flex; justify-content: flex-start;">
+ 
+    <div class="LargeCard" style="width:99%;">	
+		 <div style="color:#4A4A4A;font-size: 16px; margin-top: 10px; margin-left: 10px; margin-bottom: 10px;"><strong>Finding Exposure Summary</strong></div> 	 			
+		 
+		 <!-- count cards  -->
+		 <div style="width: 100%; display: flex; justify-content: space-between;">
+
+		  <!-- Left aligned card -->
+		  <div style="width: 25%; display: flex; justify-content: flex-start;">
+			<div class="card" style="width: 100%;"  onClick="document.getElementById('acefilterInput').value = 'Critical';applyFiltersAndSort('aceTable', 'acefilterInput', 'acefilterCounter', 'acepagination');radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnaces');" onmousedown="this.style.transition = 'none'; this.style.outline = '2px solid gray';"   onmouseup="this.style.outline = '';">
+			  <div class="cardtitle" style="color:#71808d; font-size: 14px; font-weight: bold;">
+				Critical
+			  </div>
+			  <div style="text-align: left;">
+				<span class="percentagetext" style="color:#f29650; text-align: left;">                    
+				$RiskLevelCountCritical<Br> 
+				</span>		
+				<span style="font-size: 10px; color: gray;">findings</span>                
+			   </div>
+			</div>
+		  </div>
+
+		  <!-- Center aligned card -->
+		  <div style="width: 25%; display: flex; justify-content: flex-center;">
+			<div class="card" style="width: 100%;" onClick="document.getElementById('acefilterInput').value = 'High';applyFiltersAndSort('aceTable', 'acefilterInput', 'acefilterCounter', 'acepagination');radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnaces');" onmousedown="this.style.transition = 'none'; this.style.outline = '2px solid gray';"   onmouseup="this.style.outline = '';">
+			  <div class="cardtitle" style="color:#71808d; font-size: 14px; font-weight: bold;">
+				High
+			  </div>
+			  <div style="text-align: left;">
+				<span class="percentagetext" style="color:#f29650; text-align: left;">                    
+				$RiskLevelCountHigh<Br> 
+				</span>		
+				<span style="font-size: 10px; color: gray;">findings</span>                
+			   </div>
+			</div>
+		  </div>
+		  
+		  <!-- Center aligned card -->
+		  <div style="width: 25%; display: flex; justify-content: flex-center;">
+			<div class="card" style="width: 100%;" onClick="document.getElementById('acefilterInput').value = 'Medium';applyFiltersAndSort('aceTable', 'acefilterInput', 'acefilterCounter', 'acepagination');radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnaces');" onmousedown="this.style.transition = 'none'; this.style.outline = '2px solid gray';"   onmouseup="this.style.outline = '';">
+			  <div class="cardtitle" style="color:#71808d; font-size: 14px; font-weight: bold;">
+				Medium
+			  </div>
+			  <div style="text-align: left;">
+				<span class="percentagetext" style="color:#f29650; text-align: left;">                    
+				$RiskLevelCountMedium<Br> 
+				</span>		
+				<span style="font-size: 10px; color: gray;">findings</span>                
+			   </div>
+			</div>
+		  </div>  
+		  
+		  <!-- Right aligned card -->
+		   <div style="width: 25%; display: flex; justify-content: flex-end;">
+			<div class="card" style="width: 100%;" onClick="document.getElementById('acefilterInput').value = 'Low';applyFiltersAndSort('aceTable', 'acefilterInput', 'acefilterCounter', 'acepagination');radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnaces');" onmousedown="this.style.transition = 'none'; this.style.outline = '2px solid gray';"   onmouseup="this.style.outline = '';">
+			  <div class="cardtitle" style="color:#71808d; font-size: 14px; font-weight: bold;">
+				Low 
+			  </div>
+			  <div style="text-align: left;">
+				<span class="percentagetext" style="color:#f29650; text-align: left;">                    
+				$RiskLevelCountLow<Br> 
+				</span>		
+				<span style="font-size: 10px; color: gray;">findings</span>                
+			   </div>
+			</div>
+		  </div>
+
+		</div>	
 				
-					<div class="LargeCard" style="width: 43.75%;">	
-							<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;updateLabelColors('tabs', 'btnif');" style="text-decoration:none;">
-							</a>
-																	
-									<div class="chart-container">
-									<div id="ChartDashboardIF"></div>
-										<div class="chart-controls"></div>
-									</div>								  							
-							
-					</div>
-
-					 <div style="margin-left: 10px; width: 90%; margin-bottom: 10px;">                    
-                     <span style="color:#4A4A4A;font-size: 16px;"><strong>Affected Assets</strong><br></span>		
-					 $ExcessiveSharePrivsCount ACL entries, on $ExcessiveSharesCount shares, hosted by $ComputerWithExcessive computers were found configured with excessive privileges on the $TargetDomain domain. Overall, $IdentityReferenceListCount identities/groups had excessive privileges assigned to them. 
-                     The chart below illustrates the relationship between networks, computers, shares, and the ACEs configured with excessive privileges. Each network contains computers with assigned IP addresses. Each computer may host multiple shares and each share is configured with ACEs that allow remote access. As a result, ACEs represent the individual points of remediation that will need to be addressed to reduce exposure and risk.
-					 </div>
+			<div class="LargeCard" style="width: 94%;  margin-top: 5px;">
 					
-					<div class="LargeCard" style="width: 90%;">	
-						<a href="#" id="DashLink" style="text-decoration:none;">
-						</a>															
-						<div style="width: 100%; height: 200px;" id="svg-sankey"></div>								
-					</div>	
+						<div id="ChartDashboardRisk"></div>
+						<div class="chart-controls"></div>
+					
+			</div>					
+			
+		   <div style="padding: 5px; width: 100%; font-size: 10px; color: gray; display: flex; justify-content: center; align-items: center; text-align: center;">
+				More details available in the &nbsp;<a href="#" onClick="radiobtn = document.getElementById('SubNets');radiobtn.checked = true;updateLabelColors('tabs', 'btnnetworks');">Networks</a>,&nbsp;<a href="#" onClick="radiobtn = document.getElementById('ComputerInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btncomputers');">Computers</a>,&nbsp; <a href="#" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;updateLabelColors('tabs', 'btnshares');">Shares</a>, and &nbsp; <a href="#" onClick="radiobtn = document.getElementById('AceInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btnaces');">ACEs</a> &nbsp;sections. 						
+           </div>
+    </div>
+  </div>
 
+
+  <!-- Data Exposure Summary Card -->
+  <div style="width: 50%; display: flex; justify-content: flex-start;">
+ 
+    <div class="LargeCard" style="width:100%;">	
+		 <div style="color:#4A4A4A;font-size: 16px; margin-top: 10px; margin-left: 10px; margin-bottom: 10px;"><strong>Data Exposure Summary</strong></div>	
+
+		 <!-- count cards  -->
+		 <div style="width: 100%; display: flex; justify-content: space-between;">
+
+		  <!-- Left aligned card -->
+		  <div style="width: 25%; display: flex; justify-content: flex-start;">
+			<div class="card" style="width: 100%;" onClick="document.getElementById('filterInputIF').value = ''; applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF');radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;updateLabelColors('tabs', 'btnif');" onmousedown="this.style.transition = 'none'; this.style.outline = '2px solid gray';"   onmouseup="this.style.outline = '';">
+			  <div class="cardtitle" style="color:#71808d; font-size: 14px; font-weight: bold;">
+				Interesting
+			  </div>
+			  <div style="text-align: left;">
+				<span class="percentagetext" style="color:#f29650; text-align: left;">                    
+				$InterestingFilesAllFilesCount<Br> 
+				</span>		
+				<span style="font-size: 10px; color: gray;">files found</span>                
+			   </div>
+			</div>
+		  </div>
+
+		  <!-- Center aligned card -->
+		  <div style="width: 25%; display: flex; justify-content: flex-center;">
+			<div class="card" style="width: 100%;" onClick="document.getElementById('filterInputIF').value = 'Sensitive'; applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF');updateLabelColors('tabs', 'btnif'); radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;updateLabelColors('tabs', 'btnif');" onmousedown="this.style.transition = 'none'; this.style.outline = '2px solid gray';"   onmouseup="this.style.outline = '';">
+			  <div class="cardtitle" style="color:#71808d; font-size: 14px; font-weight: bold;">
+				Sensitive
+			  </div>
+			  <div style="text-align: left;">
+				<span class="percentagetext" style="color:#f29650; text-align: left;">                    
+				$InterestingFilesAllObjectsSensitiveCount<Br> 
+				</span>		
+				<span style="font-size: 10px; color: gray;">files found</span>                
+			   </div>
+			</div>
+		  </div>
+		  
+		  <!-- Center aligned card -->
+		  <div style="width: 25%; display: flex; justify-content: flex-center;">
+			<div class="card" style="width: 100%;" onClick="document.getElementById('filterInputIF').value = 'Secret'; applyFiltersAndSort('InterestingFileTable', 'filterInputIF', 'filterCounterIF', 'paginationIF');updateLabelColors('tabs', 'btnif'); radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;updateLabelColors('tabs', 'btnif');" onmousedown="this.style.transition = 'none'; this.style.outline = '2px solid gray';"   onmouseup="this.style.outline = '';">
+			  <div class="cardtitle" style="color:#71808d; font-size: 14px; font-weight: bold;">
+				Secrets
+			  </div>
+			  <div style="text-align: left;">
+				<span class="percentagetext" style="color:#f29650; text-align: left;">                    
+				$InterestingFilesAllObjectsSecretCount<Br> 
+				</span>		
+				<span style="font-size: 10px; color: gray;">files found</span>                
+			   </div>
+			</div>
+		  </div>  
+		  
+		  <!-- Right aligned card -->
+		   <div style="width: 25%; display: flex; justify-content: flex-end;">
+			<div class="card" style="width: 100%;" onClick="radiobtn = document.getElementById('SecretsPage');radiobtn.checked = true;updateLabelColors('tabs', 'btnSecretsPage');" onmousedown="this.style.transition = 'none'; this.style.outline = '2px solid gray';"   onmouseup="this.style.outline = '';">
+			  <div class="cardtitle" style="color:#71808d; font-size: 14px; font-weight: bold;">
+				Extracted 
+			  </div>
+			  <div style="text-align: left;">
+				<span class="percentagetext" style="color:#f29650; text-align: left;">                    
+				$SecretsRecoveredCount<Br> 
+				</span>		
+				<span style="font-size: 10px; color: gray;">secrets ($SecretsRecoveredFileCount files)</span>                
+			   </div>
+			</div>
+		  </div>
+
+		</div>
+				
+			<div class="LargeCard" style="width: 94%;  margin-top: 5px;">	
+						<div id="ChartDashboardIF"></div>
+						<div class="chart-controls"></div>		
+			</div>						
+					 
+		
+		   <div style="padding: 5px; width: 100%; font-size: 10px; color: gray; display: flex; justify-content: center; align-items: center; text-align: center;">
+				More details are available in the &nbsp;<a href="#" onClick="radiobtn = document.getElementById('SecretsPage');radiobtn.checked = true;updateLabelColors('tabs', 'btnSecretsPage');">Extracted Secrets</a>, and &nbsp; <a href="#" onClick="radiobtn = document.getElementById('InterestingFiles');radiobtn.checked = true;updateLabelColors('tabs', 'btnif');">Interesting Files</a> &nbsp;sections. 						
+           </div>
+    </div>
+  </div>
+
+</div>	
 
 <!--  
-|||||||||| CARD: Peer Comparison
+|||||||||| CARD: Asset Information Cards
 -->
-                     <div style="margin-left: 10px; width: 90%; margin-bottom: 10px;">
-                        <span style="color:#4A4A4A;font-size: 16px;"><strong>Peer Comparison</strong><br></span>
-	                    Below is a comaprison between the percent of affected assets in this environment and the average percent of affected assets observed in other environments. 
-                        The percentage is calculated based on the total number of assets discovered for each asset type. 
-                     </div>
 
-		            <div class="LargeCard" style="width:90%;">	
-							<a href="#" id="DashLink" style="text-decoration:none;">
-							</a>
-																	
-									<div class="chart-container">
-									<div id="ChartDashboardPeerCompare"></div>
-										<div class="chart-controls"></div>
-									</div>								  							
-							
-					</div>	
+<div style="width: 99%; display: flex; justify-content: space-between;">
+
+  <!--  Asset Counts -->
+  <div style="width: 50%; display: flex; justify-content: flex-end;">
+    <div class="LargeCard" style="width:100%;">									
+		<div class="chart-container">
+		<div style="color:#4A4A4A;font-size: 16px; margin-top: 10px; margin-left: 10px; margin-bottom: 10px;"><strong>Asset Exposure Summary</strong></div>
+		<div style="margin-left: 10px; margin-right: 10px;  background-color: #edece8; border-left: 6px solid #DFDEDA; padding: 10px; border-radius: 6px; height:90px;">
+		$ExcessiveSharePrivsCount ACL entries, on $ExcessiveSharesCount shares, hosted by $ComputerWithExcessive computers were found configured with excessive privileges on the $TargetDomain domain.		
+		</div>		
+			<! -- top -->
+			<div style="width: 99%; display: flex; margin-top: 10px;">			
+			  
+			  <!-- Center aligned card -->
+			  <div style="width: 50%; display: flex; justify-content: flex-start;">
+				<div class="card" style="width: 100%;" onClick="radiobtn = document.getElementById('SubNets');radiobtn.checked = true;updateLabelColors('tabs', 'btnnetworks');" onmousedown="this.style.transition = 'none'; this.style.outline = '2px solid gray';"   onmouseup="this.style.outline = '';">
+				  <div class="cardtitle" style="color:#71808d; font-size: 14px; font-weight: bold;">
+					Networks
+				  </div>
+				  <div style="text-align: left;">
+					<span class="percentagetext" style="color:#f29650; text-align: left;">                    
+					$SubnetsCount<Br> 
+					</span>		
+					<span style="font-size: 10px; color: gray;">affected</span>                
+				   </div>
+				</div>
+			  </div>  
+			  
+			  <!-- Right aligned card -->
+			   <div style="width: 50%; display: flex; justify-content: flex-end;">
+				<div class="card" style="width: 100%;" onClick="radiobtn = document.getElementById('ComputerInsights');radiobtn.checked = true;updateLabelColors('tabs', 'btncomputers');" onmousedown="this.style.transition = 'none'; this.style.outline = '2px solid gray';"   onmouseup="this.style.outline = '';">
+				  <div class="cardtitle" style="color:#71808d; font-size: 14px; font-weight: bold;">
+					Computers 
+				  </div>
+				  <div style="text-align: left;">
+					<span class="percentagetext" style="color:#f29650; text-align: left;">                    
+					$ComputerWithExcessive<Br> 
+					</span>		
+					<span style="font-size: 10px; color: gray;">affected</span>                
+				   </div>
+				</div>
+			  </div>
+
+			</div>
+			
+			<! -- bottom -->
+			<div style="width: 99%; display: flex; ">			
+			  
+			  <!-- Center aligned card -->
+			  <div style="width: 50%; display: flex; justify-content: flex-start;">
+				<div class="card" style="width: 100%;" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;updateLabelColors('tabs', 'btnshares');" onmousedown="this.style.transition = 'none'; this.style.outline = '2px solid gray';"   onmouseup="this.style.outline = '';">
+				  <div class="cardtitle" style="color:#71808d; font-size: 14px; font-weight: bold;">
+					Shares
+				  </div>
+				  <div style="text-align: left;">
+					<span class="percentagetext" style="color:#f29650; text-align: left;">                    
+					$ExcessiveSharesCount<Br> 
+					</span>		
+					<span style="font-size: 10px; color: gray;">affected</span>                
+				   </div>
+				</div>
+			  </div>  
+			  
+			  <!-- Right aligned card -->
+			   <div style="width: 50%; display: flex; justify-content: flex-end;" >
+				<div class="card" style="width: 100%;" onClick="radiobtn = document.getElementById('AceInsights');radiobtn.checked = true; updateLabelColors('tabs', 'btnaces');" onmousedown="this.style.transition = 'none'; this.style.outline = '2px solid gray';"   onmouseup="this.style.outline = '';">
+				  <div class="cardtitle" style="color:#71808d; font-size: 14px; font-weight: bold;" >
+					ACEs
+				  </div>
+				  <div style="text-align: left;">
+					<span class="percentagetext" style="color:#f29650; text-align: left;">                    
+					$ExcessiveSharePrivsCount<Br> 
+					</span>		
+					<span style="font-size: 10px; color: gray;">affected</span>                
+				   </div>
+				</div>
+			  </div>
+			</div>			
+		</div>							  							
+    </div>
+  </div>  
+
+ <!--  Peer Comparison -->
+
+  <div style="width: 50%; display: flex; justify-content: flex-end;">
+    <div class="LargeCard" style="width:100%;">									
+		<div class="chart-container">
+		<div style="color:#4A4A4A;font-size: 16px; margin-top: 10px; margin-left: 10px; margin-bottom: 10px;"><strong>Affected Asset Peer Comparison</strong></div>
+		<div style="margin-left: 10px; margin-right: 10px;  background-color: #edece8; border-left: 6px solid #DFDEDA; padding: 10px; border-radius: 6px; height:90px;">	
+		Below is a comaprison between the percent of affected assets in this environment and the average percent of 
+		affected assets observed in other environments. The percentage is calculated based on the total number of 
+		live assets discovered for each asset type.		
+		</div>
+		<div class="LargeCard" style="width: 94%;  margin-top: 20px; ">
+			<div id="ChartDashboardPeerCompare" style=" border-radius: 6px; ">
+			</div>	
+		</div>
+		</div>							  							
+    </div>
+  </div>
+
+</div>		
 
 <!--  
 |||||||||| CARD: Share Creation Timeline
 -->
-<div style="margin-left: 10px; width: 90%; margin-bottom: 10px;">
-    <span style="color:#4A4A4A;font-size: 16px;"><strong>Share Creation Timeline</strong><br></span>
-    <div style = "width: 100%">
-	Below is a time series chart to help provide a sense of when shares were created and at what point critical and high risk shares were introduced into the environment.
-    By reading the chart left to right, you can see that shares were created in this environment between $ShareFirstDate and $ShareLastDate. You can zoom into any section of the chart by clicking or using the chart controls in the upper right hand corner of the chart.    
-    $ShareCriticalTime
-    $ShareHighTime    
-    $ShareCriticalHighLine
-    The chart also includes two horizontal lines. The "avg" line shows the average number of created shares and everything above the "+2 Std Dev" line is considered anomolous in the context of this report. $DataSeriessharesAnomalyCount anomalies were found that represent days when share creation counts were twice the standard deviation.
+<div class="LargeCard" style="width:96%;">	
+	<div style="margin-left: 10px; width: 99%; margin-bottom: 10px;">
+		<div style="color:#4A4A4A;font-size: 16px; margin-top: 10px; margin-left: 10px; margin-bottom: 10px;"><strong>Share Creation Timeline</strong></div>		
+		<div style = "width: 98%; margin-left: 10px;">
+		Below is a time series chart to help provide a sense of when shares were created and at what point critical and high risk shares were introduced into the environment.
+		By reading the chart left to right, you can see that shares were created in this environment between $ShareFirstDate and $ShareLastDate. You can zoom into any section of the chart by clicking or using the chart controls in the upper right hand corner of the chart.    
+		$ShareCriticalTime
+        $ShareHighTime    
+        $ShareCriticalHighLine   		
+		The chart also includes two horizontal lines. The "avg" line shows the average number of created shares and everything above the "+2 Std Dev" line is considered anomolous in the context of this report. $DataSeriessharesAnomalyCount anomalies were found that represent days when share creation counts were twice the standard deviation.
 
-    </div>
- </div>
- <div class="LargeCard" style="width:90%;">	
-        <a href="#" id="DashLink" style="text-decoration:none;">
-        </a>																	
-        <div class="chart-container">
-            <div id="TimelinCreationChart"></div>
-        <div class="chart-controls"></div>
-    </div>								  							
-</div>
+		</div>
+	 </div>
+	 
+	 <div class="LargeCard" style="width:96%;">	
+			<a href="#" id="DashLink" style="text-decoration:none;">
+			</a>																	
+			<div class="chart-container">
+				<div id="TimelinCreationChart"></div>
+			<div class="chart-controls"></div>
+		</div>								  							
+	</div>
+</div>			
 
 <!--  
 |||||||||| CARD: Remediation Recommendations
 -->
-                     <div style="margin-left: 10px; width: 90%; margin-bottom: 10px;">
-                        <span style="color:#4A4A4A;font-size: 16px;"><strong>Remediation & Prioritization Recommendations</strong><br></span>	
-                                            
-	                    Consider remediating share ACEs by risk level, starting with critical and high risks. Consider reviewing the share creation timeline and data details from the other sections for additional context. Next, prioritize remediating groups of shares to speed up the process. Prioritize by folder group (shares containing exactly the same files) or by share names that have a high similarity score. 
-						<i>Prioritizing those groups may help reduce remediation actions by as much as <strong>$RemediationSavings percent</strong> for this environment</i>. Below is a summary of the potential task reduction for each approach. 
-						<br><br>View the 
-						<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('ShareFolders');radiobtn.checked = true;updateLabelColors('tabs', 'btnfgs');">Folder Group</a> or 
-						<a href="#" id="DashLink" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;updateLabelColors('tabs', 'btnshares');">Share Names</a> sections for more details.                    
+<div class="LargeCard" style="width:96%;">	
+                     <div style="margin-left: 10px; width: 99%; margin-bottom: 10px;">
+                        <div style="color:#4A4A4A;font-size: 16px; margin-top: 10px; margin-left: 10px; margin-bottom: 10px;"><strong>Remediation & Prioritization Recommendations</strong></div>
+                        <div style = "width: 98%; margin-left: 10px;">      
+	                    Remediate share ACEs by risk level, starting with critical and high risks. Review the share creation timeline and share name details from other sections for additional context.
+						Consider remediating mutliple ACEs at one time based on natural share groupings to reduce the number of remediation tasks.<br><br>
+						Group Examples:
+						<ul>
+							<li style="color: black;">Group ACE remediation tasks by <a style="cursor: pointer;" onClick="radiobtn = document.getElementById('ShareFolders');radiobtn.checked = true;updateLabelColors('tabs', 'btnfgs');">folder groups</a>, which contain exactly the same file listing.</li>
+							<li style="color: black;">Group ACE remediation tasks by <a style="cursor: pointer;" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;updateLabelColors('tabs', 'btnshares');">share names</a> with a high similarity scores.</li>
+						</ul>
+						       
+					    Remediating ACEs by group may reduce remediation tasks by as much as <strong>$RemediationSavings%</strong> for this environment. The chart below shows the task savings.						
                      </div>
+					 </div>
 
-		            <div class="LargeCard" style="width:90%;">	
+		            <div class="LargeCard" style="width:96%;">	
 							<a href="#" id="DashLink" style="text-decoration:none;">
 							</a>
 																	
-									<div class="chart-container">
-									<div id="ChartDashboardRemediate"></div>
+									<div class="chart-container" style="justify-content: center; align-items: center;">
+									<div id="ChartDashboardRemediate" ></div>
 										<div class="chart-controls"></div>
 									</div>								  							
 							
 					</div>
+					 <div style="padding: 5px; width: 100%; font-size: 10px; color: gray; display: flex; justify-content: center; align-items: center; text-align: center;">
+					More details are available in the &nbsp;<a href="#" onClick="radiobtn = document.getElementById('ShareFolders');radiobtn.checked = true;updateLabelColors('tabs', 'btnfgs');">Folder Group</a>, and &nbsp; <a href="#" onClick="radiobtn = document.getElementById('ShareName');radiobtn.checked = true;updateLabelColors('tabs', 'btnshares');">Share Names</a> &nbsp;sections. 						
+					</div>
+</div>
 	
 <div style="height:.5px;width:100%;position:relative;float:left;"></div>
+	
+<!-- end here -->
  
-<!--  
-|||||||||| CARD: LastAccessDate Timeline
- $CardCreationTimeLine
--->
-
-<!--  
-|||||||||| CARD: LastAccessDate Timeline
-$CardLastAccessTimeLine
-<div style="height:.5px;width:100%;position:relative;float:left;"></div>
--->
-
-<!--  
-|||||||||| CARD: LastModifiedDate Timeline
-
-$CardLastModifiedTimeLine
--->
 </div>
 </div>
 
@@ -10500,95 +10858,6 @@ var TimelineCreationChartVar = new ApexCharts(document.querySelector("#TimelinCr
 TimelineCreationChartVar.render();
         
 
-// --------------------------
-// Dashboard Page: Sankey Chart
-// --------------------------
-
-
-  const SankeyData = {
-  nodes: [
-    {
-      id: 'Networks ($SubnetsCount)',
-      title: 'Networks ($SubnetsCount)',
-      color: '#6f5420',
-    },
-    {
-      id: 'Computers ($ComputerWithExcessive)',
-      title: 'Computers ($ComputerWithExcessive)',
-      color: '#7D825E',
-    },
-    {
-      id: 'Shares ($ExcessiveSharesCount)',
-      title: 'Shares ($ExcessiveSharesCount)',
-      color: '#f29650', 
-    },
-    {
-      id: 'ACEs ($ExcessiveSharePrivsCount)',
-      title: 'ACEs ($ExcessiveSharePrivsCount)',
-      color: '#345367', 
-    },
-    {
-      id: 'Critical ($RiskLevelCountCritical)',
-      title: 'Critical ($RiskLevelCountCritical)',
-      color: '#772400', 
-    },
-    {
-      id: 'High ($RiskLevelCountHigh)',
-      title: 'High ($RiskLevelCountHigh)',
-      color: '#f56a00', 
-    },
-    {
-      id: 'Medium ($RiskLevelCountMedium)',
-      title: 'Medium ($RiskLevelCountMedium)',
-      color: '#6f5420', 
-    },
-    {
-      id: 'Low ($RiskLevelCountLow)',
-      title: 'Low ($RiskLevelCountLow)',
-      color: '#f3f1e6', 
-    },
-  ],
-  edges: [
-      {
-      source: 'Networks ($SubnetsCount)',
-      target: 'Computers ($ComputerWithExcessive)',
-      value: $ComputerWithExcessive,
-      color: '#000', // Custom color for this edge 
-    },
-    {
-      source: 'Computers ($ComputerWithExcessive)',
-      target: 'Shares ($ExcessiveSharesCount)',
-      value: $ExcessiveSharesCount,
-      color: '#000', // Custom color for this edge
-    },
-    {
-      source: 'Shares ($ExcessiveSharesCount)',
-      target: 'ACEs ($ExcessiveSharePrivsCount)',
-      value: $ExcessiveSharePrivsCount,
-      color: '#000', // Custom color for this edge
-    },    
-    $SanKeyCritical
-    $SanKeyHigh
-    $SanKeyMedium
-    $SanKeyLow
-  ],
-};
-
-const graphOptions = {
-  nodeWidth: 10,
-  fontFamily: 'Quicksand, sans-serif', 
-  fontSize: '14px',  
-  fontWeight: 400,
-  fontColor: '#345367',
-  height: 200,
-  width: 1200,
-  spacing: 10, // margin
-  enableTooltip: true,
-  canvasStyle: 'border: 0px solid #caced0;',
-};
-const s = new ApexSankey(document.getElementById('svg-sankey'), graphOptions);
-s.render(SankeyData);
-
 
 // --------------------------
 // side menu collapse function
@@ -11116,6 +11385,10 @@ ChartFGRiska.render();
 const datanetwork = $subnetChartString;
 const categoriesnetwork = ['Low','Medium','High','Critical'];
 
+// Reverse the order of the array
+datanetwork.reverse();
+categoriesnetwork.reverse();
+
 const ChartNetworkRiskOptions = {
           series: [{
           data: datanetwork
@@ -11323,6 +11596,12 @@ const ChartDashboardIFOptions = {
   },
   xaxis: {
     categories: categories,
+    axisTicks: {
+      show: false
+    },
+    labels: {
+      show: false  // Hide the x-axis labels
+    }	
   },
   colors: ['#f29650','#345367'],  // Orange for discovered, Blue for verified
   title: {
@@ -11344,40 +11623,44 @@ const ChartDashboardIFOptions = {
 const ChartDashboardIF = new ApexCharts(document.querySelector("#ChartDashboardIF"), ChartDashboardIFOptions);
 ChartDashboardIF.render();
 
+
 // --------------------------
 // Dashboard Page: Risk Level chart
 // --------------------------
 
 //  Set data series
-var DataSeriesComputers = [$RiskLevelComputersCountLow, $RiskLevelComputersCountMedium, $RiskLevelComputersCountHigh, $RiskLevelComputersCountCritical];
-var DataSeriesShares    = [$RiskLevelSharePathCountLow, $RiskLevelSharePathCountMedium, $RiskLevelSharePathCountHigh, $RiskLevelSharePathCountCritical];
+var DataSeriesNetwork   = [$AllNetworksWithLowCount,  $AllNetworksWithMediumCount, $AllNetworksWithHighCount, $AllNetworksWithCriticalCount];  
+var DataSeriesComputers = [$AllComputersWithLowCount, $AllComputersWithMediumCount, $AllComputersWithHighCount, $AllComputersWithCriticalCount];
+var DataSeriesShares    = [$AllSharesWithLowCount, $AllSharesWithMediumCount, $AllSharesWithHighCount, $AllSharesWithCriticalCount];
 var DataSeriesACEs      = [$RiskLevelCountLow, $RiskLevelCountMedium, $RiskLevelCountHigh,$RiskLevelCountCritical];
 
 // Reverse each array
+DataSeriesNetwork.reverse();
 DataSeriesComputers.reverse();
 DataSeriesShares.reverse();
 DataSeriesACEs.reverse();
 
 // Find max values
-var maxComputer     = Math.max(...DataSeriesComputers);
-var maxShares       = Math.max(...DataSeriesShares);
-var maxACEs         = Math.max(...DataSeriesACEs);
-var maxValueOverall = Math.max(maxComputer, maxShares, maxACEs);
+var maxNetwork     = Math.max(...DataSeriesNetwork);
+var maxComputer    = Math.max(...DataSeriesComputers);
+var maxShares      = Math.max(...DataSeriesShares);
+var maxACEs        = Math.max(...DataSeriesACEs);
+var maxValueOverall = Math.max(maxNetwork, maxComputer, maxShares, maxACEs);
 
 // Initialize ApexCharts
 const ChartDashboardRiskOptions = {
   series: [{
+    name: 'Network',
+    data: DataSeriesNetwork
+  }, {
     name: 'Computers',
     data: DataSeriesComputers
-    //color: 'blue'  // Set color for Computers series
-  },{
+  }, {
     name: 'Shares',
     data: DataSeriesShares
-    //color: 'green'  // Set color for Shares series
-  },{
+  }, {
     name: 'ACEs',
     data: DataSeriesACEs 
-    //color: 'red'  // Set color for ACEs series
   }],
   chart: {
     type: 'bar',
@@ -11385,40 +11668,48 @@ const ChartDashboardRiskOptions = {
   },
   plotOptions: {
     bar: {		 
-      borderRadius: 0,
-      borderRadiusApplication: 'end',
       horizontal: true,
-      barHeight: '90%', // Reduce bar height for more space
-      barGap: '0%',     // Adds gap between bars in the same group
-     // barSpacing: 0.0  // Adds space between the groups (risk levels)
+      barHeight: '90%',  // Reduce bar height for more space
+	  borderWidth: 0      // Remove borders around bars
     }
   },
-  colors: ['#7D825E', '#f29650', '#345367'],  // Colors for the bars
+  colors: ['#71808D', '#7D825E', '#f29650', '#345367'],  // Added a new color for the Network series
   dataLabels: {
     enabled: true,
+    formatter: function (val) {
+      return val === 0 ? '' : val;  // Hide the label if the value is 0
+    },
+    offsetX: 4,  // Move the labels 4px to the right of the bar
+    textAnchor: 'start',  // Ensure the label starts at the end of the bar
     style: {
       fontSize: '12px',
-      colors: ['#345367', '#345367', '#f29650'] // colors for the lables #FF9965
-    },
-    offsetX: 0
+      colors: ['#345367','#345367', '#345367', '#f29650']  // Updated colors for the labels
+    }
   },
   grid: {
-    show: false,
-	opacity: 0.5
+    show: false
   },
   xaxis: {
-    categories: ['Critical','High','Medium','Low'],
-	max: maxValueOverall,
-	min: 0
+    categories: ['Critical', 'High', 'Medium', 'Low'],
+    max: maxValueOverall,
+    labels: {
+      show: false  // Hide the x-axis labels
+    },
+    axisBorder: {
+      show: true
+    },
+    axisTicks: {
+      show: false
+    }
   },
   title: {
-    text: 'Asset Count by Risk Level',
+    text: 'Affected Asset Count by Risk Level',
     align: 'center',
     margin: 10,
     style: {
-        fontSize: '14px',
-        fontWeight: 'bold',
-        color: '#71808d'
+      fontSize: '14px',
+      fontWeight: 'bold',
+      color: '#71808d'
     }
   }
 };
@@ -11430,106 +11721,106 @@ ChartDashboardRisk.render();
 // Dashboard Page: Chart - Remediation Prioritization
 // --------------------------
 
-		//  Set data series
-		var DataSeriesAverage = $RemediationBase;		
-		var DataSeriesActual  = $RemediationSave;
+	//  Set data series
+	var DataSeriesAverage = $RemediationBase;		
+	var DataSeriesActual  = $RemediationSave;		
 		
-		
-		// Find max values
-		var maxValueAverage = Math.max(...DataSeriesAverage);
-		var maxValueActual = Math.max(...DataSeriesActual);
-		var maxValueOverall = Math.max(maxValueAverage, maxValueActual);
+    // Find max values
+    var maxValueAverage = Math.max(...DataSeriesAverage);
+    var maxValueActual = Math.max(...DataSeriesActual);
+    var maxValueOverall = Math.max(maxValueAverage, maxValueActual);
 
-        var RemCompareOptions = {
-          series: [{
-          name: 'Affected Shares',
-          data: DataSeriesAverage
-        }, {
-          name: 'Grouping',
-          data: DataSeriesActual
-        }],
-          chart: {
-          type: 'bar',
-          height: 250
+    var RemCompareOptions = {
+      series: [{
+        name: 'Affected ACEs',
+        data: DataSeriesAverage
+      }, {
+        name: 'Remediation Tasks',
+        data: DataSeriesActual
+      }],
+      chart: {
+        type: 'bar',
+        height: 250
+      },
+      plotOptions: {
+        bar: {
+          horizontal: false,
+          columnWidth: '55%',
+          endingShape: 'rounded',
+          dataLabels: {
+            position: 'top'  // Moves the label to the top of the bar
+          }
         },
-        plotOptions: {
-          bar: {
-            horizontal: false,
-            columnWidth: '55%',
-            endingShape: 'rounded'
-          },
+      },
+      colors: ['#345367', '#f29650'],  // Reversed colors for Average and Actual bars
+      dataLabels: {
+        enabled: true,  // Enable data labels
+        offsetY: -20,  // Move the label 20px above the bar
+        style: {
+          fontSize: '12px',
+          colors: ['#345367', '#345367'],  // Colors for labels
         },
-        colors: ['#345367', '#f29650'],  // Reversed colors for Average and Actual bars
-        dataLabels: {
-          enabled: true,  // Enable data labels
+        formatter: function (val) {
+          return val;  // Append percentage sign to data labels
+        }
+      },
+      stroke: {
+        show: true,
+        width: 2,
+        colors: ['transparent']
+      },
+      grid: {
+        show: false,
+        opacity: 0.5
+      },
+      xaxis: {
+        categories: ['By ACE (Default)', 'By Folder Group (Perfect Match)', 'By Share Name (High Similarity)'],  // X-axis categories
+        labels: {
           style: {
-            fontSize: '12px',
-            colors: ['#f29650', '#345367'],  // Colors for labels
-          },
-          formatter: function (val, opts) {
-            return val;  // Display values with percentage sign
-          },
-          offsetY: -6  // Adjust position of the label
-        },
-        stroke: {
-          show: true,
-          width: 2,
-          colors: ['transparent']
-        },
-        grid: {
-            show: false,
-	        opacity: 0.5
-        },
-        xaxis: {
-          categories: ['Individul ACEs (No Grouping)','Folder Grouping', 'Share Name Grouping (High Similarity)'],  // X-axis categories
-          labels: {
-            style: {
-              colors: '#71808d',  // Set x-axis labels to gray
-            }
+            colors: '#71808d'  // Set x-axis labels to gray
           }
         },
-        yaxis: {
-          title: {
-            text: 'Remediation Tasks',
-            style: {
-              fontWeight: 'normal',
-              color: '#71808d'  // Set "Percentage" text to gray
-            }
-          },
-          labels: {
-            style: {
-              colors: '#71808d',  // Set y-axis labels to gray
-            },
-            formatter: function (val) {
-              return val;  // Format y-axis labels with percentage sign
-            }
-          },
-          max: Math.ceil(maxValueOverall * 1.1),
-          min: 0
-        },
-        fill: {
-          opacity: 1
-        },
-        tooltip: {
-          y: {
-            formatter: function (val) {
-              return val;  // Show percentage in tooltip
-            }
-          }
-        },
+        axisTicks: {
+          show: false  // Hide x-axis ticks
+        }
+      },
+      yaxis: {
         title: {
-          text: 'Remediation Effort by Task Grouping Approach',  // Updated chart title
-          align: 'center',
+          text: '',  // Remediation Tasks
           style: {
-            fontSize: '14px',
-            fontWeight: 'bold',
-            color: '#71808d'
+            fontWeight: 'normal',
+            color: '#71808d'  // Set text color to gray
+          }
+        },
+        labels: {
+          show: false  // Hide y-axis labels
+        },
+        max: Math.ceil(maxValueOverall * 1.1),
+        min: 0
+      },
+      fill: {
+        opacity: 1
+      },
+      tooltip: {
+        y: {
+          formatter: function (val) {
+            return val + "%";  // Show percentage in tooltip
           }
         }
-        };
+      },
+      title: {
+        text: 'Number of Remediation Tasks by Grouping Approach',  // Updated chart title
+        align: 'center',
+        style: {
+          fontSize: '14px',
+          fontWeight: 'bold',
+          color: '#71808d'
+        }
+      }
+    };
 
-        var RemCompareOptionschart = new ApexCharts(document.querySelector("#ChartDashboardRemediate"), RemCompareOptions);
-        RemCompareOptionschart.render();
+var RemCompareOptionschart = new ApexCharts(document.querySelector("#ChartDashboardRemediate"), RemCompareOptions);
+RemCompareOptionschart.render();
 
 // --------------------------
 // Dashboard Page: Chart - Peer Comparison
@@ -11537,101 +11828,101 @@ ChartDashboardRisk.render();
 
 		//  Set data series
 		var DataSeriesAverage = $PeerCompareAverageP;		
-		var DataSeriesActual  = $PeerCompareActuaP;
+		var DataSeriesActual  = $PeerCompareActuaP;		
 		
-		
-		// Find max values
-		var maxValueAverage = Math.max(...DataSeriesAverage);
-		var maxValueActual = Math.max(...DataSeriesActual);
-		var maxValueOverall = Math.max(maxValueAverage, maxValueActual);
+        // Find max values
+        var maxValueAverage = Math.max(...DataSeriesAverage);
+        var maxValueActual = Math.max(...DataSeriesActual);
+        var maxValueOverall = Math.max(maxValueAverage, maxValueActual);
 
         var PeerCompareOptions = {
           series: [{
-          name: 'Peer Average',
-          data: DataSeriesAverage
-        }, {
-          name: 'This Environment',
-          data: DataSeriesActual
-        }],
+            name: 'Peer Average',
+            data: DataSeriesAverage
+          }, {
+            name: 'This Environment',
+            data: DataSeriesActual
+          }],
           chart: {
-          type: 'bar',
-          height: 250
-        },
-        plotOptions: {
-          bar: {
-            horizontal: false,
-            columnWidth: '55%',
-            endingShape: 'rounded'
+            type: 'bar',
+            height: 250
           },
-        },
-        colors: ['#345367', '#f29650'],  // Reversed colors for Average and Actual bars
-        dataLabels: {
-          enabled: true,  // Enable data labels
-          style: {
-            fontSize: '12px',
-            colors: ['#f29650', '#345367'],  // Colors for labels
+          plotOptions: {
+            bar: {
+              horizontal: false,
+              columnWidth: '55%',
+              endingShape: 'rounded',
+              dataLabels: {
+                position: 'top'  // Moves the label to the top of the bar
+              }
+            },
           },
-          formatter: function (val, opts) {
-            return val + '%';  // Display values with percentage sign
-          },
-          offsetY: -6  // Adjust position of the label
-        },
-        grid: {
-            show: false,
-	        opacity: 0.5
-        },
-        stroke: {
-          show: true,
-          width: 2,
-          colors: ['transparent']
-        },
-        xaxis: {
-          categories: ['Computers', 'Shares', 'ACEs'],  // X-axis categories
-          labels: {
-            style: {
-              colors: '#71808d',  // Set x-axis labels to gray
-            }
-          }
-        },
-        yaxis: {
-          title: {
-            text: 'Percentage (%)',
+          colors: ['#345367', '#f29650'],  // Reversed colors for Average and Actual bars
+          dataLabels: {
+            enabled: true,
+            offsetY: -20,  // Move the label 10px above the bar
             style: {
               fontSize: '12px',
-              fontWeight: 'normal',
-              color: '#71808d'  // Set "Percentage" text to gray
-            }
-          },
-          labels: {
-            style: {
-              colors: '#71808d',  // Set y-axis labels to gray
+              colors: ['#345367', '#345367']  // Custom colors for labels
             },
             formatter: function (val) {
-              return val + '%';  // Format y-axis labels with percentage sign
+              return val + '%';  // Append '%' to the data label
             }
           },
-          max: Math.ceil(maxValueOverall * 1.1),
-          min: 0
-        },
-        fill: {
-          opacity: 1
-        },
-        tooltip: {
-          y: {
-            formatter: function (val) {
-              return val + "%";  // Show percentage in tooltip
+          grid: {
+            show: false,
+            opacity: 0.5
+          },
+          stroke: {
+            show: true,
+            width: 2,
+            colors: ['transparent']
+          },
+          xaxis: {
+            categories: ['Computers', 'Shares', 'ACEs'],  // X-axis categories
+            labels: {
+              style: {
+                colors: '#71808d'  // Set x-axis labels to gray
+              }
+            },
+            axisTicks: {
+              show: false  // Hide x-axis ticks
+            }
+          },
+          yaxis: {
+            title: {
+              text: '', // Percentage (%)
+              style: {
+                fontSize: '12px',
+                fontWeight: 'normal',
+                color: '#71808d'  // Set "Percentage" text to gray
+              }
+            },
+            labels: {
+              show: false  // Hide y-axis labels
+            },
+            max: Math.ceil(maxValueOverall * 1.1),
+            min: 0
+          },
+          fill: {
+            opacity: 1
+          },
+          tooltip: {
+            y: {
+              formatter: function (val) {
+                return val + "%";  // Show percentage in tooltip
+              }
+            }
+          },
+          title: {
+            text: 'Percent of Assets with Excessive Privileges',  // Updated chart title - Percent of Assets with Excessive Privileges
+            align: 'center',
+            style: {
+              fontSize: '14px',
+              fontWeight: 'bold',
+              color: '#71808d'
             }
           }
-        },
-        title: {
-          text: 'Percent of Assets with Excessive Privileges',  // Updated chart title
-          align: 'center',
-          style: {
-            fontSize: '14px',
-            fontWeight: 'bold',
-            color: '#71808d'
-          }
-        }
         };
 
         var PeerCompareOptionschart = new ApexCharts(document.querySelector("#ChartDashboardPeerCompare"), PeerCompareOptions);
