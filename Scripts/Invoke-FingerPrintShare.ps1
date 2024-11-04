@@ -1,10 +1,21 @@
+<#
+	GENERAL NOTES
+	Testing of these functions was limited to the versions below:
+	o PowerShell Version: 5.1
+	o LLM Version: Azure LLM API; GPT 4o & GPT 4o mini 
+
+	TODO
+	o Add optional threading for LLM requests.
+	o Add ability to generate images with text + image requests.
+#>
+
 # Function for generic LLM requests
 # Author: Scott Sutherland (@_nullbind), NetSPI 2024
 # v.01
 function Invoke-LLMRequest {
 	<#
             .SYNOPSIS
-            This function sends text or an image to a specified API endpoint using the provided API key.
+            This function sends text or an image to a specified Azure LLM API endpoint using the provided API key.
             It requires the 'apikey', 'endpoint', and 'text' parameters to be specified.
             This was tested on GPT 4o and 4o-mini.
             .PARAMETER apikey
@@ -139,8 +150,8 @@ function Invoke-LLMRequest {
 function Invoke-FingerPrintShare {
 	<#
             .SYNOPSIS
-            This function sends a share name and file list to the LLM for fingerprinting.
-            It requires the 'apikey', 'endpoint', and 'text'. This was tested on GPT 4o and 4o-mini.
+            This function sends a share name and file list to the Azure LLM API endpoint for fingerprinting.
+            It requires the 'apikey', 'endpoint', and 'text'. This was tested on GPT 4o and GPT 4o-mini.
             .PARAMETER apikey
             The API key required to access the endpoint.
             .PARAMETER endpoint
@@ -449,6 +460,7 @@ $FileListFormatted
 Invoke-LLMRequest -SimpleOutput -apikey "your_api_key" -endpoint "https://[yourapiname].openai.azure.com/openai/deployments/[yourapiname]/chat/completions?api-version=[configuredversion]" -text "What is 2+2?"
 
 # Simple output from text query with image upload
+# Note: Image response did not appear to be supported
 Invoke-LLMRequest -SimpleOutput -apikey "your_api_key" -endpoint "https://[yourapiname].openai.azure.com/openai/deployments/[yourapiname]/chat/completions?api-version=[configuredversion]" -text "What is this an image of?" -ImagePath "c:\temp\apple.png"
 
 # Full output with all response meta data
