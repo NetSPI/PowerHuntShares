@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.189
+# Version: v1.190
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -3741,8 +3741,22 @@ function Invoke-HuntSMBShares
             $ShareNameBars = Get-GroupNameNoBar -DataTable $ExcessiveSharePrivs -Name $ShareName -AllComputerCount $ComputerCount -AllShareCount $AllSMBSharesCount -AllAclCount $ShareACLsCount
             $ComputerBar = $ShareNameBars.ComputerBar
             $ShareBar    = $ShareNameBars.ShareBar
-            $AclBar      = $ShareNameBars.AclBar            
+            $AclBar      = $ShareNameBars.AclBar  
             
+            # Get app description from llm results  
+            if($ApiKey -and $Endpoint){  
+
+                # Get lmm fingerprint matches for sharename
+                $SnLLmMatchesRaw = $ExcessiveSharePrivsFinal |
+                Where-Object { $_.ShareName -eq "$ShareName" -and $_.ShareGuessApp -notlike "" } |
+                Select-Object ShareGuessApp -ExpandProperty ShareGuessApp -Unique
+
+                # Join the results into a comma-separated list
+                $SnLLmMatchesList = $SnLLmMatchesRaw -join ', '
+            }else{
+                $SnLLmMatchesList= "LLM lookup was not run."
+            }
+
             # Share Description
             $ShareDescriptionSample = $ExcessiveSharePrivs | where sharename -EQ "$ShareName" | where ShareDescription  -NE "" | select ShareDescription -first 1 -expandproperty ShareDescription | foreach {"<strong>Sample Description</strong><br> $_ <br><br> "}
 
@@ -4684,7 +4698,10 @@ function Invoke-HuntSMBShares
                       $ShareDescriptionSample  
                       <strong>Share Context Guess</strong><br>
                       $ShareNameListValue  
-                      <br><br>                                                            
+                      <br><br>    
+                      <strong>LLM Application Guess</strong><br>
+                      $SnLLmMatchesList  
+                      <br><br>                                                                                   
                       <a style="font-size: 10px; cursor: default;" onClick="applyFadedClassAndUpdate(cy, '$ShareName');radiobtn = document.getElementById('ShareGraph');radiobtn.checked = true;updateLabelColors('tabs', 'btnShareGraph');">View in ShareGraph</a><br>
                       <br><strong>Affected Assets</strong><br>
                       <table class="subtable">
