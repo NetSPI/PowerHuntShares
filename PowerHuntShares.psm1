@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.188
+# Version: v1.189
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -3653,6 +3653,22 @@ function Invoke-HuntSMBShares
             $ThisFileShareNameListUniqueCount = $ThisFileShareNameList | measure | select count -ExpandProperty count
             $ShareFileShareUnc = $ExcessiveSharePrivs | where FileListGroup -eq $FileGroupName | select SharePath -unique -expandproperty SharePath | foreach { "$_ <br>"}
             
+            # Get application fingerprint values if gathered
+            if($ApiKey -and $Endpoint){
+
+                # Check llm results
+                $FgAppInfo = $ExcessiveSharePrivsFinal | where FileListGroup -eq $FileGroupName | where ShareGuessApp -notlike "" | select ShareGuessApp, ShareGuessLLM -first 1
+                $FgAppName = $FgAppInfo | Select ShareGuessApp -ExpandProperty ShareGuessApp
+                $FgAppJust = $FgAppInfo | Select ShareGuessLLM -ExpandProperty ShareGuessLLM
+
+            }else{
+
+                # Check static libraries
+                $FgAppInfo = $ExcessiveSharePrivsFinal | where FileListGroup -eq $FileGroupName | where ShareGuessStatic -notlike "" | select ShareGuessStatic -first 1
+                $FgAppName = $FgAppInfo | select ShareGuessStatic -ExpandProperty ShareGuessStatic
+                $FgAppJust = ""
+            }
+
             # Grab the risk level for the highest risk acl for the foldergroup
             $FolderGroupsTopACLRiskScoreRow = $ExcessiveSharePrivsFinal | where FileListGroup -eq $FileGroupName | select RiskScore | sort RiskScore -Descending | select -First 1  | select RiskScore -ExpandProperty RiskScore
 
@@ -3692,7 +3708,13 @@ function Invoke-HuntSMBShares
 	          </td>
 	          <td style="cursor: default;" onClick="applyFadedClassAndUpdate(cy, '$FileGroupName');radiobtn = document.getElementById('ShareGraph');radiobtn.checked = true;updateLabelColors('tabs', 'btnShareGraph');"> <!-- Folder Group Name -->  
               $FileGroupName
-	          </td>		           	  
+	          </td>		
+	          <td style="cursor: default;"> <!-- Folder Group App Fingerprint -->  
+              <button class="collapsible"><span style="color:#CE112D;"></span>$FgAppName</button>
+                  <div class="content" style="font-size:11px;width:100px;">
+                  $FgAppJust
+                  </div>
+	          </td>	           	  
 	          </tr>
 "@              
             $ThisRow
@@ -7959,7 +7981,8 @@ Folder groups are SMB shares that contain the exact same file listing. Each fold
       <th onclick="sortTable('foldergrouptable',1,'number')" align="left" style="cursor: pointer;">Share Count</th> 
       <th onclick="sortTable('foldergrouptable',2,'number')" align="left" style="cursor: pointer;">File Count</th>
       <th onclick="sortTable('foldergrouptable',3,'number')" align="left" style="cursor: pointer;">Risk Level</th>            
-      <th onclick="sortTable('foldergrouptable',4,'alpha')"  align="left" style="cursor: pointer;">Folder Group</th>      	 	 
+      <th onclick="sortTable('foldergrouptable',4,'alpha')"  align="left" style="cursor: pointer;">Folder Group</th>   
+      <th onclick="sortTable('foldergrouptable',5,'alpha')"  align="left" style="cursor: pointer;">Related App</th>   	 	 
     </tr>
   </thead>
   <tbody>
@@ -28047,7 +28070,7 @@ function Invoke-LLMRequest {
                 "content" = $content
             }
         )
-        "temperature" = 0.7
+        "temperature" = 0.4
         "top_p" = 0.95
         "max_tokens" = 800
     } | ConvertTo-Json -Depth 10
@@ -28259,7 +28282,7 @@ function Invoke-FingerPrintShare {
 You will be provided with a share name and a list of file names. Your task is to:
 
 1. Analyze the provided share name to determine it is related to a known application.  Please ensure your only return a application guess if you know of an existing application or operating system by name. Do not make things up or refer generic product categories.
-2. Analyze all provided file names to determine if one or more are related to a known application or operating system. Make sure to take into analyze file names, file name prefixes, and file extensions. Run this analysis 5 time on the backend and select the one that is most accurate.
+2. Analyze all provided file names to determine if one or more are related to a known application or operating system. Make sure to take into analyze file names, file name prefixes, and file extensions. Run the analysis 5 times on the backend and select the one that is most accurate.
 3. Define a confidence score ranging from 1 to 5, where 5 represents very high confidence.
 4. If any identified applications have a confidence score above 3, return the top one application and it's confidence score. 
 5. If no application has a confidence score above 3, then don't return anything."
@@ -28268,7 +28291,7 @@ You will be provided with a share name and a list of file names. Your task is to
 - Application Name
 - Confidence Score
 - A list of the top 10 most relevant files that have been comma seperated on one line.
-- A two-sentence justification of the match. Include the justification based on the share name in the first sentance, the justification based on the top 5 file names in the second, and link to the application page at the end (if available).
+- A two-sentence justification of the match. Include the justification based on the share name in the first sentance, the justification based on the top 5 file names in the second, and link to a real and relevant application page at the end. 
 Ensure the output is formatted as XML. Please only return the XML formatted response with nothing else. Please DO NOT wrap the XML response with any comments or labeling. For example, do not include "```xml". Please do not wrap responses in nested "{}".
 
 Please ensure the xml follows the structure below:
@@ -28277,6 +28300,8 @@ Applications.Application.ApplicationName
 Applications.Application.ConfidenceScore
 Applications.Application.RelevantFiles
 Applications.Application.Justification
+
+If no link can be found to a real and relevant application page, don't return the xml or anything else.
 
 Input:
 
