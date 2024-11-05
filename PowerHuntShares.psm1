@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.187
+# Version: v1.188
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -205,8 +205,15 @@ function Invoke-HuntSMBShares
 
         [Parameter(Mandatory = $false,
         HelpMessage = 'Do not perform ping scan.')]
-        [switch] $NoPing
-        
+        [switch] $NoPing,
+
+        [Parameter(Mandatory = $false,
+        HelpMessage = 'API Key used for LLM query.')]
+        [string] $ApiKey,
+
+        [Parameter(Mandatory = $false,
+        HelpMessage = 'API endpoint for LLM query. Azure ChatGPT 4o and 4o-mini have been tested.')]
+        [string] $Endpoint      
     )
 	
     
@@ -686,7 +693,7 @@ function Invoke-HuntSMBShares
         # Save results
         if($ExcessiveSharesCount -ne 0){
             # Write-Output " [*] - Saving results to $OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges.csv"            
-            $ExcessiveSharePrivs | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges.csv"
+            # $ExcessiveSharePrivs | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges.csv"
             # $null = Convert-DataTableToHtmlTable -DataTable $ExcessiveSharePrivs -Outfile "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges.html" -Title "Domain Shares: ACL Entries - Excessive Privileges" -Description "This page shows all share ACL entries discovered on computers associated with the $TargetDomain Active Directory domain that appear to be configured with excessive privileges."
             $ShareACLsExFile = "$TargetDomain-Shares-Inventory-Excessive-Privileges.csv"
             $ShareACLsExFileH = "$TargetDomain-Shares-Inventory-Excessive-Privileges.html"                          
@@ -2274,7 +2281,9 @@ function Invoke-HuntSMBShares
                 SharePath              = $mySharePath
                 ShareType              = $myShareType
                 ShareDescription       = $myShareDescription
-                ShareAppGuess          = $myShareAppGuess
+                ShareGuessStatic       = $myShareAppGuess
+                ShareGuessLLM          = ""
+                ShareGuessApp          = ""
                 ShareOwner             = $myShareOwner
                 FileCount              = $myFileCount
                 FileList               = $myFileList
@@ -2310,7 +2319,7 @@ function Invoke-HuntSMBShares
         }  
 
         # Output new table that include interesting files, risk, read, write, hr, stale, and empty tags
-        $ExcessiveSharePrivsFinal | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-New.csv"
+        # $ExcessiveSharePrivsFinal | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges-New.csv"
         
         # Get severity level counts
         $RiskLevelCountLow      = $ExcessiveSharePrivsFinal | where RiskLevel -eq 'Low'      | measure | select count -ExpandProperty count
@@ -2941,6 +2950,72 @@ function Invoke-HuntSMBShares
              if($RiskLevelFileListGroupResult -eq "Medium"  ){$RiskLevelFolderGroupCountMedium   = $RiskLevelFolderGroupCountMedium   + 1}
              if($RiskLevelFileListGroupResult -eq "High"    ){$RiskLevelFolderGroupCountHigh     = $RiskLevelFolderGroupCountHigh     + 1}
              if($RiskLevelFileListGroupResult -eq "Critical"){$RiskLevelFolderGroupCountCritical = $RiskLevelFolderGroupCountCritical + 1}                         
+        } 
+
+        # ----------------------------------------------------------------------
+        # Optional - Share Name Application LLM Lookup
+        # ---------------------------------------------------------------------- 
+
+        # Check if API and Endpoint have been provided
+        if ($ApiKey -and $Endpoint) {
+
+             # Status user
+             $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+             Write-Output " [*][$Time] LLM share name lookups enabled"
+             Write-Output " [*][$Time] - LLM API key and endpoint provided."
+             Write-Output " [*][$Time] - API: $ApiKey"
+             Write-Output " [*][$Time] - Endpoint: $Endpoint"
+             Write-Output " [*][$Time] - LLM lookups starting"
+
+             # Get list of targets
+             $LLMQueryResults = $ExcessiveSharePrivsFinal | 
+             Select-Object ShareName, FileList, FileListGroup -Unique |
+             Foreach {
+
+                # Explicit clear
+                $LLMResult = ""
+
+                # Send fingerprint request to LLM for share name + group
+                $LLMResult = Invoke-FingerprintShare -OutputFile "$OutputDirectory\$TargetDomain-Shares-Inventory-LLM-Fingerprint.csv" -ShareName $_.ShareName -FileList $_.FileList -FolderGroup $_.FileListGroup -MakeLog -APIKEY $ApiKey -Endpoint $Endpoint
+
+                # Return results
+                $LLMResult
+             }
+
+             # Show completion
+             $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+             Write-Output " [*][$Time] - LLM lookups complete"   
+             Write-Output " [*][$Time] - Processing responses"           
+
+             # Update tables +  HTML
+             $LLMQueryResults | 
+             foreach {
+                    
+                    # Get variables for cross reference
+                    $NewShareName     = $_.ShareName
+                    $NewAppName       = $_.ApplicationName
+                    $NewConfScore     = $_.ConfidenceScore
+                    $NewJustification = $_.Justification
+                    $NewFolderGroup   = $_.FolderGroup
+
+                    # Use ForEach-Object directly on $ExcessiveSharePrivsFinal to update the original collection
+                    $ExcessiveSharePrivsFinal | ForEach-Object {
+                        if ($_.ShareName -eq $NewShareName -and $_.FileListGroup -eq $NewFolderGroup) {
+                            $_.ShareGuessLLM   = $NewJustification
+                            $_.ShareGuessApp   = $NewAppName
+                        }
+                    }
+             }       
+             
+                     
+        }
+
+        # Output updated excessive privilege .csv 
+        try{
+                $ExcessiveSharePrivsFinal | Export-Csv -NoTypeInformation "$OutputDirectory\$TargetDomain-Shares-Inventory-Excessive-Privileges.csv" 
+                # Write-Output " [*][$Time] - Details written to $OutputDirectory\$TargetDomain-Shares-Inventory-LLM-Fingerprint.csv"
+        }catch{
+                # Write-Output " [*][$Time] - Unable to written to $OutputDirectory\$TargetDomain-Shares-Inventory-LLM-Fingerprint.csv"
         } 
 
         # ----------------------------------------------------------------------
@@ -12600,6 +12675,7 @@ function updateLabelColors(divId, objectId) {
 "@
 
 $NewHtmlReport | Out-File "$OutputDirectoryBase\Summary-Report-$TargetDomain.html"
+Write-Output " [*][$Time]   - All files written to $OutputDirectoryBase"
 Write-Output " [*][$Time]   - Done." 
 Write-Output ""
 Write-Output ""  
@@ -23780,13 +23856,14 @@ Function Invoke-Ping
 }
 
 
+#region SubnetFunctions
 # ---------------------------------------------------
 # Function: checksubnet
 # Author: Luben Kirov
 # Reference: http://www.gi-architects.co.uk/2016/02/powershell-check-if-ip-or-subnet-matchesfits/
 # ---------------------------------------------------
 # The function will check ip to ip, ip to subnet, subnet to ip or subnet to subnet belong to each other and return true or false and the direction of the check
-#////////////////////////////////////////////////////////////////////////
+#
 function checkSubnet ([string]$addr1, [string]$addr2)
 {
     # Separate the network address and lenght
@@ -23901,10 +23978,15 @@ function Get-ADDomainFromFQDN {
     return $domain
 }
 
+#endregion SubnetFunctions
+
+#region PasswordParsingFunctions
 # ------------------------------------------------------------
-# Password File Download Function 
+# Password Parsing & Download Functions
 # ------------------------------------------------------------
 
+# Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
+# Password File Download Function
 function Copy-FileWithStructure {
     param (
         [Parameter(Mandatory = $true)]
@@ -23980,9 +24062,6 @@ function Copy-FileWithStructure {
     $destinationFile
 }
 
-# ------------------------------------------------------------
-# Password Parsing Functions
-# ------------------------------------------------------------
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Intended input: web.config
@@ -27878,3 +27957,435 @@ function Get-PwFetchmailrc {
 
     return $credentials
 }
+
+#endregion PasswordParsingFunctions
+
+#region LLMFunctions
+# ------------------------------------------------------------
+# LLLM Functions
+# ------------------------------------------------------------
+
+# Function for generic LLM requests
+# Author: Scott Sutherland (@_nullbind), NetSPI 2024
+# v.01
+function Invoke-LLMRequest {
+	<#
+            .SYNOPSIS
+            This function sends text or an image to a specified API endpoint using the provided API key.
+            It requires the 'apikey', 'endpoint', and 'text' parameters to be specified.
+            This was tested on GPT 4o and 4o-mini.
+            .PARAMETER apikey
+            The API key required to access the endpoint.
+            .PARAMETER endpoint
+            The API service URL to which the request is sent.
+            .PARAMETER text
+            The text content that will be analyzed by the API service.
+            .PARAMETER ImagePath
+            Optional. The path to an image file that will be sent to the API.
+            .PARAMETER SimpleOutput
+            Optional. The will return the simple LLM response instead of the whole response object.
+            .EXAMPLE
+	        PS C:\> Invoke-LLMRequest -apikey "your_api_key" -endpoint "https://api.example.com/analyze" -text "Sample text to analyze"
+            .EXAMPLE
+	        PS C:\> Invoke-LLMRequest -SimpleOutput -apikey "your_api_key" -endpoint "https://api.example.com/analyze" -text "Sample text to analyze"
+            .EXAMPLE   
+            Invoke-LLMRequest -SimpleOutput  -apikey "your_api_key" -endpoint "https://api.example.com/analyze" -text "What is this image?" -ImagePath "c:\temp\thing1.png"
+            PS C:\temp\test> Import-Module Invoke-HuntSMBShares.ps1
+	#>
+
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true)]
+        [string]$ApiKey,
+
+        [Parameter(Mandatory=$true)]
+        [string]$endpoint,
+
+        [Parameter(Mandatory=$true)]
+        [string]$text, 
+
+        [Parameter()]
+        [string]$ImagePath,
+
+        [Parameter()]
+        [switch]$SimpleOutput
+    )
+
+    # Initialize content based on input
+    $content = @()
+    if ($text) {
+        $content += @{
+            "type" = "text"
+            "text" = $text
+        }
+    }
+    
+    if ($ImagePath) {
+        try {
+            $encoded_image = [Convert]::ToBase64String([IO.File]::ReadAllBytes($ImagePath))
+            $content += @{
+                "type" = "image"
+                "image" = $encoded_image
+            }
+        } catch {
+            Write-Host "Error: Unable to read or encode the image at $ImagePath"
+            return
+        }
+    }
+
+    # Set headers
+    $headers = @{
+        "Content-Type" = "application/json"
+        "api-key" = $ApiKey
+    }
+
+    # Payload for the request
+    $payload = @{
+        "messages" = @(
+            @{
+                "role" = "user"
+                "content" = $content
+            }
+        )
+        "temperature" = 0.7
+        "top_p" = 0.95
+        "max_tokens" = 800
+    } | ConvertTo-Json -Depth 10
+
+    # Send request
+    try {
+        $response = Invoke-RestMethod -Uri $endpoint -Headers $headers -Method Post -Body $payload
+
+        # Display token details
+        $UsagePromptTokens     = $response.usage.prompt_tokens
+        $UsageCompletionTokens = $response.usage.completion_tokens
+        $UsageTotalTokens      = $response.usage.total_tokens
+        Write-Verbose "Prompt/Input Tokens: $UsagePromptTokens"
+        Write-Verbose "Completion/Output tokens: $UsageCompletionTokens"
+        Write-Verbose "Total Tokens: $UsageTotalTokens"
+
+        # Return the message text
+        if($SimpleOutput){
+            return $response.choices[0].message.content
+        }else{
+            $response
+        }
+    } catch {
+        Write-Host "Failed to make the request. Error: $_"
+        return $null
+    }
+}
+
+
+# Function for application finger printing based on share and file names
+# Author: Scott Sutherland (@_nullbind), NetSPI 2024
+# v.01
+function Invoke-FingerPrintShare {
+	<#
+            .SYNOPSIS
+            This function sends a share name and file list to the LLM for fingerprinting.
+            It requires the 'apikey', 'endpoint', and 'text'. This was tested on GPT 4o and 4o-mini.
+            .PARAMETER apikey
+            The API key required to access the endpoint.
+            .PARAMETER endpoint
+            The API service URL to which the request is sent.
+            .PARAMETER ShareName
+            This is the name of the network share to fingerprint.
+            .PARAMETER FileList
+            Optional. This is a list of file names found in the share to help fingerprint the application or OS associated with the share name.
+            .PARAMETER FilePath
+            Optional. This is a csv file with the columns 'ShareName' and 'FileList' that includes the file names found in the share.
+            .PARAMETER DataTable
+            Optional. This is a DataTable with the columns 'ShareName' and 'FileList' that includes the file names found in the share.             
+            .PARAMETER OutputFile
+            Optional. This should be the full path to a file name that he results will be written to.
+            .PARAMETER MakeLog
+            Optional. This enabled error log file creation that can be used for debugging.
+            .PARAMETER FolderGroup
+            Optional. This include a folder group hash for the share that can be used to cross reference and update other records.
+            .EXAMPLE
+	        PS C:\> Invoke-LLMRequest -Verbose -FilePath "c:\temp\blah.csv" -apikey "your_api_key" -endpoint "https://api.example.com/analyze" 
+            .EXAMPLE   
+            PS C:\> Invoke-LLMRequest -Verbose -ShareName "sccm" -FileList "variables.dat" -apikey "your_api_key" -endpoint "https://api.example.com/analyze" 
+            .EXAMPLE   
+            PS C:\> Invoke-LLMRequest -Verbose -DataTable $exampleTable -apikey "your_api_key" -endpoint "https://api.example.com/analyze" 
+            .EXAMPLE   
+            PS C:\> Invoke-LLMRequest -Verbose -OutputFile 'c:\temp\fpsoutput.csv' -DataTable $exampleTable -apikey "your_api_key" -endpoint "https://api.example.com/analyze" 
+            .EXAMPLE   
+            PS C:\> Invoke-LLMRequest -MakeLog -Verbose -DataTable $exampleTable -apikey "your_api_key" -endpoint "https://api.example.com/analyze"                        
+	#>
+    [CmdletBinding()]
+    param (
+        [Parameter()]
+        [string]$ShareName,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ApiKey,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Endpoint,
+
+        [Parameter()]
+        [string]$FileList,
+
+        [Parameter()]
+        [string]$FilePath,
+
+        [Parameter()]
+        [System.Data.DataTable]$DataTable,
+
+        [Parameter()]
+        [string]$OutputFile,
+
+        [Parameter()]
+        [switch]$MakeLog,
+
+        [Parameter()]
+        [string]$FolderGroup
+    )
+
+    # Start Timer
+    $StartTime    =  Get-Date -UFormat "%m/%d/%Y %R"
+    $StopWatch    =  [system.diagnostics.stopwatch]::StartNew()
+    $LogTimestamp = Get-Date -Format "MMddyyyyHHmmss"
+
+    # Dependency Check for Invoke-LLMRequest PowerShell function
+    $requiredFunction = "Invoke-LLMRequest"
+    if (!(Get-Command -Name $requiredFunction -CommandType Function -ErrorAction SilentlyContinue)) {
+        Write-Error "The required function '$requiredFunction' is not available. Please define it or import the module that provides it."
+        return
+    }
+
+    # Verify that a data table, csv, or filenames have been passed into the function before moving on.
+    if (-not $FileList -and -not $FilePath -and -not $DataTable) {
+        Write-Output "No file names, file paths, or data tables have been provided."
+        break
+    }
+
+    # Verify the file path exists
+    If($FilePath){
+
+        if(Test-Path $FilePath){ 
+                # Write-Verbose "The csv file path exists."
+        }else{
+                Write-Output " [x] The $FilePath did not exist."
+                Write-Output " [!] Aborting operation."
+                break
+        }
+    }
+
+    # Create table for master list
+    $TargetList = New-Object System.Data.DataTable
+    $null = $TargetList.Columns.Add("ShareName") 
+    $null = $TargetList.Columns.Add("FileList") 
+
+    # Parse file path if provided
+    If($FilePath){
+        $CsvFileData = Import-Csv $FilePath | select ShareName, FileList
+        $CsvFileDataCount = $CsvFileData | measure | select count -ExpandProperty count
+        if($CsvFileDataCount -eq 0){
+            Write-Verbose "Importing 0 records from the provided file."
+        }else{
+            Write-Verbose "Importing $CsvFileDataCount records from the provided file."
+            Write-Verbose " - $FilePath"
+            $CsvFileData | 
+            foreach{ 
+                 
+                # Create a new row for the TargetList DataTable
+                $newRow = $TargetList.NewRow()
+                $newRow["ShareName"] = $_.ShareName
+                $newRow["FileList"]  = $_.FileList
+
+                # Add the new row to the TargetList DataTable
+                $TargetList.Rows.Add($newRow)
+            }
+        }
+    }
+
+    # Parse data table if provided
+    if($DataTable){
+        $DtFileDataCount = $DataTable.Rows.Count
+        if ($DtFileDataCount -eq 0) {
+            Write-Verbose "Importing 0 records from the provided data table."
+        } else {
+            Write-Verbose "Importing $DtFileDataCount records from the provided data table."
+
+            foreach ($row in $DataTable.Rows) {
+                # Create a new row for the TargetList DataTable
+                $newRow = $TargetList.NewRow()
+                $newRow["ShareName"] = $row["ShareName"]
+                $newRow["FileList"] = $row["FileList"]
+
+                # Add the new row to the TargetList DataTable
+                $TargetList.Rows.Add($newRow)
+            }
+        }
+    }
+
+    # Generate file list object
+    if (($FileList) -and ($ShareName)) {
+        Write-Verbose "Importing 1 record from command line."
+        # Create a new row in the DataTable
+        $newRow = $TargetList.NewRow()
+
+        # Set values for each column
+        $newRow["ShareName"] = $ShareName
+        $newRow["FileList"] = $FileList
+
+        # Add the new row to the DataTable
+        $null = $TargetList.Rows.Add($newRow)
+    }        
+
+    # Verify records exist
+    $TargetListCount      = $TargetList | measure | select count -ExpandProperty count
+    $TargetListCountTrack = 0
+    if($TargetListCount -gt 0){        
+        Write-Verbose "$TargetListCount records will be processed."
+    }else{
+        Write-Output "No records were found for processing, aborting."
+        break
+    }
+    Write-Verbose "Endpoint: $Endpoint"
+    Write-Verbose "-----------------------------------------------"
+
+    # Process records
+    $Results = $TargetList |
+    foreach {
+        $ShareNamesFormatted = $_.ShareName
+        $FileListFormatted   = $_.FileList   
+        
+        # Define the prompt
+        $MyPrompt = @"
+You will be provided with a share name and a list of file names. Your task is to:
+
+1. Analyze the provided share name to determine it is related to a known application.  Please ensure your only return a application guess if you know of an existing application or operating system by name. Do not make things up or refer generic product categories.
+2. Analyze all provided file names to determine if one or more are related to a known application or operating system. Make sure to take into analyze file names, file name prefixes, and file extensions. Run this analysis 5 time on the backend and select the one that is most accurate.
+3. Define a confidence score ranging from 1 to 5, where 5 represents very high confidence.
+4. If any identified applications have a confidence score above 3, return the top one application and it's confidence score. 
+5. If no application has a confidence score above 3, then don't return anything."
+6. For each identified application where the confidence score is above 3, return the following information in XML format:
+- Share Name
+- Application Name
+- Confidence Score
+- A list of the top 10 most relevant files that have been comma seperated on one line.
+- A two-sentence justification of the match. Include the justification based on the share name in the first sentance, the justification based on the top 5 file names in the second, and link to the application page at the end (if available).
+Ensure the output is formatted as XML. Please only return the XML formatted response with nothing else. Please DO NOT wrap the XML response with any comments or labeling. For example, do not include "```xml". Please do not wrap responses in nested "{}".
+
+Please ensure the xml follows the structure below:
+Applications.Application.ShareName
+Applications.Application.ApplicationName
+Applications.Application.ConfidenceScore
+Applications.Application.RelevantFiles
+Applications.Application.Justification
+
+Input:
+
+Share Name: 
+$ShareNamesFormatted
+
+File Names: 
+$FileListFormatted
+"@
+
+        # Send request
+        Try{    
+            $TargetListCountTrack = $TargetListCountTrack +1       
+            Write-Verbose "($TargetListCountTrack/$TargetListCount) Sending request for $ShareNamesFormatted share name. "            
+            $LLMResponse           = Invoke-LLMRequest -Verbose:$false -Text $MyPrompt -APIKEY $ApiKey -Endpoint $Endpoint
+            [xml]$Fingerprint      = $LLMResponse.choices[0].message.content
+        }catch{
+            $FailMsg = "($TargetListCountTrack/$TargetListCount) $ShareNamesFormatted sharename and file process failed for some reason."
+            Write-Verbose "$FailMsg"
+            if($MakeLog){
+                try{
+                    Add-Content -Path "$OutputDirectory\LlmRequest.log" -Value $FailMsg
+                }catch{
+                    write-Verbose "Could not write $OutputDirectory\LlmRequest.log."
+                }
+            }
+        }
+
+        # Build PowerShell Object and return
+        if ($Fingerprint) {
+
+            # Return formatted response in powershell object
+            $FingerprintObj = New-Object PSObject
+            $FingerprintObj | Add-Member -MemberType NoteProperty -Name "ShareName"         -Value $Fingerprint.Applications.Application.ShareName
+            $FingerprintObj | Add-Member -MemberType NoteProperty -Name "ApplicationName"   -Value $Fingerprint.Applications.Application.ApplicationName
+            $FingerprintObj | Add-Member -MemberType NoteProperty -Name "ConfidenceScore"   -Value $Fingerprint.Applications.Application.ConfidenceScore
+            $FingerprintObj | Add-Member -MemberType NoteProperty -Name "RelevantFiles"     -Value $Fingerprint.Applications.Application.RelevantFiles
+            $FingerprintObj | Add-Member -MemberType NoteProperty -Name "Justification"     -Value $Fingerprint.Applications.Application.Justification
+            $FingerprintObj | Add-Member -MemberType NoteProperty -Name "PromptTokens"      -Value $LLMResponse.usage.prompt_tokens
+            $FingerprintObj | Add-Member -MemberType NoteProperty -Name "CompletionTokens"  -Value $LLMResponse.usage.completion_tokens
+            $FingerprintObj | Add-Member -MemberType NoteProperty -Name "TotalTokens"       -Value $LLMResponse.usage.total_tokens
+            $FingerprintObj | Add-Member -MemberType NoteProperty -Name "FolderGroup"       -Value $FolderGroup
+        
+            return $FingerprintObj
+        } else {
+            Write-Verbose "No valid fingerprint data returned."
+        }
+    } | where ShareName -NotLike ""
+
+    # Return results
+    $Results 
+
+    # Write results to file
+    if($OutputFile){
+        try{
+            $Results | Export-Csv -NoTypeInformation $OutputFile -Append
+            Write-Verbose "Results written to $OutputFile."
+        }catch{
+            Write-Verbose "Could not write $OutputFile."
+        }
+    }
+
+    # Calculate total tokens used 
+    $TokensTotalPrompt     = 0
+    $TokensTotalCompletion = 0
+    $TokensTotalTotal      = 0
+    $Results | 
+    foreach {
+        $TokensTotalPrompt     += $_.PromptTokens
+        $TokensTotalCompletion += $_.CompletionTokens
+        $TokensTotalTotal      += $_.TotalTokens
+    }
+
+    # Get tokens stats
+    Write-Verbose "Token Usage Summary"
+    Write-Verbose " - Prompt Tokens Total: $TokensTotalPrompt"
+    Write-Verbose " - Completion Tokens Total: $TokensTotalCompletion"
+    Write-Verbose " - Grand Total: $TokensTotalTotal"
+    Write-Verbose ""
+
+    # Get run time stats
+    $EndTime =  Get-Date -UFormat "%m/%d/%Y %R"
+    $StopWatch.Stop()
+    $RunTime = $StopWatch | Select-Object Elapsed -ExpandProperty Elapsed
+    Write-Verbose "Runtime Summary"
+    Write-Verbose " - Start   : $StartTime"
+    Write-Verbose " - End     : $EndTime"
+    Write-Verbose " - Duration: $RunTime"
+
+    # Add to log
+    if($MakeLog){
+        try{
+            Add-Content -Path "$OutputDirectory\LlmRequest.log" -Value " Runtime Summary"
+            Add-Content -Path "$OutputDirectory\LlmRequest.log" -Value " - Start   : $StartTime"
+            Add-Content -Path "$OutputDirectory\LlmRequest.log" -Value " - End     : $EndTime"
+            Add-Content -Path "$OutputDirectory\LlmRequest.log" -Value " - Duration: $RunTime"
+            Add-Content -Path "$OutputDirectory\LlmRequest.log" -Value " Token Usage Summary"
+            Add-Content -Path "$OutputDirectory\LlmRequest.log" -Value " - Prompt Tokens Total: $TokensTotalPrompt"
+            Add-Content -Path "$OutputDirectory\LlmRequest.log" -Value " - Completion Tokens Total: $TokensTotalCompletion"
+            Add-Content -Path "$OutputDirectory\LlmRequest.log" -Value " - Grand Total: $TokensTotalTotal"
+            Write-Verbose ""
+            Write-Verbose "LLM request log written to $OutputDirectory\LlmRequest.log."
+        }catch{
+            Write-Verbose "Could not write $OutputDirectory\LlmRequest.log."
+        }
+    }
+    
+    # Status user 
+    Write-Verbose "All done."
+}
+
+#endregion LLMFunctions
