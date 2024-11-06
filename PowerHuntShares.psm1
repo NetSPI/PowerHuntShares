@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.196
+# Version: v1.197
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -249,6 +249,19 @@ function Invoke-HuntSMBShares
         $StartTime = Get-Date
         $StopWatch =  [system.diagnostics.stopwatch]::StartNew()
         $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+
+
+        # Check if there is connectivity to the api for llm calls
+        if($ApiKey -and $Endpoint){
+            $ConnTestLLM = Invoke-LLMRequest -SimpleOutput -apikey $ApiKey -endpoint $Endpoint -text "Please return the word 'hello' and nothing else."
+            if($ConnTestLLM -like "*hello*"){
+                $RunLLMQueries = 1
+            }else{
+                $RunLLMQueries = 0
+                Write-Output " [*][$Time] Connection test for LLM API ENDPOINT failed. LLM Queries will not be run."
+            }
+        }
+
         Write-Output " [*][$Time] Scan Start"
 
         # Nova format
@@ -2262,7 +2275,9 @@ function Invoke-HuntSMBShares
                         $ListShareDesc         = $_.Description
                         $ListShareLocalPathC   = $_.LocalPath
                         if($ListShareLocalPathC -ne ""){
-                            $ListShareLocalPath = "$ListShareLocalPath is the expected local path."
+                            $ListShareLocalPath = "$ListShareLocalPathC is the expected local path."
+                        }else{
+                            $ListShareLocalPath = ""
                         }
                         $ShareShareJust       = $_.Justification
                         $ListShareApp         = $_.Application
@@ -2960,7 +2975,7 @@ function Invoke-HuntSMBShares
         # ---------------------------------------------------------------------- 
 
         # Check if API and Endpoint have been provided
-        if ($ApiKey -and $Endpoint) {
+        if ($RunLLMQueries -eq 1) {
 
              # Status user
              $Time =  Get-Date -UFormat "%m/%d/%Y %R"
@@ -3022,7 +3037,7 @@ function Invoke-HuntSMBShares
         # ----------------------------------------------------------------------
         # Generate LLM Application Fingerprint Summary
         # ---------------------------------------------------------------------- 
-        if($ApiKey -and $Endpoint){
+        if($RunLLMQueries -eq 1){
 
             # Status User
             $Time =  Get-Date -UFormat "%m/%d/%Y %R"
@@ -3709,7 +3724,7 @@ function Invoke-HuntSMBShares
             $ShareFileShareUnc = $ExcessiveSharePrivs | where FileListGroup -eq $FileGroupName | select SharePath -unique -expandproperty SharePath | foreach { "$_ <br>"}
             
             # Get application fingerprint values if gathered
-            if($ApiKey -and $Endpoint){
+            if($RunLLMQueries -eq 1){
 
                 # Check llm results
                 $FgAppInfo = $ExcessiveSharePrivsFinal | where FileListGroup -eq $FileGroupName | where ShareGuessApp -notlike "" | select ShareGuessApp, ShareGuessLLM -first 1
@@ -3799,7 +3814,7 @@ function Invoke-HuntSMBShares
             $AclBar      = $ShareNameBars.AclBar  
             
             # Get app description from llm results  
-            if($ApiKey -and $Endpoint){  
+            if($RunLLMQueries -eq 1){  
 
                 # Get lmm fingerprint matches for sharename
                 $SnLLmMatchesRaw = $ExcessiveSharePrivsFinal |
@@ -4711,7 +4726,9 @@ function Invoke-HuntSMBShares
                     $ListShareDesc         = $_.Description
                     $ListShareLocalPathC   = $_.LocalPath
                     if($ListShareLocalPathC -ne ""){
-                        $ListShareLocalPath = "$ListShareLocalPath is the expected local path."
+                        $ListShareLocalPath = "$ListShareLocalPathC is the expected local path."
+                    }else{
+                        $ListShareLocalPath = ""
                     }
                     $ShareShareJust       = $_.Justification
                     $ListShareApp         = $_.Application
@@ -4725,7 +4742,6 @@ function Invoke-HuntSMBShares
                         $ShareShareJust 
                         $ListShareLocalPath
 "@
-
                     }
             }            
                                       
