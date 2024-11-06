@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.195
+# Version: v1.196
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -2956,7 +2956,7 @@ function Invoke-HuntSMBShares
         } 
 
         # ----------------------------------------------------------------------
-        # Optional - Share Name Application LLM Lookup
+        # Generate LLM Share Application Fingerprints 
         # ---------------------------------------------------------------------- 
 
         # Check if API and Endpoint have been provided
@@ -2972,7 +2972,7 @@ function Invoke-HuntSMBShares
 
              # Get list of targets
              $LLMQueryResults = $ExcessiveSharePrivsFinal | 
-             Select-Object ShareName, FileList, FileListGroup -Unique |
+             Select-Object ShareName, FileList, FileListGroup -Unique | where ShareName -notlike "" | 
              Foreach {
 
                 # Explicit clear
@@ -28268,12 +28268,6 @@ function Invoke-FingerPrintShare {
         return
     }
 
-    # Verify that a data table, csv, or filenames have been passed into the function before moving on.
-    if (-not $FileList -and -not $FilePath -and -not $DataTable) {
-        Write-Verbose "No file names, file paths, or data tables have been provided."
-        break
-    }
-
     # Verify the file path exists
     If($FilePath){
 
@@ -28354,8 +28348,8 @@ function Invoke-FingerPrintShare {
     if($TargetListCount -gt 0){        
         Write-Verbose "$TargetListCount records will be processed."
     }else{
-        Write-Verbose "No records were found for processing, aborting."
-        break
+        Write-Verbose "No records were found for processing."
+        #break
     }
     Write-Verbose "Endpoint: $Endpoint"
     Write-Verbose "-----------------------------------------------"
