@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.192
+# Version: v1.193
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -10747,7 +10747,7 @@ This section provides some tips for prioritizing the remediation of shares confi
 -->
 
  <a href="#" id="DashLink" onClick="radiobtn = document.getElementById('dashboard');radiobtn.checked = true;">
- <div class="card" style="position:absolute;margin-top:20px;width:270px;">	
+ <div class="card" style="position:absolute;margin-top:20px;width:400px;">	
 	<div class="cardtitle" align="left">		
         <div style="text-align:left; font-size: 12px; margin-left: 5px;">The scan context and run time information have been provided below.<br><br></div>	
 	</div>		
@@ -10761,43 +10761,43 @@ This section provides some tips for prioritizing the remediation of shares confi
 		 <tr>
 			<td class="cardsubtitle" style="vertical-align:top">DC</td>
 			<td >					
-				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">$DomainController</span>				
+				<span class="AclEntryRight" style="word-wrap: break-word;">$DomainController</span>				
 			</td>
 		 </tr>	
 		 <tr>
 			<td class="cardsubtitle" style="vertical-align: top;">Start Time</td>
 			<td>					
-				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">$StartTime</span>				
+				<span class="AclEntryRight" style="word-wrap: break-word;">$StartTime</span>				
 			</td>
 		 </tr>
 		 <tr>
 			<td class="cardsubtitle" style="vertical-align:top">Stop Time</td>
 			<td >					
-				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">$EndTime</span>				
+				<span class="AclEntryRight" style="word-wrap: break-word;">$EndTime</span>				
 			</td>
 		 </tr>
 		 <tr>
 			<td class="cardsubtitle" style="vertical-align:top">Duration</td>
 			<td >					
-				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">$RunTime</span>				
+				<span class="AclEntryRight" style="word-wrap: break-word;">$RunTime</span>				
 			</td>
 		 </tr>
 		 <tr>
 			<td class="cardsubtitle" style="vertical-align:top">Src Host</td>
 			<td >					
-				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">$SourceHost</span>				
+				<span class="AclEntryRight" style="word-wrap: break-word;">$SourceHost</span>				
 			</td>
 		 </tr>
 		 <tr>
 			<td class="cardsubtitle" style="vertical-align:top">Src IPs</td>
 			<td >					
-				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">$SourceIps</span>				
+				<span class="AclEntryRight" style="word-wrap: break-word;">$SourceIps</span>				
 			</td>
 		 </tr>		
 		 <tr>
 			<td class="cardsubtitle" style="vertical-align:top">Src User</td>
 			<td >					
-				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">$username</span>				
+				<span class="AclEntryRight" style="word-wrap: break-word;">$username</span>				
 			</td>
 		 </tr>		 
 		</table> 		  
@@ -10805,7 +10805,7 @@ This section provides some tips for prioritizing the remediation of shares confi
 </a>
 
 <!-- home text -->
-<div style="margin-left:320px;"> 
+<div style="margin-left:450px;"> 
 <br>
 <div style="float:left;display:block;position:relative;">
 <h4>How do I use this report?</h4>
