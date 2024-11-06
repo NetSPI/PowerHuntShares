@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.191
+# Version: v1.192
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -2252,7 +2252,8 @@ function Invoke-HuntSMBShares
             $myComputerOs    = $DomainComputers | where ComputerName -eq $myComputerName | select OperatingSystem -ExpandProperty OperatingSystem
 
             # Get share name guess
-            $myShareAppGuess = "None"
+            $myShareAppGuess = "Unknown"
+            $myShareAppDesc  = "Unknown"
             $ListShareLocalPath = ""
             $ShareNameList | 
                 foreach { 
@@ -2267,8 +2268,9 @@ function Invoke-HuntSMBShares
                         $ListShareApp         = $_.Application
                         if($ListShareName -eq $myShareName){
                         
-                            # Set description
-                            $myShareAppGuess = "The $ListShareName may be associated with $ListShareApp. $ListShareDesc $ShareShareJust"
+                            # Set description & app guesses from static library 
+                            $myShareAppGuess = $ListShareApp
+                            $myShareAppDesc  = "The $ListShareName may be associated with $ListShareApp. $ListShareDesc $ShareShareJust"
                         }
             }        
 
@@ -2281,6 +2283,7 @@ function Invoke-HuntSMBShares
                 SharePath              = $mySharePath
                 ShareType              = $myShareType
                 ShareDescription       = $myShareDescription
+                ShareDescriptionGuess  = $myShareAppDesc
                 ShareGuessStatic       = $myShareAppGuess
                 ShareGuessLLM          = ""
                 ShareGuessApp          = ""
@@ -3062,9 +3065,14 @@ function Invoke-HuntSMBShares
 "@
 
             # Issue LLM query to summarize applications
-            $LLMCleanAppSummary = Invoke-LLMRequest -MaxTokens 4096 -SimpleOutput -apikey $ApiKey -endpoint $Endpoint -text "$LLMCleanPrompt2"
+            $LLMCleanAppSummary = Invoke-LLMRequest -MaxTokens 4096 -SimpleOutput -apikey $ApiKey -endpoint $Endpoint -text "$LLMCleanPrompt2"            
+
+            # LLM Warning
+            $LLMOutputWarning = "Note: Application fingerprints were generated using an experimental version of the LLM-based application fingerprinting function. As a result, some application classifications may not be accurate."
+
         }else{
             $LLMCleanAppSummary = ""
+            $LLMOutputWarning   = ""
         }
 
         # ----------------------------------------------------------------------
@@ -6898,9 +6906,10 @@ input[type="checkbox"]:checked::before {
 					</span>		
 					<span style="font-size: 10px; color: gray;">affected</span>                
 				   </div>
-				</div>
-			  </div>
-			</div>			
+				</div>                
+			  </div>              
+			</div>		
+	        <div style="margin-left:10px;">$LLMOutputWarning</div>
 		</div>							  							
     </div>
   </div>  
@@ -7998,7 +8007,7 @@ This section lists the most common share owners.
 <div id="tabPanel" class="tabPanel">
 <h2 style="margin-top: 65px;margin-left:10px;margin-bottom: 17px;">Folder Groups</h2>
 <div style="margin-left:10px;margin-top:3px;width:95%;">
-Folder groups are SMB shares that contain the exact same file listing. Each folder group has been hashed so they can be quickly correlated. In some cases, shares with the exact same file listing may be related to a single application or process.  This information can help identify the root cause associated with the excessive privileges and expedite remediation.
+Folder groups are SMB shares that contain the exact same file listing. Each folder group has been hashed so they can be quickly correlated. In some cases, shares with the exact same file listing may be related to a single application or process.  This information can help identify the root cause associated with the excessive privileges and expedite remediation. $LLMOutputWarning
 <br><br>
 </div>
 
