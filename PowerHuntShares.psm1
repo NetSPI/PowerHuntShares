@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.190
+# Version: v1.191
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -3017,6 +3017,55 @@ function Invoke-HuntSMBShares
         }catch{
                 # Write-Output " [*][$Time] - Unable to written to $OutputDirectory\$TargetDomain-Shares-Inventory-LLM-Fingerprint.csv"
         } 
+
+        # ----------------------------------------------------------------------
+        # Generate LLM Application Fingerprint Summary
+        # ---------------------------------------------------------------------- 
+        if($ApiKey -and $Endpoint){
+
+            # Status User
+            $Time =  Get-Date -UFormat "%m/%d/%Y %R"
+            Write-Output " [*][$Time] - Generating LLM application fingerprint summary"
+
+            # Get list of apps
+            $LLMCleanDirtyAppList = $ExcessiveSharePrivsFinal | where ShareGuessApp -notlike "" | select ShareGuessApp -ExpandProperty ShareGuessApp
+            $LLMCleanDirtyAppListString = $LLMCleanDirtyAppList -join "`n"
+            $LLMCleanDirtyAppListCount = $LLMCleanDirtyAppList | measure | select count -ExpandProperty count
+            if($LLMCleanDirtyAppListCount -eq 0){
+                Write-Output " [*][$Time] - No fingerprinted applications found."
+                Return;
+            }
+
+            # Setup prompt for LLM query to normalize the application names
+            $LLMCleanPrompt1 = @"
+            Please normalize the names of the applications in this list. 
+
+            Example of desired application name normalization:
+            If IIS may be represented as IIS, Microsoft IIS, Internet Information Services, Microsoft Internet Information Services, Microsoft Internet Information Services (IIS), IIS (Internet Information Services), or Window IIS. In that case make them all the most format name, like Microsoft Internet Information Services (IIS).
+            Please return a simple list of application in text with no bullets, numbered lists, or formatting.
+            Please only return this list. Please do not include any response comments.
+
+            List of application names:
+
+            $LLMCleanDirtyAppListString
+"@
+
+            # Issue LLM query to normalize the application names
+            $LLMCleanAppList1 = Invoke-LLMRequest -MaxTokens 4096 -SimpleOutput -apikey $ApiKey -endpoint $Endpoint -text "$LLMCleanPrompt1"
+
+            # Setup prompt for LLM query to summarize applications
+            $LLMCleanPrompt2 = @"
+            Please analyze the list of application names below and generate a two sentence summary that includes the total number of applications, the number of unique application names, the functional type of applications (do not cite the application name with the type), and which two applications had the highest count. Please include the highest counts, their percentage of the total application instances, and the specific application names in the highest count list summary. Please make sure to start the response with "In this environment, we observed".            
+            DO NOT RESPONSE WITH ANYTHING IF YOU DONT KNOW WHAT THE APPLICATIONS ARE.
+
+            $LLMCleanAppList1
+"@
+
+            # Issue LLM query to summarize applications
+            $LLMCleanAppSummary = Invoke-LLMRequest -MaxTokens 4096 -SimpleOutput -apikey $ApiKey -endpoint $Endpoint -text "$LLMCleanPrompt2"
+        }else{
+            $LLMCleanAppSummary = ""
+        }
 
         # ----------------------------------------------------------------------
         # Calculate Peer Comparison Data - INSIGHTS 
@@ -6782,6 +6831,7 @@ input[type="checkbox"]:checked::before {
 		<div style="color:#4A4A4A;font-size: 16px; margin-top: 10px; margin-left: 10px; margin-bottom: 10px;"><strong>Asset Exposure Summary</strong></div>
 		<div style="margin-left: 10px; margin-right: 10px;  background-color: #faf7f7; border: .5px  solid #ebe8e8; padding: 10px; border-radius: 6px; height:90px;">
 		$ExcessiveSharePrivsCount ACL entries, on $ExcessiveSharesCount shares, hosted by $ComputerWithExcessive computers were found configured with excessive privileges on the $TargetDomain domain.		
+        $LLMCleanAppSummary
 		</div>		
 			<! -- top -->
 			<div style="width: 99%; display: flex; margin-top: 10px;">			
@@ -28024,6 +28074,12 @@ function Invoke-LLMRequest {
             Optional. The path to an image file that will be sent to the API.
             .PARAMETER SimpleOutput
             Optional. The will return the simple LLM response instead of the whole response object.
+            .PARAMETER Temperature
+            Optional. This will set the temperature for the query.
+            .PARAMETER TopP
+            Optional. This will set the top_p for the query.
+            .PARAMETER MaxTokens
+            Optional. This will set the max tokens for the query.
             .EXAMPLE
 	        PS C:\> Invoke-LLMRequest -apikey "your_api_key" -endpoint "https://api.example.com/analyze" -text "Sample text to analyze"
             .EXAMPLE
@@ -28048,7 +28104,16 @@ function Invoke-LLMRequest {
         [string]$ImagePath,
 
         [Parameter()]
-        [switch]$SimpleOutput
+        [switch]$SimpleOutput,
+
+        [Parameter()]
+        [decimal]$Temperature = 0.4,
+
+        [Parameter()]
+        [decimal]$TopP = 0.95,
+
+        [Parameter()]
+        [int]$MaxTokens = 2000
     )
 
     # Initialize content based on input
@@ -28087,9 +28152,9 @@ function Invoke-LLMRequest {
                 "content" = $content
             }
         )
-        "temperature" = 0.4
-        "top_p" = 0.95
-        "max_tokens" = 800
+        "temperature" = $Temperature
+        "top_p" = $TopP
+        "max_tokens" = $MaxTokens
     } | ConvertTo-Json -Depth 10
 
     # Send request
