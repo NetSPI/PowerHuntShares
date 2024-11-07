@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v2.0
+# Version: v2.1
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -10587,7 +10587,7 @@ document.querySelector('#nodemenu a:nth-child(2)').addEventListener('click', fun
 <div id="tabPanel" class="tabPanel">
 <h2 style="margin-top: 65px;margin-left:10px;margin-bottom: 17px;">Exploit</h2>
 <div style="margin-left:10px;margin-top:7px">
-This section provides some tips for exploiting share access.	
+This section provides some tips for exploiting share access.	Consider reviewing <a href="https://www.netspi.com/blog/technical-blog/adversary-simulation/network-share-permissions-powerhuntshares/"  target="_blank">this blog</a> for more attack references. 
 <br><br>
 </div>
 
