@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.199
+# Version: v2.0
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -2995,9 +2995,10 @@ function Invoke-HuntSMBShares
 
                 # Send fingerprint request to LLM for share name + group
                 $LLMResult = Invoke-FingerprintShare -OutputFile "$OutputDirectory\$TargetDomain-Shares-Inventory-LLM-Fingerprint.csv" -ShareName $_.ShareName -FileList $_.FileList -FolderGroup $_.FileListGroup -MakeLog -APIKEY $ApiKey -Endpoint $Endpoint
-
+                
                 # Return results
                 $LLMResult
+
              }
 
              # Show completion
@@ -3736,12 +3737,27 @@ function Invoke-HuntSMBShares
                 $FgAppName = $FgAppInfo | Select ShareGuessApp -ExpandProperty ShareGuessApp
                 $FgAppJust = $FgAppInfo | Select ShareGuessLLM -ExpandProperty ShareGuessLLM
 
+                # Set $FgAppName to unknown if blank
+                If ($FgAppName -like ""){
+                    $FgAppName = "Unknown"                          
+                }
+
             }else{
 
                 # Check static libraries
                 $FgAppInfo = $ExcessiveSharePrivsFinal | where FileListGroup -eq $FileGroupName | where ShareGuessStatic -notlike "" | select ShareGuessStatic -first 1
                 $FgAppName = $FgAppInfo | select ShareGuessStatic -ExpandProperty ShareGuessStatic
                 $FgAppJust = ""
+
+                # Set $FgAppName to unknown if blank
+                If ($FgAppName -like ""){
+                    $FgAppName = "Unknown"                          
+                }
+            }
+
+            # Set $FgAppName to unknown if blank
+            If ($FgAppName -like ""){
+                $FgAppName = "Unknown"                          
             }
 
             # Grab the risk level for the highest risk acl for the foldergroup
@@ -4753,6 +4769,12 @@ function Invoke-HuntSMBShares
             # ----------------------------------------------------------------------
             # Build Share Name Summary Page Rows
             # ----------------------------------------------------------------------
+
+            # If no llm guess set to unknown
+            if($SnLLmMatchesList -like ""){
+                $SnLLmMatchesList  = "Unknown"
+            }
+
             # Build Rows
             $ThisRow = @" 
 	          <tr h="$ShareRowHasHighRisk" w="$ShareRowHasWrite" r="$ShareRowHasRead" i="$ShareRowCountInteresting" e="$ShareRowHasEmpty" s="$ShareRowHasStale" n="$ShareRowHasDefault" >
@@ -10774,7 +10796,7 @@ This section provides some tips for prioritizing the remediation of shares confi
 		 <tr>
 			<td class="cardsubtitle" style="vertical-align:top">Domain</td>
 			<td >					
-				<span class="AclEntryRight" style="width:160px;word-wrap: break-word;">$TargetDomain</span>				
+				<span class="AclEntryRight" style="word-wrap: break-word;">$TargetDomain</span>				
 			</td>
 		 </tr>
 		 <tr>
@@ -11130,7 +11152,7 @@ var TimelineCreationOptions = {
         }
     },
     fill: {
-        opacity: [1, 1, .25, .25],
+        opacity: [1, 1, .75, .75],
         gradient: {
             inverseColors: false,
             //shade: 'light',
@@ -28136,7 +28158,7 @@ function Invoke-LLMRequest {
         [switch]$SimpleOutput,
 
         [Parameter()]
-        [decimal]$Temperature = 0.4,
+        [decimal]$Temperature = 0.6,
 
         [Parameter()]
         [decimal]$TopP = 0.95,
