@@ -4,7 +4,7 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v1.198
+# Version: v1.199
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
@@ -3112,7 +3112,12 @@ function Invoke-HuntSMBShares
         $PeerComparActualShares = [math]::Round($ExcessiveSharesCount/$AllSMBSharesCount,2) * 100      
 
         # Get actual aces %
-        $PeerComparActualAces = [math]::Round($ExcessiveSharePrivsCount/$ShareACLsCount ,2) * 100     
+        $PeerComparActualAces = [math]::Round($ExcessiveSharePrivsCount/$ShareACLsCount ,2) * 100  
+        
+        # Set comparison status 
+        If($PeerComparActualAces -eq 15 ){$EnvironmentStatus = "average"}
+        If($PeerComparActualAces -lt 15 ){$EnvironmentStatus = "more secure"}
+        If($PeerComparActualAces -gt 15 ){$EnvironmentStatus = "less secure"}
 
         # Set actual
         $PeerCompareActuaP   = "[$PeerComparActualComputers, $PeerComparActualShares, $PeerComparActualAces]"
@@ -6661,7 +6666,7 @@ input[type="checkbox"]:checked::before {
             In total, $RiskLevelCountCritical critical, $RiskLevelCountHigh high, $RiskLevelCountMedium medium, and  $RiskLevelCountLow low risk <a href="https://en.wikipedia.org/wiki/Security_descriptor">ACE (Access Control Entry)</a> configurations were discovered across $ExcessiveSharesCount shares, hosted by $ComputerWithExcessive computers in the $TargetDomain Active Directory domain. 
             Overall, $InterestingFilesAllFilesCount interesting files were found accessible to all domain users that could potentially lead to unauthorized data access or remote code execution. The affected shares were found hosting $InterestingFilesAllObjectsSecretCount files that may contain passwords and $InterestingFilesAllObjectsSensitiveCount files that may contain sensitive data. $SecretsRecoveredCount credentials were recovered from $SecretsRecoveredFileCount of the discovered $InterestingFilesAllObjectsSecretCount secrets files. 
 		    <br><br>
-		    The summary report below includes an overview of the affected assets, data & finding exposure, share creation timelines, and general recommendations.
+		    The section provides a summary of the affected assets, findings, data exposure, share creation timelines, peer comparison and general recommendations.
         </div>	
 												
 <!--  
@@ -6934,10 +6939,10 @@ input[type="checkbox"]:checked::before {
     <div class="LargeCard" style="width:100%;">									
 		<div class="chart-container">
 		<div style="color:#4A4A4A;font-size: 16px; margin-top: 10px; margin-left: 10px; margin-bottom: 10px;"><strong>Affected Asset Peer Comparison</strong></div>
-		<div style="margin-left: 10px; margin-right: 10px;  background-color: #faf7f7; border: .5px  solid #ebe8e8; padding: 10px; border-radius: 6px; height: 90px;">	
+		<div style="margin-left: 10px; margin-right: 10px;  background-color: #faf7f7; border: .5px  solid #ebe8e8; padding: 10px; border-radius: 6px;">	
 		Below is a comaprison between the percent of affected assets in this environment and the average percent of 
 		affected assets observed in other environments. The percentage is calculated based on the total number of 
-		live assets discovered for each asset type.		
+		live assets discovered for each asset type. Based on the volume of ACEs configured with excessive privileges, this is environment was $EnvironmentStatus compared to the average.
 		</div>
 		<div class="LargeCard" style="width: 94%;  margin-top: 20px; ">
 			<div id="ChartDashboardPeerCompare" style=" border-radius: 6px; ">
@@ -6955,7 +6960,7 @@ input[type="checkbox"]:checked::before {
 <div class="LargeCard" style="width:96%;">	
 	<div style="margin-left: 10px; width: 99%; margin-bottom: 10px;">
 		<div style="color:#4A4A4A;font-size: 16px; margin-top: 10px; margin-left: 10px; margin-bottom: 10px;"><strong>Share Creation Timeline</strong></div>		
-		<div style="width: 97%; margin-left: 10px; margin-right: 10px;  background-color: #faf7f7; border: .5px  solid #ebe8e8; padding: 10px; border-radius: 6px; height:120px;">
+		<div style="width: 97%; margin-left: 10px; margin-right: 10px;  background-color: #faf7f7; border: .5px  solid #ebe8e8; padding: 10px; border-radius: 6px;">
 		Below is a time series chart to help provide a sense of when shares were created and at what point critical and high risk shares were introduced into the environment.
 		By reading the chart left to right, you can see that shares were created in this environment between $ShareFirstDate and $ShareLastDate. You can zoom into any section of the chart by clicking or using the chart controls in the upper right hand corner of the chart.    
 		$ShareCriticalTime
@@ -11041,26 +11046,27 @@ var upperBound = meanValue + 2 * stdDev;
 var TimelineCreationOptions = {
     series: [
         {
-            name: 'Computers',
+            name: 'Computer Instances',
             type: 'column',
             data: $DataSeriesComputers,
             color: '#9ba1a9'
         },
         {
-            name: 'Shares',
+            name: 'Share Instances',
             type: 'column',
             data: $DataSeriesShares,
             color: '#f29650'
         },      
         {
-            name: 'All High',
-            type: 'area',
+            name: 'Total High Risk Shares',
+            type: 'line',
             data: $DataSeriesHigh, 
-            color: 'url(#striped-pattern)' // or #772400 or striped-pattern
+            // color: 'url(#striped-pattern)' // or #772400 or striped-pattern
+            color: '#772400' 
         },
         {
-            name: 'All Critical',
-            type: 'area',
+            name: 'Total Critical Risk Shares',
+            type: 'line',
             data: $DataSeriesCritical,
             color: '#410f7A'
         }
@@ -11127,10 +11133,10 @@ var TimelineCreationOptions = {
         opacity: [1, 1, .25, .25],
         gradient: {
             inverseColors: false,
-            shade: 'light',
+            //shade: 'light',
             type: "vertical",
-            opacityFrom: 0.0,
-            opacityTo: 1,
+            //opacityFrom: 0.0,
+            //opacityTo: 1,
             stops: [0, 25, 50, 100]
         }
     },
@@ -12000,7 +12006,7 @@ const ChartDashboardRiskOptions = {
     formatter: function (val) {
       return val === 0 ? '' : val;  // Hide the label if the value is 0
     },
-    offsetX: 4,  // Move the labels 4px to the right of the bar
+    offsetX: 2,  // Move the labels 4px to the right of the bar
     textAnchor: 'start',  // Ensure the label starts at the end of the bar
     style: {
       fontSize: '12px',
