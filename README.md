@@ -180,9 +180,17 @@ SHARE REPORT SUMMARY
 </pre>
 
 # HTML Report Examples
+
+### Summary Report Page
 ![HtmlReport1](https://raw.githubusercontent.com/NetSPI/PowerHuntShares/main/Images/v2/1-Dashboard.png)
+
+### Interesting Files Page
 ![HtmlReport2](https://raw.githubusercontent.com/NetSPI/PowerHuntShares/main/Images/v2/11-InterestingFiles.png)
+
+### Extracted Secrets Page
 ![HtmlReport3](https://raw.githubusercontent.com/NetSPI/PowerHuntShares/main/Images/v2/10-ExtractedSecrets.png)
+
+### ShareGraph Explorer Page
 ![HtmlReport4](https://raw.githubusercontent.com/NetSPI/PowerHuntShares/main/Images/v2/9-ShareGraph.png)
 
 # Credits
