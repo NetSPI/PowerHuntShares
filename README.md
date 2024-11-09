@@ -1,6 +1,6 @@
 # PowerHuntShares v2
-PowerHuntShares is design to automatically inventory, analyze, and report excessive privilege assigned to SMB shares on Active Directory domain joined computers.  
-It is intented to help IAM and other blue teams gain a better understand of their SMB Share attack surface and provides data insights to help naturally group related share to help stream line remediation efforts at scale.
+
+PowerHuntShares is PowerShell tool designed to help cybersecurity teams and penetration testers better identify, understand, attack, and remediate SMB shares in the Active Directory environments they are helping protect. Every hacker has a story about abusing SMB shares, but it’s an attack surface that cybersecurity teams still struggle to defend. This project aims to provide an open proof-of-concept tool for creating a comprehensive share inventory, leveraging statistics, charts, graphs, and language models to contextualize shares, summarize relationships, assess risks, and prioritize remediation.
 
 It supports functionality to:
 * <strong>Authenticate</strong> using the current user context, a credential, or clear text user/password.
@@ -10,8 +10,6 @@ It supports functionality to:
 * <strong>Analyze</strong> collected Share ACL data.
 * <strong>Report</strong> summary reports and excessive privilege details in HTML and CSV file formats.
 
-Excessive SMB share ACLs are a systemic problem and an attack surface that all organizations struggle with.  The goal of this project is to provide a proof concept that will work towards building a better share collection and data insight engine that can help inform and priorititize remediation efforts.
-<br><br>
 Bonus Features:
 <br>
 * Stand alone LLM functions: https://github.com/NetSPI/PowerHuntShares/blob/main/Scripts/Invoke-FingerPrintShare.ps1
