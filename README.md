@@ -203,29 +203,24 @@ Todos
 --
 **Pending Fixes/Bugs**
 * Update code to avoid defender
-* Fix file listing formating on data insight pages
-* IPv6 addresses dont show up in subnets summary
 * ACLs associated with Builtin\Users sometimes shows up as LocalSystem under undefined conditions, and as a result, doesnt show up in the Excessive Privileges export. - Thanks Sam!
  
 **Pending Features**
 * Add ability to specify additional groups to target
-* Add directory listing to insights page.
-* Add ability to grab system OS information for data insights.
 * Add file content search.
 * Add DontExcludePrintShares option
 * Add auto targeting of groups that contain a large % of the user population; over 70% (make configurable). Add as option. 
 * Add configuration fid:
  netlogon and sysvol you may get access denied when using windows 10 unless the setting below is configured. Automat a check for this, and attempt to modify if privs are at correct level. gpedit.msc, go to Computer -> Administrative Templates -> Network -> Network Provider -> Hardened UNC Paths, enable the policy and click "Show" button. Enter your server name (* for all servers) into "Value name" and enter the folowing text "RequireMutualAuthentication=0,RequireIntegrity=0,RequirePrivacy=0" wihtout quotes into the "Value" field. 
-* Add an interesting shares based on names to data insights. example: sql, backup, password, etc.
 * Add active sessions data to help identify potential owners/users of share.
 * Pull spns and computer description/spn account descriptions to help identify owner/business unit.
 * Create bloodhound import file / edge (highrisk share)
-* Add better support for IPv6
+* Add better support for IPv6, IPv6 addresses dont show up in subnets summary
 * Dynamic identification of spikes in high risk share creation/common groupings, need to better summarize supporting detail beyond just the timeline. For each of the data insights, add average number of shares created for insight grouping by year/month (for folder hash / name etc), and the increase the month/year it spikes. (attempt to provide some historical context); maybe even list the most common non default directories being used by each of those. Potentially adding "first seen date" as well. (in alpha)
 * Dynamic identification of share creation, modification, and access cadence across a share population that share a name and have a high similarity level.
 * add showing share permissions (along with the already displayed NTFS permissions) and resultant access (most restrictive wins)
 * add depth, file/directory flag
- 
+* So. Many. Other. Things.
 </pre>
  
 
