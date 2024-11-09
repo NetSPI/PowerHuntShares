@@ -182,7 +182,7 @@ SHARE REPORT SUMMARY
 </pre>
 
 # HTML Report Examples
-![HtmlReport1](https://raw.githubusercontent.com/NetSPI/PowerHuntShares/main/summary-report.png) 
+![HtmlReport2](https://raw.githubusercontent.com/NetSPI/PowerHuntShares/main/Images/v2/1-Dashboard.png)
 
 # Credits
 <strong>Author</strong><Br>
