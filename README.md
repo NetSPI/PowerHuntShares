@@ -1,6 +1,6 @@
 # PowerHuntShares v2
 
-PowerHuntShares is PowerShell tool designed to help cybersecurity teams and penetration testers better identify, understand, attack, and remediate SMB shares in the Active Directory environments they are helping protect. Every hacker has a story about abusing SMB shares, but it’s an attack surface that cybersecurity teams still struggle to defend. This project aims to provide an open proof-of-concept tool for creating a comprehensive share inventory, leveraging statistics, charts, graphs, and language models to contextualize shares, summarize relationships, assess risks, and prioritize remediation.
+PowerHuntShares is PowerShell tool designed to help cybersecurity teams and penetration testers better identify, understand, attack, and remediate SMB shares in the Active Directory environments they protect. Every hacker has a story about abusing SMB shares, but it’s an attack surface that cybersecurity teams still struggle to defend. This project aims to provide an open proof-of-concept tool for creating a comprehensive share inventory, leveraging statistics, charts, graphs, and language models to contextualize shares, summarize relationships, assess risks, and prioritize remediation.
 
 It supports functionality to:
 * <strong>Authenticate</strong> using the current user context, a credential, or clear text user/password.
