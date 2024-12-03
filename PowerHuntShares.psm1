@@ -3652,6 +3652,7 @@ function Invoke-HuntSMBShares
         #Write-Output " [*][$Time] Get-ShareInventory Summary Report"
         #Write-Output " [*][$Time] -----------------------------------------------"
         Write-Output " [*][$Time] Domain: $TargetDomain"
+        Write-Output " [*][$Time] User: $Username"
         Write-Output " [*][$Time] Start time: $StartTime"
         Write-Output " [*][$Time] End time: $EndTime"
         Write-Output " [*][$Time] Run time: $RunTime"
@@ -12919,6 +12920,8 @@ $FileList
 Target Domain: $TargetDomain
 
 Scan Summary
+Domain: $TargetDomain
+User: $Username
 Start Time: $StartTime
 End Time: $EndTime
 Run Time: $RunTime
