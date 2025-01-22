@@ -15,6 +15,9 @@ Bonus Features:
 * Stand alone LLM functions: https://github.com/NetSPI/PowerHuntShares/blob/main/Scripts/Invoke-FingerPrintShare.ps1
 * Stand alone password parsers: https://github.com/NetSPI/PowerHuntShares/tree/main/Scripts/ConfigParsers
 
+PowerHuntShares v2 Resources:
+* https://www.netspi.com/blog/technical-blog/network-pentesting/powerhuntshares-2-0-release/
+
 PowerHuntShares v1 Resources:
 * v1 Blog: https://www.netspi.com/blog/technical/network-penetration-testing/network-share-permissions-powerhuntshares/
 * v1 Presentation Video : https://www.youtube.com/watch?v=TtwyQchCz6E
