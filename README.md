@@ -218,6 +218,8 @@ Todos
 * ACLs associated with Builtin\Users sometimes shows up as LocalSystem under undefined conditions, and as a result, doesnt show up in the Excessive Privileges export. - Thanks Sam!
  
 **Pending Features**
+* Add powerhuntshares version to html report output
+* Add options to opt out of interesting file enumeration and secrets parsing.
 * Add ability to specify additional groups to target
 * Add file content search.
 * Add DontExcludePrintShares option
