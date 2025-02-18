@@ -16,7 +16,7 @@ Bonus Features:
 * Stand alone password parsers: https://github.com/NetSPI/PowerHuntShares/tree/main/Scripts/ConfigParsers
 
 PowerHuntShares v2 Resources:
-* https://www.netspi.com/blog/technical-blog/network-pentesting/powerhuntshares-2-0-release/
+* v2 Blog: https://www.netspi.com/blog/technical-blog/network-pentesting/powerhuntshares-2-0-release/
 
 PowerHuntShares v1 Resources:
 * v1 Blog: https://www.netspi.com/blog/technical/network-penetration-testing/network-share-permissions-powerhuntshares/
