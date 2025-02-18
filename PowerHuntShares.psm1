@@ -230,7 +230,7 @@ function Invoke-HuntSMBShares
         Write-Output "  o Filter for computers that have TCP 445 open and accessible  "
         Write-Output "  o Enumerate SMB shares                                        "
         Write-Output "  o Enumerate SMB share permissions                             "
-        Write-Output "  o Identify shares with potentially excessive privielges       "
+        Write-Output "  o Identify shares with potentially excessive privileges       "
         Write-Output "  o Identify shares that provide read or write access           "                     
         Write-Output "  o Identify shares thare are high risk                         "
         Write-Output "  o Identify common share owners, names, & directory listings   "
@@ -1484,6 +1484,7 @@ function Invoke-HuntSMBShares
         $FileNamePatternsAll.Rows.Add("httpd.conf*","","None.","Secret","")                                  | Out-Null
         $FileNamePatternsAll.Rows.Add("hudson.security.HudsonPrivateSecurityRealm.*","","None.","Secret","Get-PwJenkinsConfig") | Out-Null
         $FileNamePatternsAll.Rows.Add("config.xml*","","None.","Secret","Get-PwJenkinsConfig") | Out-Null
+        $FileNamePatternsAll.Rows.Add("*preInst.bds*","","None.","Secret","Get-PwBaramundiPreInst") | Out-Null
         $FileNamePatternsAll.Rows.Add("jboss-cli.xml*","","None.","Secret","Get-PwJbossCliConfig")           | Out-Null
         $FileNamePatternsAll.Rows.Add("jboss-logmanager.properties*","","None.","Secret","")                 | Out-Null
         $FileNamePatternsAll.Rows.Add("jenkins.model.JenkinsLocationConfiguration.*","","None.","Secret","") | Out-Null
@@ -26401,6 +26402,63 @@ function Get-PwJenkinsConfig {
 }
 # Get-PwJenkinsConfig -FilePath "C:\tools\Sample Configuration Files\configs\config.xml"  -ComputerName 'computer' -ShareName 'sharename' -UncFilePath '\\computer\sharename\file.txt' -FileName 'file.txt'
 
+
+# Author: Raphael Kuhn, DriveByte GmbH (@_Raeph)
+# Intended input: preInst.bds (Baramundi Files that often contain credentials)
+
+function Get-PwBaramundiPreInst {
+    param (
+        [string]$ComputerName = $null,  # Optional
+        [string]$ShareName    = $null,  # Optional
+        [string]$UncFilePath  = $null,  # Optional
+        [string]$FileName     = $null,  # Optional
+        [string]$FilePath               # Required
+    )
+
+    # Ensure the file exists
+    if (-Not (Test-Path $FilePath)) {
+        Write-Error "File not found: $FilePath"
+        return
+    }
+
+    # Read the BDS/XML content as plain text
+    $xmlText = Get-Content -Path $FilePath -Raw
+
+    # Alternative Way:
+    #$userPattern = "<VALUE>/User=(?<uname>.*)</VALUE>"
+    #$PwPattern = "<VALUE>/PWD=(?<passw>.*)</VALUE>"
+    #$username  =  [Regex]::Matches($xmlText,$userPattern)[0].Groups["uname"].value
+    #$password = [Regex]::Matches($xmlText,$PwPattern)[0].Groups["passw"].value
+
+    $userPattern = "<VALUE>/User=(.*)</VALUE>"
+    $PwPattern = "<VALUE>/PWD=(.*)</VALUE>"
+
+    $username  =  [Regex]::Matches($xmlText,$userPattern).Groups[1].value
+    $password = [Regex]::Matches($xmlText,$PwPattern).Groups[1].value
+
+    # Create and return the result as a PowerShell object
+    $result = [PSCustomObject]@{
+
+                ComputerName = $ComputerName
+                ShareName    = $ShareName
+                UncFilePath  = $UncFilePath
+                FileName     = $FileName
+                Section      = "NA"
+                ObjectName   = "NA"
+                TargetURL    = "NA"
+                TargetServer = "NA"
+                TargetPort   = "NA"
+		        Database     = "NA"
+		        Domain       = "NA"
+                Username     = $username
+                Password     = $password
+                PasswordEnc  = "NA"
+		        KeyFilePath  = "NA"
+    }
+
+    return $result
+}
+# Get-PwBaramundiPreInst  -ComputerName "testserver.test.domain" -ShareName "DIP$" -FileName "template.preInst.bds" -FilePath "\\testserver.test.domain\DIP$\ManagedSoftware\customer\BaramundiSoftwareAG\LicenseManagement\template.preInst.bds"
 
 # Author: Scott Sutherland, NetSPI (@_nullbind / nullbind)
 # Intended input: bootstrap.ini
