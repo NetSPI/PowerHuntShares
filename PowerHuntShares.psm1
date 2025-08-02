@@ -4,26 +4,51 @@
 #--------------------------------------
 # Author: Scott Sutherland, 2024 NetSPI
 # License: 3-clause BSD
-# Version: v2.1
+# Version: v2.1.1
 # References: This script includes custom code and code taken and modified from the open source projects PowerView, Invoke-Ping, and Invoke-Parrell. 
 function Invoke-HuntSMBShares
 {    
 	<#
             .SYNOPSIS
-            This function can be used to inventory to SMB shares on the current Active Directory domain and identify potentially high risk exposures.  
-			It will automatically generate csv files and html summary report.
+            Inventories SMB shares within the current Active Directory domain, identifies potentially high-risk exposures, 
+            and generates CSV and HTML summary reports.
+
             .PARAMETER Threads
-            Number of concurrent tasks to run at once.
-            .PARAMETER Output Directory
-            File path where all csv and html report will be exported.
+                Number of concurrent tasks to run at once. Default is 20.
+
+            .PARAMETER OutputDirectory 
+                File path where all CSV files and the HTML summary report will be exported.
+
+            .PARAMETER HostFile
+                Optional file containing a list of target hosts to scan. One host per line.
+
+            .PARAMETER DomainController
+                One or more domain controllers to target for Active Directory enumeration.
+
+            .PARAMETER Credential
+                Optional PSCredential object for alternate domain authentication. If not supplied, the current user context is used.
+
+            .PARAMETER RunSpaceTimeout
+                Timeout value in seconds for threaded runspaces. Default is 30 seconds.
+
             .EXAMPLE
-	        PS C:\temp\test> Invoke-HuntSMBShares -Threads 20 -OutputDirectory c:\temp\test -DomainController 10.1.1.1 -ExportFindings -Username domain\user -Password password
-            .EXAMPLE   
-            C:\temp\test> runas /netonly /user:domain\user PowerShell.exe
-            PS C:\temp\test> Import-Module Invoke-HuntSMBShares.ps1
-            PS C:\temp\test> Invoke-HuntSMBShares -Threads 20 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\ -DomainController 10.1.1.1 -ExportFindings -Username domain\user -Password password        
+                # Run with default AD computer discovery using current user credentials
+                PS C:\temp\test> Invoke-HuntSMBShares -Threads 20 OutputDirectory C:\temp\test
+
             .EXAMPLE
-			PS C:\temp\test> Invoke-HuntSMBShares -Threads 20 -ExportFindings -OutputDirectory c:\temp\test
+                # Run against a custom list of target hosts
+                PS C:\temp\test> Invoke-HuntSMBShares -Threads 50 -HostFile C:\temp\hosts.txt OutputDirectory C:\temp\test
+
+            .EXAMPLE
+                # Run from a non-domain joined system using alternate credentials
+                C:\temp\test> runas /netonly /user:domain\user PowerShell.exe
+                PS C:\temp\test> Import-Module .\PowerHuntShares.psm1
+                PS C:\temp\test> $Cred = Get-Credential
+                PS C:\temp\test> Invoke-HuntSMBShares -Threads 20 OutputDirectory C:\folder\ DomainController 10.1.1.1 -Credential $Cred
+
+            .EXAMPLE
+                # Run and specify a custom runspace timeout
+                PS C:\temp\test> Invoke-HuntSMBShares -Threads 20 RunSpaceTimeout 60 OutputDirectory C:\temp\test
 
              ---------------------------------------------------------------
              INVOKE-HUNTSMBSHARES                                        
