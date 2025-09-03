@@ -2,7 +2,7 @@ PowerHuntShares is provided under the 3-clause BSD license below.
 
 *************************************************************
 
-Copyright (c) 2024, NetSPI
+Copyright (c) 2025, NetSPI
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
