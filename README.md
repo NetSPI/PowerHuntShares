@@ -45,7 +45,7 @@ However, additional exposures may exist that are not called out beyond that.
 
 # Setup Commands
 Below is a list of commands that can be used to load PowerHuntShares into your current PowerShell session. Please note that one of these will have to be run each time you run PowerShell is run.  It is not persistent. 
-<pre>
+```ps1
 # Bypass execution policy restrictions
 Set-ExecutionPolicy -Scope Process Bypass
 
@@ -60,25 +60,25 @@ or
 
 # Download and load PowerHuntShares.psm1 into memory
 IEX(New-Object System.Net.WebClient).DownloadString("https://raw.githubusercontent.com/NetSPI/PowerHuntShares/main/PowerHuntShares.psm1")
-</pre>
-
+```
 # Example Commands
 Important Note: All commands should be run as an unprivileged domain user.
-<pre>
+```ps1
 .EXAMPLE 1: Run from a domain computer. Performs Active Directory computer discovery by default.
 PS C:\temp\test> Invoke-HuntSMBShares -Threads 100 -OutputDirectory c:\temp\test 
 
 .EXAMPLE 2: Run from a domain computer with alternative domain credentials. Performs Active Directory computer discovery by default.
-PS C:\temp\test> Invoke-HuntSMBShares -Threads 100 -OutputDirectory c:\temp\test -Credentials domain\user
+PS C:\temp\test> Invoke-HuntSMBShares -Threads 100 -OutputDirectory c:\temp\test -Credential domain\user
 
 .EXAMPLE 3: Run from a domain computer as current user. Target hosts in a file. One per line.
-PS C:\temp\test> Invoke-HuntSMBShares -Threads 100 -OutputDirectory c:\temp\test  -HostList c:\temp\hosts.txt      
+PS C:\temp\test> Invoke-HuntSMBShares -Threads 100 -OutputDirectory c:\temp\test  -HostFile c:\temp\hosts.txt      
 
 .EXAMPLE 4: Run from a non-domain computer with credential. Performs Active Directory computer discovery by default.
 C:\temp\test> runas /netonly /user:domain\user PowerShell.exe
 PS C:\temp\test> Import-Module PowerHuntShares.psm1
-PS C:\temp\test> Invoke-HuntSMBShares -Threads 100 -RunSpaceTimeOut 10 -OutputDirectory c:\folder\ -DomainController 10.1.1.1 -Credential domain\user 
-
+PS C:\temp\test> Invoke-HuntSMBShares -Threads 100 -RunSpaceTimeout 10 -OutputDirectory c:\folder\ -DomainController 10.1.1.1 -Credential domain\user 
+```
+<pre>
 ===============================================================
 PowerHuntShares
 ===============================================================
@@ -185,16 +185,16 @@ SHARE REPORT SUMMARY
 # HTML Report Examples
 
 ### Summary Report Page
-![HtmlReport1](https://raw.githubusercontent.com/NetSPI/PowerHuntShares/main/Images/v2/1-Dashboard.png)
+![Summary Report Page](Images/1-Dashboard.png)
 
 ### Interesting Files Page
-![HtmlReport2](https://raw.githubusercontent.com/NetSPI/PowerHuntShares/main/Images/v2/11-InterestingFiles.png)
+![Interesting Files Page](Images/11-InterestingFiles.png)
 
 ### Extracted Secrets Page
-![HtmlReport3](https://raw.githubusercontent.com/NetSPI/PowerHuntShares/main/Images/v2/10-ExtractedSecrets.png)
+![Extracted Secrets Page](Images/10-ExtractedSecrets.png)
 
 ### ShareGraph Explorer Page
-![HtmlReport4](https://raw.githubusercontent.com/NetSPI/PowerHuntShares/main/Images/v2/9-ShareGraph.png)
+![ShareGraph Explorer Page](Images/9-ShareGraph.png)
 
 # Credits
 <strong>Author</strong><Br>
@@ -238,14 +238,74 @@ Todos
 * So. Many. Other. Things.
 </pre>
  
+## PowerHuntShares Visual Overview
 
+Below is a visual walkthrough of how **PowerHuntShares** works, what data it extracts, and how it presents actionable results.
 
-  
+### Dashboard
+Provides a high-level view of discovered shares and associated risks.
 
+![Dashboard](Images/1-Dashboard.png)
 
+### Generated Files
+Automatically generated reports for easy analysis and offline review.
 
+![Generated Files](Images/2-Generated-Files.png)
 
+### Share Names
+Detailed mapping of share names and their properties.
 
+![Share Names - Example 1](Images/3-ShareNames-0.png)
+![Share Names - Example 2](Images/3-ShareNames-1.png)
+![Share Names - Example 3](Images/3-ShareNames-2.png)
 
+### Remediation Guidance
+Suggested remediation steps to address identified risks.
 
+![Remediation](Images/4-Remediation.png)
 
+### Timeline View
+Visualization of discovered issues over time.
+
+![Timeline](Images/5-Timeline.png)
+
+### Peer Comparison
+Compares discovered shares and permissions across different systems.
+
+![Peer Comparison](Images/6-PeerComparison.png)
+
+### Folder Groups
+Grouping related folders and shares for better context.
+
+![Folder Groups](Images/7-FolderGroups.png)
+
+### Asset Fingerprinting Exposure
+Shows asset exposure based on discovered fingerprints.
+
+![Asset Fingerprinting Exposure](Images/8-AssetFingerprintingExposure.png)
+
+### Share Graph
+Visual representation of discovered shares and relationships.
+
+![Share Graph](Images/9-ShareGraph.png)
+
+### Extracted Secrets
+Highlights sensitive information and secrets discovered during the scan.
+
+![Extracted Secrets](Images/10-ExtractedSecrets.png)
+
+### Interesting Files
+Lists potentially interesting or high-value files found in shares.
+
+![Interesting Files](Images/11-InterestingFiles.png)
+
+### Data Exposure
+Highlights areas where sensitive data may be exposed.
+
+![Data Exposure](Images/12-DataExposure.png)
+
+### Risk Exposure
+Comprehensive risk exposure views with detailed analysis.
+
+![Risk Exposure](Images/13-RiskExposure.png)
+![Risk Exposure 2](Images/13-RiskExposure2.png)
