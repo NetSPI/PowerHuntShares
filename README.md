@@ -21,7 +21,7 @@ PowerHuntShares v2 Resources:
 PowerHuntShares v1 Resources:
 * v1 Blog: https://www.netspi.com/blog/technical/network-penetration-testing/network-share-permissions-powerhuntshares/
 * v1 Presentation Video : https://www.youtube.com/watch?v=TtwyQchCz6E
-* v1 Presentation Slides: https://www.slideshare.net/nullbind/into-the-abyss-evaluating-active-directory-smb-shares-on-scale-secure360-251762721
+* v1 Presentation Slides: https://github.com/NetSPI/PowerHuntShares/blob/main/Presentations/SO-CON_2025_Sutherland_Hunting_SMB_Shares_Final.pdf
 
 # Vocabulary
 PowerHuntShares will inventory SMB share ACLs configured with "excessive privileges" and highlight "high risk" ACLs.  Below is how those are defined in this context.
